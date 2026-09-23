@@ -91,7 +91,7 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 - O5Kit bundled fonts (SUIT, JetBrains Mono) under [OFL-1.1](https://opensource.org/licenses/OFL-1.1).
 
 ### Third-Party Code
-- **[LitMotion](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514)**: Submodule under [`lib/LitMotion`](lib/LitMotion), compiled from source (Runtime only)
+- **[LitMotion](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514)**: Submodule under [`lib/LitMotion`](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514), compiled from source (Runtime only)
   - License: [MIT](https://github.com/annulusgames/LitMotion/blob/422eb124051c81a9bc3f422ebf190703c5053514/LICENSE)
 - **[UniverseLib](https://github.com/sinai-dev/UniverseLib/tree/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0)**: Parts of input handling logic in [`src/O5Kit/Input`](src/O5Kit/Input) are referenced and derived from UniverseLib.
   - License: [LGPL-2.1](https://github.com/sinai-dev/UniverseLib/blob/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0/LICENSE)
