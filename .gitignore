@@ -1,0 +1,7 @@
+bin/
+obj/
+.game/
+Directory.Build.props
+.vs/
+.idea/
+*.user

@@ -1,0 +1,10 @@
+<Project>
+  <!-- Copy this file to Directory.Build.props and fill in your game paths. -->
+  <PropertyGroup>
+    <!-- <GamePath>/path/to/game/root</GamePath> -->
+    <!-- <GameData>GameName_Data</GameData> -->
+    <!-- For IL2CPP builds: -->
+    <!-- <Il2CppPath>/path/to/il2cpp/game/root</Il2CppPath> -->
+    <!-- <Il2CppData>GameName_Data</Il2CppData> -->
+  </PropertyGroup>
+</Project>
