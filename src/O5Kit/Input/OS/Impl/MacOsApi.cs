@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace O5Kit.Input.OS.Impl;
 
-/// <summary>macOS cursor access via ApplicationServices.</summary>
+/// <summary>macOS cursor access via CoreGraphics.</summary>
 public sealed class MacOsApi : OsApi {
     [StructLayout(LayoutKind.Sequential)]
     private struct CGPoint(double x, double y) {
@@ -18,7 +18,13 @@ public sealed class MacOsApi : OsApi {
     private static extern int CGWarpMouseCursorPosition(CGPoint newCursorPosition);
 
     [DllImport("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")]
-    private static extern CGPoint CGEventSourceCreateMouseCursorPosition(int mouseStateSpace);
+    private static extern IntPtr CGEventCreate(IntPtr source);
+
+    [DllImport("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")]
+    private static extern CGPoint CGEventGetLocation(IntPtr eventRef);
+
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
+    private static extern void CFRelease(IntPtr cf);
 
     public override void SetCursorPosition(int x, int y) {
         try {
@@ -29,8 +35,21 @@ public sealed class MacOsApi : OsApi {
 
     public override Vector2Int GetCursorPosition() {
         try {
-            CGPoint p = CGEventSourceCreateMouseCursorPosition(0);
-            return new Vector2Int(Mathf.RoundToInt((float)p.x), Mathf.RoundToInt((float)p.y));
+            IntPtr eventRef = CGEventCreate(IntPtr.Zero);
+
+            if (eventRef == IntPtr.Zero) {
+                return Vector2Int.zero;
+            }
+
+            try {
+                CGPoint p = CGEventGetLocation(eventRef);
+                return new Vector2Int(
+                    Mathf.RoundToInt((float)p.x),
+                    Mathf.RoundToInt((float)p.y)
+                );
+            } finally {
+                CFRelease(eventRef);
+            }
         } catch {
         }
 
