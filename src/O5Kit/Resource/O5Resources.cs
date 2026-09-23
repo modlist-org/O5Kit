@@ -17,21 +17,21 @@ namespace O5Kit.Resource;
 /// <summary>Bundled artwork keys (see <c>Assets/NOTICE.md</c>, CC BY 4.0).</summary>
 public enum O5Asset {
     /// <summary>Large rounded panel background.</summary>
-    Panel,
+    Panel256,
     /// <summary>Small rounded control background.</summary>
-    Control,
+    Control256,
     /// <summary>Rounded-top bar background.</summary>
-    TopBar,
+    TopBar256,
     /// <summary>Rounded outline ring.</summary>
-    Outline,
+    Outline256,
     /// <summary>Solid circle.</summary>
-    Circle,
+    Circle256,
     /// <summary>Circle ring (toggle-off).</summary>
-    Ring,
+    Ring256,
     /// <summary>Close X icon.</summary>
-    X,
+    X128,
     /// <summary>Foldout triangle icon (points down).</summary>
-    Triangle,
+    Triangle128,
 }
 
 /// <summary>Embedded-asset loader. Mirrors Overlayer's ResourceManager: manifest streams with a texture cache.</summary>
@@ -41,14 +41,14 @@ public sealed class O5Resources : IDisposable {
     private readonly Dictionary<string, object> _cache = new();
 
     private static readonly Dictionary<O5Asset, string> AssetMap = new() {
-        [O5Asset.Panel] = "panel.png",
-        [O5Asset.Control] = "control.png",
-        [O5Asset.TopBar] = "topbar.png",
-        [O5Asset.Outline] = "outline.png",
-        [O5Asset.Circle] = "circle.png",
-        [O5Asset.Ring] = "ring.png",
-        [O5Asset.X] = "x.png",
-        [O5Asset.Triangle] = "triangle.png",
+        [O5Asset.Panel256] = "Image.Panel256.png",
+        [O5Asset.Control256] = "Image.Control256.png",
+        [O5Asset.TopBar256] = "Image.TopBar256.png",
+        [O5Asset.Outline256] = "Image.Outline256.png",
+        [O5Asset.Circle256] = "Image.Circle256.png",
+        [O5Asset.Ring256] = "Image.Ring256.png",
+        [O5Asset.X128] = "Image.X128.png",
+        [O5Asset.Triangle128] = "Image.Triangle128.png",
     };
 
     /// <summary>Creates a loader over an assembly manifest prefix.</summary>
@@ -64,7 +64,7 @@ public sealed class O5Resources : IDisposable {
         => new(typeof(O5Resources).Assembly, "O5Kit.Asset.");
 
     /// <summary>Reads raw bytes for a manifest path. Null when missing.</summary>
-    /// <param name="path">Manifest suffix, e.g. <c>"panel.png"</c>.</param>
+    /// <param name="path">Manifest suffix with dots, e.g. <c>"Image.Panel256.png"</c>.</param>
     public byte[]? Load(string path) {
         if (string.IsNullOrWhiteSpace(path)) {
             return null;

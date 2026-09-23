@@ -15,26 +15,26 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
     private bool _disposed;
 
     /// <inheritdoc/>
-    public Sprite RoundedPanel => GetSliced(O5Asset.Panel, 56f);
+    public Sprite RoundedPanel => GetSliced(O5Asset.Panel256, 56f);
 
     /// <inheritdoc/>
-    public Sprite RoundedControl => GetSliced(O5Asset.Control, 40f);
+    public Sprite RoundedControl => GetSliced(O5Asset.Control256, 40f);
 
     /// <inheritdoc/>
-    public Sprite TopBar => GetSliced(O5Asset.TopBar, new Vector4(56f, 0f, 56f, 56f));
+    public Sprite TopBar => GetSliced(O5Asset.TopBar256, new Vector4(56f, 0f, 56f, 56f));
 
     /// <inheritdoc/>
-    public Sprite RoundedOutline => GetSliced(O5Asset.Outline, 56f);
+    public Sprite RoundedOutline => GetSliced(O5Asset.Outline256, 56f);
 
     /// <inheritdoc/>
-    public Sprite Circle => GetSimple(O5Asset.Circle);
+    public Sprite Circle => GetSimple(O5Asset.Circle256);
 
     /// <inheritdoc/>
     public Sprite? Icon(string name) => name switch {
-        "toggle-on" => GetSimple(O5Asset.Circle),
-        "toggle-off" => GetSimple(O5Asset.Ring),
-        "Triangle128" or "triangle" => GetSimple(O5Asset.Triangle),
-        "X128" or "x" => GetSimple(O5Asset.X),
+        "toggle-on" => GetSimple(O5Asset.Circle256),
+        "toggle-off" => GetSimple(O5Asset.Ring256),
+        "Triangle128" or "triangle" => GetSimple(O5Asset.Triangle128),
+        "X128" or "x" => GetSimple(O5Asset.X128),
         _ => null,
     };
 
