@@ -81,6 +81,7 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 ### O5Kit
 - O5Kit is licensed under [LGPL-3.0-or-later](LICENCE.md).
 - SPDX-License-Identifier: `LGPL-3.0-or-later`
+- Copyright (C) 2026 modlist-org contributors.
 
 ### Logo
 - The O5Kit logo is a placeholder. `o5kit_logo.svg` at the repository root will be replaced with the final logo before the first release.
