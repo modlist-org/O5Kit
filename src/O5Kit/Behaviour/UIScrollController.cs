@@ -38,6 +38,9 @@ public class UIScrollController
     /// <summary>Smooth-scroll glide duration in seconds.</summary>
     public float scrollDuration = 0.2f;
 
+    /// <summary>Easing for the smooth-scroll glide.</summary>
+    public O5Ease scrollEase = O5Ease.OutCirc;
+
     /// <summary>When set and true, wheel events are left for a nested consumer.</summary>
     public static Func<bool>? ShouldConsumeParentScroll { get; set; }
 
@@ -152,7 +155,9 @@ public class UIScrollController
                 }
             },
             target,
-            scrollDuration);
+            scrollDuration,
+            null,
+            scrollEase);
     }
 
     /// <summary>Assigns the content/viewport pair after creation.</summary>
