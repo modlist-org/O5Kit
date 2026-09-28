@@ -2,7 +2,7 @@
 
 namespace O5Kit.Core;
 
-/// <summary>UI-wide runtime options. Consumer fills this once via <see cref="O5Boot"/>.</summary>
+/// <summary>UI-wide runtime options. Owned by an <see cref="O5Context"/>; pass yours to its constructor.</summary>
 public sealed class O5Config {
     /// <summary>Global UI scale multiplier. Applied to canvas scaling and tooltip offsets.</summary>
     public float UIScale { get; set; } = 1f;
@@ -19,6 +19,6 @@ public sealed class O5Config {
     /// <summary>Toggle hotkey. Default matches Overlayer: Alt+BackQuote (Ctrl on Linux).</summary>
     public UnityEngine.KeyCode ToggleKey { get; set; } = UnityEngine.KeyCode.BackQuote;
 
-    /// <summary>Shared default instance. Prefer passing your own to <see cref="O5Boot.Configure"/>.</summary>
+    /// <summary>Shared default instance. Prefer passing your own to the <see cref="O5Context"/> constructor.</summary>
     public static O5Config Default { get; } = new();
 }

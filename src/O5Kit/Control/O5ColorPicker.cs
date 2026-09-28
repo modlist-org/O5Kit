@@ -68,6 +68,7 @@ public sealed class O5ColorPicker : O5Object {
     private enum DragTarget { None, Hue, Triangle }
 
     /// <summary>Creates a color picker over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="canvasRect">Popup coordinate space (usually the canvas rect).</param>
@@ -91,6 +92,7 @@ public sealed class O5ColorPicker : O5Object {
     /// <param name="onChanged">Change callback.</param>
     /// <param name="onComplete">Commit callback.</param>
     public O5ColorPicker(
+        O5Context ctx,
         string id,
         RectTransform rect,
         RectTransform canvasRect,
@@ -113,7 +115,7 @@ public sealed class O5ColorPicker : O5Object {
         Color value,
         Action<Color>? onChanged,
         Action<Color>? onComplete
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         _canvasRect = canvasRect;
         _canvasCamera = canvasCamera;
         _body = body;
@@ -276,7 +278,7 @@ public sealed class O5ColorPicker : O5Object {
         float fromAlpha = popupCanvas.alpha;
         float toAlpha = opening ? 1f : 0f;
 
-        _popupTween = O5Boot.Tween.TweenFloat(
+        _popupTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (popupRect) {
@@ -284,7 +286,7 @@ public sealed class O5ColorPicker : O5Object {
                 }
             },
             1f, 0.2f, onDone, O5Ease.OutBack);
-        _popupFadeTween = O5Boot.Tween.TweenFloat(
+        _popupFadeTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (popupCanvas) {
@@ -367,7 +369,7 @@ public sealed class O5ColorPicker : O5Object {
             return;
         }
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         _hsvMode = useHsv;
         _rgbModeBackground.color = useHsv ? Color.clear : theme.ObjectActive;
         _hsvModeBackground.color = useHsv ? theme.ObjectActive : Color.clear;
@@ -536,7 +538,7 @@ public sealed class O5ColorPicker : O5Object {
             return;
         }
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         string candidate = text.StartsWith("#") ? text : "#" + text;
         bool validLength = candidate.Length is 7 or 9;
         Color parsed = default;
@@ -565,7 +567,7 @@ public sealed class O5ColorPicker : O5Object {
         }
 
         _pendingHexColor = null;
-        SetHexValidationColor(O5Boot.Theme.ObjectActive, true);
+        SetHexValidationColor(Ctx.Theme.ObjectActive, true);
     }
 
     private void UpdateVisuals() {
@@ -582,7 +584,7 @@ public sealed class O5ColorPicker : O5Object {
             return;
         }
 
-        Color composite = Color.Lerp(O5Boot.Theme.PanelBG, background, background.a);
+        Color composite = Color.Lerp(Ctx.Theme.PanelBG, background, background.a);
         float luminance = RelativeLuminance(composite);
         float blackContrast = (luminance + 0.05f) / 0.05f;
         float whiteContrast = 1.05f / (luminance + 0.05f);
@@ -631,7 +633,7 @@ public sealed class O5ColorPicker : O5Object {
             }
 
             var outline = _hexOutline;
-            _validationTween = O5Boot.Tween.TweenColor(
+            _validationTween = Ctx.Tween.TweenColor(
                 () => outline.color,
                 v => {
                     if (outline) {

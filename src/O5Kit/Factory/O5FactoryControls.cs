@@ -13,9 +13,10 @@ namespace O5Kit.Factory;
 
 public static partial class O5Factory {
     /// <summary>Layout row with a fixed height for stacking controls.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="height">Row height.</param>
-    public static RectTransform Row(Transform parent, float height = 50f) {
+    public static RectTransform Row(O5Context ctx, Transform parent, float height = 50f) {
         GameObject obj = new("Row");
         obj.transform.SetParent(parent, false);
 
@@ -29,8 +30,9 @@ public static partial class O5Factory {
     }
 
     /// <summary>Small dot marking a control whose value differs from default.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Control rect.</param>
-    public static GameObject AddSmallChangedCircle(RectTransform parent) {
+    public static GameObject AddSmallChangedCircle(O5Context ctx, RectTransform parent) {
         GameObject obj = new("Changed");
         obj.transform.SetParent(parent, false);
 
@@ -42,8 +44,8 @@ public static partial class O5Factory {
         rect.sizeDelta = new Vector2(8f, 8f);
 
         Image img = obj.AddComponent<Image>();
-        img.sprite = O5Boot.Sprites.Circle;
-        Color c = O5Boot.Theme.ObjectActive;
+        img.sprite = ctx.Sprites.Circle;
+        Color c = ctx.Theme.ObjectActive;
         c.a = 0f;
         img.color = c;
 
@@ -51,6 +53,7 @@ public static partial class O5Factory {
     }
 
     /// <summary>Builds a labeled toggle. Middle-click resets to default when enabled in config.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="defaultValue">Reset target.</param>
     /// <param name="value">Initial value.</param>
@@ -58,6 +61,7 @@ public static partial class O5Factory {
     /// <param name="text">Label text.</param>
     /// <param name="id">Stable identifier.</param>
     public static O5Toggle Toggle(
+        O5Context ctx,
         Transform parent,
         bool defaultValue,
         bool value,
@@ -65,13 +69,13 @@ public static partial class O5Factory {
         string text,
         string id
     ) {
-        RectTransform rect = ControlBackground(parent);
+        RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
-        TMPro.TextMeshProUGUI tmp = ControlText(rect, O5Boot.Theme.FontSizeBody);
+        TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
         tmp.text = text;
 
-        GameObject change = AddSmallChangedCircle(rect);
+        GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
         GameObject toggleCircle = new("ToggleCircle");
@@ -87,6 +91,7 @@ public static partial class O5Factory {
         Image circleImage = toggleCircle.AddComponent<Image>();
 
         O5Toggle toggle = new(
+            ctx,
             id,
             rect,
             tmp,
@@ -99,7 +104,7 @@ public static partial class O5Factory {
         );
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
-        O5Effects.HoverOutline(rect.gameObject, trigger);
+        O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnClick += btn => {
@@ -109,7 +114,7 @@ public static partial class O5Factory {
                     break;
 
                 case InputButton.Middle:
-                    if (O5Boot.Config.MiddleClickToDefault && toggle.Value != toggle.DefaultValue) {
+                    if (ctx.Config.MiddleClickToDefault && toggle.Value != toggle.DefaultValue) {
                         toggle.Reset();
                     }
 
@@ -122,23 +127,26 @@ public static partial class O5Factory {
 
     /// <summary>Attaches a static hover tooltip.</summary>
     /// <param name="parent">Hover target.</param>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="tip">Tooltip text.</param>
-    public static Transform AddToolTip(this Transform parent, string tip)
-        => parent.AddToolTipInternal(() => tip);
+    public static Transform AddToolTip(this Transform parent, O5Context ctx, string tip)
+        => AddToolTipInternal(parent, ctx, () => tip);
 
     /// <summary>Attaches a dynamic hover tooltip.</summary>
     /// <param name="parent">Hover target.</param>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="getText">Text provider evaluated on hover.</param>
-    public static Transform AddToolTip(this Transform parent, Func<string> getText)
-        => parent.AddToolTipInternal(getText);
+    public static Transform AddToolTip(this Transform parent, O5Context ctx, Func<string> getText)
+        => AddToolTipInternal(parent, ctx, getText);
 
-    private static Transform AddToolTipInternal(this Transform parent, Func<string> getText) {
+    /// <param name="ctx">Owning kit context.</param>
+    private static Transform AddToolTipInternal(Transform parent, O5Context ctx, Func<string> getText) {
         EventTrigger trigger = parent.gameObject.GetComponent<EventTrigger>()
             ?? parent.gameObject.AddComponent<EventTrigger>();
 
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerEnter, () => O5Tooltip.Show(getText())),
-            (EventTriggerType.PointerExit, O5Tooltip.Hide)
+            (EventTriggerType.PointerEnter, () => ctx.Tooltip.Show(getText())),
+            (EventTriggerType.PointerExit, ctx.Tooltip.Hide)
         );
 
         return parent;

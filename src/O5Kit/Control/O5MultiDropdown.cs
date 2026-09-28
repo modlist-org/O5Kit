@@ -63,6 +63,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     private readonly List<Image> _selectionImages = new();
 
     /// <summary>Creates a multi dropdown over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Header label.</param>
@@ -79,6 +80,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <param name="value">Initial value.</param>
     /// <param name="onChanged">Change callback.</param>
     public O5MultiDropdown(
+        O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
@@ -94,7 +96,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         T defaultValue,
         T value,
         Action<T>? onChanged
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         Label = label;
         TriangleImage = triangleImage;
         TriangleRect = triangleRect;
@@ -177,7 +179,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         _triangleTintTween?.Kill();
         _changeTween?.Kill();
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         bool isDefault = EqualityComparer<T>.Default.Equals(DefaultValue, Value);
         float targetRot = Expanded ? 180f : 0f;
         Color targetColor = Expanded ? theme.ObjectActive : theme.ObjectInactive;
@@ -199,7 +201,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             startRot -= 360f;
         }
 
-        _triangleTween = O5Boot.Tween.TweenFloat(
+        _triangleTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (triRect) {
@@ -209,13 +211,13 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             1f, 0.4f, ease: O5Ease.OutBack);
 
         var triImg = TriangleImage;
-        _triangleTintTween = O5Boot.Tween.TweenColor(
+        _triangleTintTween = Ctx.Tween.TweenColor(
             () => triImg.color, v => triImg.color = v, targetColor, 0.2f);
 
         var changed = ChangedImage;
         float changedStart = changed.color.a;
         float changedTarget = isDefault ? 0f : 1f;
-        _changeTween = O5Boot.Tween.TweenFloat(
+        _changeTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (changed) {
@@ -243,7 +245,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             }
         }
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         foreach (T item in Values) {
             GameObject row = new("Row");
             row.transform.SetParent(ListObject.transform, false);
@@ -252,7 +254,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             rowRect.sizeDelta = new Vector2(0f, 50f);
 
             Image rowImage = row.AddComponent<Image>();
-            rowImage.sprite = O5Boot.Sprites.RoundedControl;
+            rowImage.sprite = Ctx.Sprites.RoundedControl;
             rowImage.type = Image.Type.Sliced;
             rowImage.color = Color.clear;
 
@@ -274,7 +276,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             _selectionImages.Add(selectedImage);
 
             EventTrigger trigger = row.AddComponent<EventTrigger>();
-            O5Effects.HoverOutline(row, trigger);
+            O5Effects.HoverOutline(Ctx, row, trigger);
 
             UnityUtils.AddEvents(trigger,
                 (EventTriggerType.PointerClick, (e) => {
@@ -298,9 +300,9 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     }
 
     private void UpdateSelectionVisuals() {
-        var theme = O5Boot.Theme;
-        var onSprite = O5Boot.Sprites.Icon("toggle-on");
-        var offSprite = O5Boot.Sprites.Icon("toggle-off");
+        var theme = Ctx.Theme;
+        var onSprite = Ctx.Sprites.Icon("toggle-on");
+        var offSprite = Ctx.Sprites.Icon("toggle-off");
         for (int i = 0; i < _selectionImages.Count && i < Values.Count; i++) {
             bool has = HasFlag(Value, Values[i]);
             if (has && onSprite != null) {
@@ -313,8 +315,8 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         }
     }
 
-    private static TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
-        var theme = O5Boot.Theme;
+    private TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
+        var theme = Ctx.Theme;
         var obj = new GameObject("Text");
         obj.transform.SetParent(parent, false);
 
@@ -325,7 +327,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         rect.offsetMax = Vector2.zero;
 
         var tmp = obj.AddComponent<TMPro.TextMeshProUGUI>();
-        tmp.font = O5Boot.Fonts.Regular;
+        tmp.font = Ctx.Fonts.Regular;
         tmp.fontSize = theme.FontSizeBody;
         tmp.color = Color.white;
         tmp.alignment = TMPro.TextAlignmentOptions.Left;

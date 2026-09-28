@@ -44,6 +44,9 @@ public class ResizeHandle
     /// <summary>Coordinate space the drag is measured in (usually the canvas rect).</summary>
     public RectTransform PanelParent = null!;
 
+    /// <summary>Owning kit context. Assigned by <see cref="CreateResizeHandles"/>; required for drag math.</summary>
+    public O5Context? Ctx { get; set; }
+
     private Vector2 _startMouse;
     private Vector2 _startSize;
     private Vector2 _startPos;
@@ -87,8 +90,10 @@ public class ResizeHandle
         Vector2 newSize = _startSize;
         Vector2 newPos = _startPos;
 
-        float minW = MIN_WIDTH / O5Boot.Config.UIScale;
-        float minH = MIN_HEIGHT / O5Boot.Config.UIScale;
+        O5Context ctx = Ctx ?? throw new InvalidOperationException(
+            "O5Kit: ResizeHandle.Ctx is not set. Create handles via ResizeHandle.CreateResizeHandles(ctx, ...).");
+        float minW = MIN_WIDTH / ctx.Config.UIScale;
+        float minH = MIN_HEIGHT / ctx.Config.UIScale;
 
         Vector2 pivot = Panel.pivot;
 
@@ -139,9 +144,10 @@ public class ResizeHandle
     private const float HANDLE_SIDE = 12f;
 
     /// <summary>Creates all eight edge/corner handles around <paramref name="panel"/>.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="panel">Panel to make resizable.</param>
     /// <param name="panelParent">Coordinate space for measuring drags.</param>
-    public static void CreateResizeHandles(RectTransform panel, RectTransform panelParent) {
+    public static void CreateResizeHandles(O5Context ctx, RectTransform panel, RectTransform panelParent) {
         foreach (ResizeHandleType type in HandleOrder) {
             GameObject handle = new($"Resize_{type}");
             handle.transform.SetParent(panel, false);
@@ -227,11 +233,12 @@ public class ResizeHandle
             rect.anchoredPosition = Vector2.zero;
 
             Image image = handle.AddComponent<Image>();
-            image.sprite = O5Boot.Sprites.Circle;
+            image.sprite = ctx.Sprites.Circle;
             image.color = Color.clear;
 
             ResizeHandle resize = handle.AddComponent<ResizeHandle>();
 
+            resize.Ctx = ctx;
             resize.Type = type;
             resize.Panel = panel;
             resize.PanelParent = panelParent;

@@ -12,17 +12,20 @@ public sealed class O5WindowManager : IDisposable {
     public O5Canvas Canvas { get; }
 
     private readonly List<O5Window> _windows = new();
+    private readonly O5Context _ctx;
     private bool _disposed;
 
-    private O5WindowManager(O5Canvas canvas) {
+    private O5WindowManager(O5Context ctx, O5Canvas canvas) {
+        _ctx = ctx;
         Canvas = canvas;
     }
 
     /// <summary>Creates a manager with its own overlay canvas under <paramref name="parent"/>.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Scene or mod root to parent under.</param>
     /// <param name="name">Canvas object name.</param>
-    public static O5WindowManager Create(Transform parent, string name = "O5Windows") {
-        return new O5WindowManager(O5Canvas.Create(parent, name));
+    public static O5WindowManager Create(O5Context ctx, Transform parent, string name = "O5Windows") {
+        return new O5WindowManager(ctx, O5Canvas.Create(ctx, parent, name));
     }
 
     /// <summary>Tracked windows (alive, visible or not).</summary>
@@ -31,7 +34,7 @@ public sealed class O5WindowManager : IDisposable {
     /// <summary>Builds and tracks a window. Visibility is untouched; show it yourself.</summary>
     /// <param name="options">Appearance and behaviour.</param>
     public O5Window Create(O5WindowOptions options) {
-        var window = O5Window.Create(Canvas.Root.transform, options);
+        var window = O5Window.Create(_ctx, Canvas.Root.transform, options);
         window.Focused += BringToFront;
         window.OnDisposed += () => {
             window.Focused -= BringToFront;

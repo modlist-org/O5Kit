@@ -23,13 +23,13 @@ public sealed class O5Canvas : IDisposable {
         Root = root;
         Canvas = canvas;
         Scaler = scaler;
-        ApplyScale(O5Boot.Config.UIScale);
     }
 
     /// <summary>Creates an overlay canvas under <paramref name="parent"/>. Visibility is untouched.</summary>
+    /// <param name="ctx">Owning kit context (drives initial UI scale).</param>
     /// <param name="parent">Scene or mod root to parent under.</param>
     /// <param name="name">GameObject name.</param>
-    public static O5Canvas Create(Transform parent, string name = "O5Canvas") {
+    public static O5Canvas Create(O5Context ctx, Transform parent, string name = "O5Canvas") {
         var root = new GameObject(name);
         root.transform.SetParent(parent, false);
 
@@ -44,7 +44,9 @@ public sealed class O5Canvas : IDisposable {
 
         root.AddComponent<GraphicRaycaster>();
 
-        return new O5Canvas(root, canvas, scaler);
+        var created = new O5Canvas(root, canvas, scaler);
+        created.ApplyScale(ctx.Config.UIScale);
+        return created;
     }
 
     /// <summary>Recomputes the reference resolution from a UI scale multiplier.</summary>

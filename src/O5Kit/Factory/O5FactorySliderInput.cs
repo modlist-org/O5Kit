@@ -14,6 +14,7 @@ namespace O5Kit.Factory;
 
 public static partial class O5Factory {
     /// <summary>Builds a slider with fill bar, formula box and infinite horizontal drag.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="defaultValue">Reset target.</param>
     /// <param name="min">Range lower bound.</param>
@@ -30,6 +31,7 @@ public static partial class O5Factory {
     /// <param name="dragStep">Value per pixel. Null scales by control width.</param>
     /// <param name="blockHoverWhileDragging">Cover the canvas with a drag blocker.</param>
     public static O5Slider Slider(
+        O5Context ctx,
         Transform parent,
         float defaultValue,
         float min,
@@ -46,10 +48,10 @@ public static partial class O5Factory {
         float? dragStep = null,
         bool blockHoverWhileDragging = false
     ) {
-        RectTransform rect = ControlBackground(parent);
+        RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
-        GameObject change = AddSmallChangedCircle(rect);
+        GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
         GameObject fill = new("Fill");
@@ -62,7 +64,7 @@ public static partial class O5Factory {
         fillRect.anchoredPosition = Vector2.zero;
         fillRect.sizeDelta = Vector2.zero;
 
-        TMPro.TextMeshProUGUI label = ControlText(rect, O5Boot.Theme.FontSizeBody);
+        TMPro.TextMeshProUGUI label = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
         label.text = text;
         label.alignment = TMPro.TextAlignmentOptions.Left;
 
@@ -79,7 +81,7 @@ public static partial class O5Factory {
         inputRect.offsetMax = Vector2.zero;
         inputObj.AddComponent<RectMask2D>();
 
-        TMPro.TextMeshProUGUI previewLabel = ControlText(inputObj.transform, O5Boot.Theme.FontSizeBody);
+        TMPro.TextMeshProUGUI previewLabel = ControlText(ctx, inputObj.transform, ctx.Theme.FontSizeBody);
         previewLabel.rectTransform.anchorMin = Vector2.zero;
         previewLabel.rectTransform.anchorMax = Vector2.one;
         previewLabel.rectTransform.pivot = new Vector2(1f, 0.5f);
@@ -87,11 +89,11 @@ public static partial class O5Factory {
         previewLabel.rectTransform.offsetMax = new Vector2(-14f, 0f);
         previewLabel.alignment = TMPro.TextAlignmentOptions.Right;
         previewLabel.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
-        previewLabel.font = O5Boot.Fonts.Monospace;
+        previewLabel.font = ctx.Fonts.Monospace;
         previewLabel.color = new Color(1f, 1f, 1f, 0.6f);
 
         TMPro.TMP_InputField inputField = inputObj.AddComponent<TMPro.TMP_InputField>();
-        var textComp = ControlText(inputObj.transform, O5Boot.Theme.FontSizeBody);
+        var textComp = ControlText(ctx, inputObj.transform, ctx.Theme.FontSizeBody);
         textComp.rectTransform.anchorMin = Vector2.zero;
         textComp.rectTransform.anchorMax = Vector2.one;
         textComp.rectTransform.pivot = new Vector2(1f, 0.5f);
@@ -99,24 +101,24 @@ public static partial class O5Factory {
         textComp.rectTransform.offsetMax = Vector2.zero;
         textComp.alignment = TMPro.TextAlignmentOptions.Right;
         textComp.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
-        textComp.font = O5Boot.Fonts.Monospace;
+        textComp.font = ctx.Fonts.Monospace;
 
         inputField.textComponent = textComp;
         inputField.textViewport = inputRect;
 
         Image fillImg = fill.AddComponent<Image>();
-        fillImg.sprite = O5Boot.Sprites.RoundedControl;
+        fillImg.sprite = ctx.Sprites.RoundedControl;
         fillImg.type = Image.Type.Sliced;
         fill.AddComponent<Mask>().showMaskGraphic = true;
 
-        GameObject changeUp = AddSmallChangedCircle(fillRect);
+        GameObject changeUp = AddSmallChangedCircle(ctx, fillRect);
         Image changeUpImg = changeUp.GetComponent<Image>();
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
 
         O5Slider slider = new(
-            id, rect, fillRect, fillImg, label, inputField, previewLabel,
-            changeImg, changeUpImg, O5Effects.HoverOutline(rect.gameObject, trigger), defaultValue, min, max,
+            ctx, id, rect, fillRect, fillImg, label, inputField, previewLabel,
+            changeImg, changeUpImg, O5Effects.HoverOutline(ctx, rect.gameObject, trigger), defaultValue, min, max,
             value, format, clampMode, filter, onChanged, onComplete
         ) {
             ShowFill = showFill
@@ -136,7 +138,7 @@ public static partial class O5Factory {
         ovent.OnClick += e => {
             switch (e) {
                 case InputButton.Middle:
-                    if (!O5Boot.Config.MiddleClickToDefault) {
+                    if (!ctx.Config.MiddleClickToDefault) {
                         break;
                     }
 
@@ -191,10 +193,10 @@ public static partial class O5Factory {
                     }
 
                     if (dragStep.HasValue) {
-                        cachedValue += mousePixelDelta.x * dragStep.Value * O5Boot.Config.SliderSensitivity;
+                        cachedValue += mousePixelDelta.x * dragStep.Value * ctx.Config.SliderSensitivity;
                     } else {
                         float finalPixelWidth = inputRect.rect.width * (canvasRoot?.GetComponent<Canvas>()?.scaleFactor ?? 1f);
-                        cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * O5Boot.Config.SliderSensitivity / finalPixelWidth;
+                        cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * ctx.Config.SliderSensitivity / finalPixelWidth;
                     }
 
                     if (slider.ClampMode != ClampMode.None) {
@@ -309,6 +311,7 @@ public static partial class O5Factory {
     }
 
     /// <summary>Builds a text field with icon, placeholder and middle-click reset.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="defaultValue">Reset target. Null disables reset.</param>
     /// <param name="value">Initial text.</param>
@@ -321,6 +324,7 @@ public static partial class O5Factory {
     /// <param name="monospace">Monospace font.</param>
     /// <param name="fieldFactory">Custom field builder (e.g. a code editor field). Null uses <see cref="TMPro.TMP_InputField"/>.</param>
     public static O5InputField Input(
+        O5Context ctx,
         Transform parent,
         string? defaultValue,
         string? value,
@@ -333,10 +337,10 @@ public static partial class O5Factory {
         bool monospace = false,
         Func<GameObject, TMPro.TMP_InputField>? fieldFactory = null
     ) {
-        RectTransform rect = ControlBackground(parent);
+        RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
-        GameObject change = AddSmallChangedCircle(rect);
+        GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
         GameObject iconObj = new("Icon");
@@ -383,8 +387,8 @@ public static partial class O5Factory {
         viewportRect.offsetMax = multiline ? new Vector2(-12f, -12f) : new Vector2(-12f, -4f);
         viewportObj.AddComponent<RectMask2D>();
 
-        var text = ControlText(viewportObj.transform, O5Boot.Theme.FontSizeBody);
-        text.font = monospace ? O5Boot.Fonts.Monospace : O5Boot.Fonts.Medium;
+        var text = ControlText(ctx, viewportObj.transform, ctx.Theme.FontSizeBody);
+        text.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
         text.text = value ?? string.Empty;
         text.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
         text.textWrappingMode = multiline ? TMPro.TextWrappingModes.Normal : TMPro.TextWrappingModes.NoWrap;
@@ -397,8 +401,8 @@ public static partial class O5Factory {
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 
-        var placeholderText = ControlText(viewportObj.transform, O5Boot.Theme.FontSizeBody);
-        placeholderText.font = monospace ? O5Boot.Fonts.Monospace : O5Boot.Fonts.Medium;
+        var placeholderText = ControlText(ctx, viewportObj.transform, ctx.Theme.FontSizeBody);
+        placeholderText.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
         placeholderText.text = placeholder;
         placeholderText.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
         placeholderText.textWrappingMode = multiline ? TMPro.TextWrappingModes.Normal : TMPro.TextWrappingModes.NoWrap;
@@ -424,6 +428,7 @@ public static partial class O5Factory {
         inputField.richText = false;
 
         var input = new O5InputField(
+            ctx,
             id,
             rect,
             inputField,
@@ -439,13 +444,13 @@ public static partial class O5Factory {
         inputObj.SetActive(true);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
-        O5Effects.HoverOutline(rect.gameObject, trigger);
+        O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnClick += btn => {
             switch (btn) {
                 case InputButton.Middle:
-                    if (O5Boot.Config.MiddleClickToDefault &&
+                    if (ctx.Config.MiddleClickToDefault &&
                         input.DefaultValue != null &&
                         input.Value != input.DefaultValue
                     ) {

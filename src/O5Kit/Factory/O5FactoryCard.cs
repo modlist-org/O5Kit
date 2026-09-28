@@ -13,6 +13,7 @@ namespace O5Kit.Factory;
 
 public static partial class O5Factory {
     /// <summary>Builds a collapsible card with active-toggle, title foldout and delete button.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="title">Header title.</param>
     /// <param name="activeValue">Initial active state.</param>
@@ -22,6 +23,7 @@ public static partial class O5Factory {
     /// <param name="showActiveToggle">Show the active checkbox.</param>
     /// <returns>Card and content rects. Fill the content rect with controls.</returns>
     public static (RectTransform cardRect, RectTransform contentRect) Card(
+        O5Context ctx,
         Transform parent,
         string title,
         bool activeValue,
@@ -30,7 +32,7 @@ public static partial class O5Factory {
         bool showDeleteButton = true,
         bool showActiveToggle = true
     ) {
-        var theme = O5Boot.Theme;
+        var theme = ctx.Theme;
 
         GameObject cardGo = new("ComponentCard_" + title);
         cardGo.transform.SetParent(parent, false);
@@ -57,7 +59,7 @@ public static partial class O5Factory {
         headerLayout.minHeight = 38f;
 
         var headerImg = headerGo.AddComponent<Image>();
-        headerImg.sprite = O5Boot.Sprites.RoundedControl;
+        headerImg.sprite = ctx.Sprites.RoundedControl;
         headerImg.type = Image.Type.Sliced;
         headerImg.color = theme.CardHeader;
 
@@ -100,8 +102,8 @@ public static partial class O5Factory {
         bool isCurrentActive = activeValue;
         CanvasGroup? contentCanvasGroup = null;
         void UpdateComponentToggle(bool animate) {
-            var onSprite = O5Boot.Sprites.Icon("toggle-on");
-            var offSprite = O5Boot.Sprites.Icon("toggle-off");
+            var onSprite = ctx.Sprites.Icon("toggle-on");
+            var offSprite = ctx.Sprites.Icon("toggle-off");
             if (isCurrentActive && onSprite != null) {
                 toggleVisualImage.sprite = onSprite;
             } else if (!isCurrentActive && offSprite != null) {
@@ -120,7 +122,7 @@ public static partial class O5Factory {
             var target = isCurrentActive ? theme.ObjectActive : theme.ObjectInactive;
             Color startColor = tvi.color;
             toggleTween?.Kill();
-            toggleTween = O5Boot.Tween.TweenFloat(
+            toggleTween = ctx.Tween.TweenFloat(
                 () => 0f,
                 t => {
                     if (tvr) {
@@ -176,7 +178,7 @@ public static partial class O5Factory {
         foldoutRect.sizeDelta = new Vector2(26f, 26f);
         foldoutRect.localRotation = Quaternion.Euler(0f, 0f, 180f);
         var foldoutImage = foldoutGo.AddComponent<Image>();
-        foldoutImage.sprite = O5Boot.Sprites.Icon("Triangle128");
+        foldoutImage.sprite = ctx.Sprites.Icon("Triangle128");
         foldoutImage.color = theme.ObjectActive;
         foldoutImage.raycastTarget = false;
         foldoutGo.AddComponent<LayoutElement>().ignoreLayout = true;
@@ -185,7 +187,7 @@ public static partial class O5Factory {
         GameObject titleGo = new("TitleText");
         titleGo.transform.SetParent(titleTriggerGo.transform, false);
         var titleText = titleGo.AddComponent<TMPro.TextMeshProUGUI>();
-        titleText.font = O5Boot.Fonts.Medium;
+        titleText.font = ctx.Fonts.Medium;
         titleText.fontSize = 18f;
         titleText.text = title;
         titleText.color = Color.white;
@@ -205,11 +207,11 @@ public static partial class O5Factory {
             deleteLE.preferredHeight = 22f;
 
             var deleteImg = deleteGo.AddComponent<Image>();
-            deleteImg.sprite = O5Boot.Sprites.Icon("X128");
+            deleteImg.sprite = ctx.Sprites.Icon("X128");
             deleteImg.color = theme.SoftRed;
 
             var deleteTrigger = deleteGo.AddComponent<EventTrigger>();
-            O5Effects.HoverOutline(deleteGo, deleteTrigger);
+            O5Effects.HoverOutline(ctx, deleteGo, deleteTrigger);
             var deleteOvent = deleteGo.AddComponent<OventHandler>();
             deleteOvent.OnClick += btn => {
                 if (btn == InputButton.Left) {
@@ -240,7 +242,7 @@ public static partial class O5Factory {
         contentLayout.childForceExpandHeight = false;
 
         var contentImg = contentGo.AddComponent<Image>();
-        contentImg.sprite = O5Boot.Sprites.RoundedControl;
+        contentImg.sprite = ctx.Sprites.RoundedControl;
         contentImg.type = Image.Type.Sliced;
         contentImg.color = theme.CardPanel;
         contentGo.AddComponent<RectMask2D>();
@@ -317,7 +319,7 @@ public static partial class O5Factory {
             }
 
             foldoutTweens.Clear();
-            foldoutTweens.Add(O5Boot.Tween.TweenFloat(
+            foldoutTweens.Add(ctx.Tween.TweenFloat(
                 () => 0f,
                 t => {
                     if (ce) {
@@ -337,7 +339,7 @@ public static partial class O5Factory {
                     RebuildCardLayout();
                 },
                 ease: O5Ease.OutCubic));
-            foldoutTweens.Add(O5Boot.Tween.TweenFloat(
+            foldoutTweens.Add(ctx.Tween.TweenFloat(
                 () => 0f,
                 t => {
                     if (fr) {

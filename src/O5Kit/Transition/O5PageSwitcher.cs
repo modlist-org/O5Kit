@@ -19,11 +19,12 @@ public static class O5PageSwitcher {
     }
 
     /// <summary>Slides from one page to another with a crossfade.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="pages">Page registry (id to rect).</param>
     /// <param name="from">Outgoing page id.</param>
     /// <param name="to">Incoming page id.</param>
     /// <returns>False when ids match or a page is missing.</returns>
-    public static bool SwitchPage(IReadOnlyDictionary<int, RectTransform> pages, int from, int to) {
+    public static bool SwitchPage(O5Context ctx, IReadOnlyDictionary<int, RectTransform> pages, int from, int to) {
         if (from == to) {
             return false;
         }
@@ -54,7 +55,7 @@ public static class O5PageSwitcher {
         fromCg.interactable = fromCg.blocksRaycasts = false;
         toCg.interactable = toCg.blocksRaycasts = false;
 
-        var runner = O5Boot.Tween;
+        var runner = ctx.Tween;
 
         _active.Add(runner.TweenFloat(
             () => fromPage ? fromPage.anchoredPosition.x : -1100f,

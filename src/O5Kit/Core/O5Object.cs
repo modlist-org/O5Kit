@@ -10,6 +10,9 @@ namespace O5Kit.Core;
 public abstract class O5Object {
     private static readonly List<O5Object> _tickables = new();
 
+    /// <summary>Owning kit context. Never shared across consumers.</summary>
+    public O5Context Ctx { get; }
+
     /// <summary>Stable identifier for lookup and debugging.</summary>
     public string Id { get; }
 
@@ -24,7 +27,7 @@ public abstract class O5Object {
 
     /// <summary>
     /// When set, the control auto-blocks/unblocks as the predicate flips.
-    /// Subscribe sources via <see cref="NotifyEnabledChanged"/>.
+    /// The owning context broadcasts via <see cref="O5Context.NotifyEnabledChanged"/>.
     /// </summary>
     public Func<bool>? EnabledWhen {
         get;
@@ -33,24 +36,17 @@ public abstract class O5Object {
                 return;
             }
 
-            if (field != null && EnabledChanged != null) {
-                EnabledChanged -= ApplyEnabled;
+            if (field != null) {
+                Ctx.EnabledChanged -= ApplyEnabled;
             }
 
             field = value;
-            if (field != null && EnabledChanged != null) {
-                EnabledChanged += ApplyEnabled;
+            if (field != null) {
+                Ctx.EnabledChanged += ApplyEnabled;
                 SetBlocked(!field(), true);
             }
         }
     }
-
-    /// <summary>Raised by the consumer when global enabled-state changes. Drives <see cref="EnabledWhen"/>.</summary>
-    public static event Action<bool>? EnabledChanged;
-
-    /// <summary>Broadcasts a global enabled-state change to gated controls.</summary>
-    /// <param name="enabled">New global state.</param>
-    public static void NotifyEnabledChanged(bool enabled) => EnabledChanged?.Invoke(enabled);
 
     /// <summary>Lazy canvas group used for blocking and fading.</summary>
     protected CanvasGroup CanvasGroup {
@@ -63,9 +59,11 @@ public abstract class O5Object {
     private ITweenHandle? _blockTween;
 
     /// <summary>Creates a control over an existing rect.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect, usually built by <see cref="Factory.O5Factory"/>.</param>
-    protected O5Object(string id, RectTransform rect) {
+    protected O5Object(O5Context ctx, string id, RectTransform rect) {
+        Ctx = ctx ?? throw new ArgumentNullException(nameof(ctx));
         Id = id;
         Rect = rect;
     }
@@ -98,7 +96,7 @@ public abstract class O5Object {
             return;
         }
 
-        _blockTween = O5Boot.Tween.TweenFloat(
+        _blockTween = Ctx.Tween.TweenFloat(
             () => CanvasGroup.alpha,
             v => {
                 if (!IsDisposed) {
@@ -117,8 +115,8 @@ public abstract class O5Object {
         IsDisposed = true;
         _blockTween?.Kill();
         _blockTween = null;
-        if (EnabledWhen != null && EnabledChanged != null) {
-            EnabledChanged -= ApplyEnabled;
+        if (EnabledWhen != null) {
+            Ctx.EnabledChanged -= ApplyEnabled;
         }
 
         UnregisterTick();

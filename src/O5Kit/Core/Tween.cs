@@ -44,7 +44,7 @@ public interface ITweenRunner {
 
 /// <summary>LitMotion-backed runner (default). Driven by a hidden pump through a manual dispatcher, so it works regardless of mod load order.</summary>
 public sealed class LitMotionRunner : ITweenRunner {
-    /// <summary>Shared instance used by <see cref="O5Boot"/> unless overridden.</summary>
+    /// <summary>Shared instance used as the <see cref="O5Context"/> default unless overridden.</summary>
     public static LitMotionRunner Instance { get; } = new();
 
     private static Ease MapEase(O5Ease ease) => ease switch {
@@ -263,11 +263,12 @@ public sealed class SimpleTweenRunner : ITweenRunner {
 /// <summary>Static sugar for the most common control fades.</summary>
 public static class O5Tween {
     /// <summary>Fades a <see cref="CanvasGroup"/> to <paramref name="to"/>.</summary>
+    /// <param name="runner">Tween backend (usually <c>ctx.Tween</c>).</param>
     /// <param name="g">Target group. A destroyed group is skipped safely.</param>
     /// <param name="to">Target alpha.</param>
     /// <param name="duration">Duration in seconds (unscaled).</param>
-    public static ITweenHandle Alpha(CanvasGroup g, float to, float duration)
-        => O5Boot.Tween.TweenFloat(
+    public static ITweenHandle Alpha(ITweenRunner runner, CanvasGroup g, float to, float duration)
+        => runner.TweenFloat(
             () => g != null ? g.alpha : to,
             v => {
                 if (g != null) {

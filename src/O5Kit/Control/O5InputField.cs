@@ -36,6 +36,7 @@ public sealed class O5InputField : O5Object {
     private ITweenHandle? _changeTween, _iconTween;
 
     /// <summary>Creates a text field over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="inputField">TMP input.</param>
@@ -48,6 +49,7 @@ public sealed class O5InputField : O5Object {
     /// <param name="onEndEdit">End-edit callback.</param>
     /// <param name="multiline">Multi-line mode.</param>
     public O5InputField(
+        O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TMP_InputField inputField,
@@ -59,12 +61,12 @@ public sealed class O5InputField : O5Object {
         Action<string>? onChanged,
         Action<string>? onEndEdit = null,
         bool multiline = false
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         DefaultValue = defaultValue;
         ChangedImage = changedImage;
         IconImage = iconImage;
 
-        Core = new O5InputCore(inputField, placeholder, value ?? string.Empty, val => {
+        Core = new O5InputCore(ctx, inputField, placeholder, value ?? string.Empty, val => {
             UpdateVisual();
             onChanged?.Invoke(val);
         }, onEndEdit, multiline);
@@ -113,7 +115,7 @@ public sealed class O5InputField : O5Object {
             return;
         }
 
-        _changeTween = O5Boot.Tween.TweenFloat(
+        _changeTween = Ctx.Tween.TweenFloat(
             () => changed.color.a,
             v => {
                 if (changed) {
@@ -132,7 +134,7 @@ public sealed class O5InputField : O5Object {
 
         _iconTween?.Kill();
         var icon = IconImage;
-        _iconTween = O5Boot.Tween.TweenFloat(
+        _iconTween = Ctx.Tween.TweenFloat(
             () => icon.color.a,
             v => {
                 if (icon) {

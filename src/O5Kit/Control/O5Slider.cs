@@ -87,6 +87,7 @@ public class O5Slider : O5Object {
     private ITweenHandle? _fillTween, _changeTween, _stateTween;
 
     /// <summary>Creates a slider over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="fillRect">Fill bar rect.</param>
@@ -107,6 +108,7 @@ public class O5Slider : O5Object {
     /// <param name="onChanged">Change callback.</param>
     /// <param name="onComplete">Commit callback.</param>
     public O5Slider(
+        O5Context ctx,
         string id,
         RectTransform rect,
         RectTransform fillRect,
@@ -126,12 +128,12 @@ public class O5Slider : O5Object {
         Func<float, float>? filter,
         Action<float>? onChanged,
         Action<float>? onComplete
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         FillRect = fillRect;
         FillImage = fillImage;
-        FillImage.color = O5Boot.Theme.ObjectActive;
+        FillImage.color = Ctx.Theme.ObjectActive;
         Label = label;
-        InputCore = new O5InputCore(valueInputField, null, value.ToString(format),
+        InputCore = new O5InputCore(ctx, valueInputField, null, value.ToString(format),
             (val) => {
                 if (_isUpdatingFromCode) {
                     return;
@@ -154,7 +156,7 @@ public class O5Slider : O5Object {
 
                     if (isSameValue) {
                         PreviewLabel.text = "";
-                        SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
+                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true, result);
                     } else {
                         string valStr = (Filter?.Invoke(result) ?? result).ToString();
                         string symbol = state switch {
@@ -164,11 +166,11 @@ public class O5Slider : O5Object {
                         };
 
                         PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
-                        SetStateVisuals(MathVisuals.GetStateColor(state), true, result);
+                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true, result);
                     }
                 } else {
                     PreviewLabel.text = "";
-                    SetStateVisuals(MathVisuals.GetStateColor(state), true);
+                    SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true);
                 }
             },
             (val) => {
@@ -180,7 +182,7 @@ public class O5Slider : O5Object {
                 }
 
                 PreviewLabel.text = "";
-                SetStateVisuals(O5Boot.Theme.ObjectActive, false);
+                SetStateVisuals(Ctx.Theme.ObjectActive, false);
             }
         );
         valueInputField.onSelect.AddListener(
@@ -195,7 +197,7 @@ public class O5Slider : O5Object {
         PreviewLabel = previewLabel;
         ChangedImage = changedImage;
         ChangedUpImage = changedUpImage;
-        ChangedUpImage.color = O5Boot.Theme.ObjectBG;
+        ChangedUpImage.color = Ctx.Theme.ObjectBG;
         OutlineImage = outlineImage;
         DefaultValue = defaultValue;
         Min = min;
@@ -358,7 +360,7 @@ public class O5Slider : O5Object {
         bool showFill = ShowFill;
         float changedStart = changed.color.a;
         float changedUpStart = changedUp.color.a;
-        _changeTween = O5Boot.Tween.TweenFloat(
+        _changeTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (changed) {
@@ -395,7 +397,7 @@ public class O5Slider : O5Object {
         var changed = ChangedImage;
         var field = InputCore.InputField;
         bool showFill = ShowFill;
-        _stateTween = O5Boot.Tween.TweenFloat(
+        _stateTween = Ctx.Tween.TweenFloat(
             () => 0f,
             x => {
                 if (outline) {
@@ -425,7 +427,7 @@ public class O5Slider : O5Object {
     private ITweenHandle TweenAnchorMaxX(RectTransform rect, float targetX, float duration, O5Ease ease) {
         var r = rect;
         float startX = r.anchorMax.x;
-        return O5Boot.Tween.TweenFloat(
+        return Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (r) {

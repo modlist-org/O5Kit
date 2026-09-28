@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace O5Kit.Core;
 
-/// <summary>Swappable visual theme. Derive variants with <c>with</c> expressions, apply via <see cref="O5Boot.SetTheme"/>.</summary>
+/// <summary>Swappable visual theme. Derive variants with <c>with</c> expressions, apply via <see cref="O5Context.SetTheme"/>.</summary>
 public sealed record O5Theme {
     /// <summary>Main window background.</summary>
     public Color PanelBG { get; init; } = new(0.145f, 0.141f, 0.180f, 1f);

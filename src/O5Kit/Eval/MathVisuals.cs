@@ -8,13 +8,14 @@ namespace O5Kit.Eval;
 /// <summary>Theme colors for formula parse states.</summary>
 public static class MathVisuals {
     /// <summary>Returns the theme color for a parse state.</summary>
+    /// <param name="theme">Theme to read colors from.</param>
     /// <param name="state">Parse state.</param>
-    public static Color GetStateColor(EvalState state) => state switch {
-        EvalState.Ok => O5Boot.Theme.MathOk,
-        EvalState.Error => O5Boot.Theme.MathErr,
-        EvalState.Same => O5Boot.Theme.ObjectActive,
-        EvalState.OverRange => O5Boot.Theme.MathWarn,
-        EvalState.UnderRange => O5Boot.Theme.MathWarn,
-        _ => O5Boot.Theme.ObjectActive,
+    public static Color GetStateColor(O5Theme theme, EvalState state) => state switch {
+        EvalState.Ok => theme.MathOk,
+        EvalState.Error => theme.MathErr,
+        EvalState.Same => theme.ObjectActive,
+        EvalState.OverRange => theme.MathWarn,
+        EvalState.UnderRange => theme.MathWarn,
+        _ => theme.ObjectActive,
     };
 }

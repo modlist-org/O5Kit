@@ -8,23 +8,30 @@ using UnityEngine;
 
 namespace O5Kit.Core;
 
-/// <summary>Bundled-asset sprite source (see <c>Asset/NOTICE.md</c>). Needs no game assets.</summary>
+/// <summary>Bundled-asset sprite source (see <c>Asset/NOTICE.md</c>). Needs no game assets. Slice shapes come from <see cref="O5SpriteStyle"/> (Overlayer values by default); pass your own style for custom art.</summary>
 public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
     private readonly O5Resources _resources = O5Resources.Bundled();
+    private readonly O5SpriteStyle _style;
     private readonly Dictionary<string, Sprite> _cache = new();
     private bool _disposed;
 
-    /// <inheritdoc/>
-    public Sprite RoundedPanel => GetSliced(O5Asset.Panel256, 56f);
+    /// <summary>Creates a provider over the bundled artwork.</summary>
+    /// <param name="style">Slicing style. Null uses <see cref="O5SpriteStyle.Default"/> (Overlayer values).</param>
+    public DefaultSpriteProvider(O5SpriteStyle? style = null) {
+        _style = style ?? O5SpriteStyle.Default;
+    }
 
     /// <inheritdoc/>
-    public Sprite RoundedControl => GetSliced(O5Asset.Control256, 40f);
+    public Sprite RoundedPanel => GetSliced(O5Asset.Panel256, _style.Panel);
 
     /// <inheritdoc/>
-    public Sprite TopBar => GetSliced(O5Asset.TopBar256, new Vector4(56f, 0f, 56f, 56f));
+    public Sprite RoundedControl => GetSliced(O5Asset.Control256, _style.Control);
 
     /// <inheritdoc/>
-    public Sprite RoundedOutline => GetSliced(O5Asset.Outline256, 56f);
+    public Sprite TopBar => GetSliced(O5Asset.TopBar256, _style.TopBar);
+
+    /// <inheritdoc/>
+    public Sprite RoundedOutline => GetSliced(O5Asset.Outline256, _style.Outline);
 
     /// <inheritdoc/>
     public Sprite Circle => GetSimple(O5Asset.Circle256);
@@ -38,11 +45,8 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
         _ => null,
     };
 
-    private Sprite GetSliced(O5Asset asset, float border)
-        => GetSliced(asset, new Vector4(border, border, border, border));
-
-    private Sprite GetSliced(O5Asset asset, Vector4 border) {
-        string key = $"sliced:{asset}:{border}";
+    private Sprite GetSliced(O5Asset asset, O5Slice slice) {
+        string key = $"sliced:{asset}:{slice.Ppu}:{slice.Border}";
         if (_cache.TryGetValue(key, out Sprite? cached) && cached) {
             return cached;
         }
@@ -56,7 +60,7 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
             new Vector2(0.5f, 0.5f),
-            100f, 0, SpriteMeshType.FullRect, border);
+            slice.Ppu, 0, SpriteMeshType.FullRect, slice.Border);
         sprite.hideFlags = HideFlags.HideAndDontSave;
         _cache[key] = sprite;
         return sprite;
@@ -77,7 +81,7 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
             new Vector2(0.5f, 0.5f),
-            100f);
+            _style.SimplePpu);
         sprite.hideFlags = HideFlags.HideAndDontSave;
         _cache[key] = sprite;
         return sprite;

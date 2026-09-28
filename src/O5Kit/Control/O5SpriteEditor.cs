@@ -86,6 +86,7 @@ public sealed class O5SpriteEditor : O5Object {
     private Vector4 _border;
 
     private O5SpriteEditor(
+        O5Context ctx,
         O5Window window,
         RectTransform canvasRect,
         O5SpriteEditorOptions options,
@@ -99,7 +100,7 @@ public sealed class O5SpriteEditor : O5Object {
         RectTransform guideRight,
         RectTransform guideBottom,
         RectTransform guideTop
-    ) : base("sprite_editor", window.Rect) {
+    ) : base(ctx, "sprite_editor", window.Rect) {
         _window = window;
         _canvasRect = canvasRect;
         _options = options;
@@ -116,11 +117,12 @@ public sealed class O5SpriteEditor : O5Object {
     }
 
     /// <summary>Builds a hidden editor under a canvas root.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="canvasRoot">Canvas transform. Must carry a RectTransform.</param>
     /// <param name="options">Text, sizing and labels.</param>
-    public static O5SpriteEditor Create(Transform canvasRoot, O5SpriteEditorOptions options) {
-        var theme = O5Boot.Theme;
-        var sprites = O5Boot.Sprites;
+    public static O5SpriteEditor Create(O5Context ctx, Transform canvasRoot, O5SpriteEditorOptions options) {
+        var theme = ctx.Theme;
+        var sprites = ctx.Sprites;
         var canvasRect = canvasRoot as RectTransform;
 
         var blocker = new GameObject("SpriteEditorBlocker");
@@ -135,7 +137,7 @@ public sealed class O5SpriteEditor : O5Object {
         blockerImage.raycastTarget = true;
         blocker.SetActive(false);
 
-        var window = O5Window.Create(canvasRoot, new O5WindowOptions {
+        var window = O5Window.Create(ctx, canvasRoot, new O5WindowOptions {
             Id = "sprite_editor",
             Title = options.ApplyLabel,
             Size = options.Size,
@@ -177,10 +179,10 @@ public sealed class O5SpriteEditor : O5Object {
         overlay.sizeDelta = preview.sizeDelta;
 
         O5SpriteEditor? editor = null;
-        var guideLeft = CreateGuide(overlay, O5SpriteGuide.Left, (g, d) => editor?.DragGuide(g, d));
-        var guideRight = CreateGuide(overlay, O5SpriteGuide.Right, (g, d) => editor?.DragGuide(g, d));
-        var guideBottom = CreateGuide(overlay, O5SpriteGuide.Bottom, (g, d) => editor?.DragGuide(g, d));
-        var guideTop = CreateGuide(overlay, O5SpriteGuide.Top, (g, d) => editor?.DragGuide(g, d));
+        var guideLeft = CreateGuide(ctx, overlay, O5SpriteGuide.Left, (g, d) => editor?.DragGuide(g, d));
+        var guideRight = CreateGuide(ctx, overlay, O5SpriteGuide.Right, (g, d) => editor?.DragGuide(g, d));
+        var guideBottom = CreateGuide(ctx, overlay, O5SpriteGuide.Bottom, (g, d) => editor?.DragGuide(g, d));
+        var guideTop = CreateGuide(ctx, overlay, O5SpriteGuide.Top, (g, d) => editor?.DragGuide(g, d));
 
         var fieldRowObj = new GameObject("BorderFields");
         fieldRowObj.transform.SetParent(content, false);
@@ -190,7 +192,7 @@ public sealed class O5SpriteEditor : O5Object {
         fieldRow.offsetMin = new Vector2(22f, 90f);
         fieldRow.offsetMax = new Vector2(-22f, 176f);
 
-        var hint = O5Factory.ControlText(content, 15f);
+        var hint = O5Factory.ControlText(ctx, content, 15f);
         hint.alignment = TMPro.TextAlignmentOptions.Center;
         hint.rectTransform.anchorMin = new Vector2(0f, 0f);
         hint.rectTransform.anchorMax = new Vector2(1f, 0f);
@@ -199,21 +201,21 @@ public sealed class O5SpriteEditor : O5Object {
         hint.rectTransform.offsetMax = new Vector2(-22f, 82f);
         hint.color = new Color(1f, 1f, 1f, 0.65f);
 
-        var cancel = O5Factory.Button(content, null, options.CancelLabel, "sprite_editor_cancel");
+        var cancel = O5Factory.Button(ctx, content, null, options.CancelLabel, "sprite_editor_cancel");
         cancel.Rect.anchorMin = new Vector2(1f, 0f);
         cancel.Rect.anchorMax = new Vector2(1f, 0f);
         cancel.Rect.pivot = new Vector2(1f, 0f);
         cancel.Rect.anchoredPosition = new Vector2(-152f, 12f);
         cancel.Rect.sizeDelta = new Vector2(130f, 42f);
 
-        var apply = O5Factory.Button(content, null, options.ApplyLabel, "sprite_editor_apply");
+        var apply = O5Factory.Button(ctx, content, null, options.ApplyLabel, "sprite_editor_apply");
         apply.Rect.anchorMin = new Vector2(1f, 0f);
         apply.Rect.anchorMax = new Vector2(1f, 0f);
         apply.Rect.pivot = new Vector2(1f, 0f);
         apply.Rect.anchoredPosition = new Vector2(-12f, 12f);
         apply.Rect.sizeDelta = new Vector2(130f, 42f);
 
-        editor = new O5SpriteEditor(window, canvasRect, options, blocker, image, preview, overlay, hint, fieldRow, guideLeft, guideRight, guideBottom, guideTop);
+        editor = new O5SpriteEditor(ctx, window, canvasRect, options, blocker, image, preview, overlay, hint, fieldRow, guideLeft, guideRight, guideBottom, guideTop);
         window.CloseRequested += _ => editor.Close();
 
         var blockerOvent = blocker.AddComponent<OventHandler>();
@@ -294,6 +296,7 @@ public sealed class O5SpriteEditor : O5Object {
 
     private O5Slider CreateBorderSlider(Transform parent, string label, O5SpriteGuide guide, bool right, bool top, float max, string id) {
         O5Slider input = O5Factory.Slider(
+            Ctx,
             parent,
             0f,
             0f,
@@ -317,7 +320,7 @@ public sealed class O5SpriteEditor : O5Object {
         return input;
     }
 
-    private static RectTransform CreateGuide(RectTransform parent, O5SpriteGuide guide, Action<O5SpriteGuide, BaseEventData> onDrag) {
+    private static RectTransform CreateGuide(O5Context ctx, RectTransform parent, O5SpriteGuide guide, Action<O5SpriteGuide, BaseEventData> onDrag) {
         GameObject guideObject = new(guide.ToString());
         guideObject.transform.SetParent(parent, false);
         RectTransform rect = guideObject.AddComponent<RectTransform>();
@@ -347,7 +350,7 @@ public sealed class O5SpriteEditor : O5Object {
         handle.anchorMax = new Vector2(0.5f, 0.5f);
         handle.sizeDelta = vertical ? new Vector2(24f, 42f) : new Vector2(42f, 24f);
         Image handleImage = handleObject.AddComponent<Image>();
-        handleImage.sprite = O5Boot.Sprites.RoundedControl;
+        handleImage.sprite = ctx.Sprites.RoundedControl;
         handleImage.type = Image.Type.Sliced;
         handleImage.color = new Color(0f, 0f, 0f, 0.9f);
         handleImage.raycastTarget = false;
@@ -360,7 +363,7 @@ public sealed class O5SpriteEditor : O5Object {
         handleFill.offsetMin = new Vector2(3f, 3f);
         handleFill.offsetMax = new Vector2(-3f, -3f);
         Image handleFillImage = handleFillObject.AddComponent<Image>();
-        handleFillImage.sprite = O5Boot.Sprites.RoundedControl;
+        handleFillImage.sprite = ctx.Sprites.RoundedControl;
         handleFillImage.type = Image.Type.Sliced;
         handleFillImage.color = new Color(0.15f, 1f, 0.25f, 1f);
         handleFillImage.raycastTarget = false;

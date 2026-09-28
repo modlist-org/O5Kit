@@ -33,6 +33,7 @@ public class O5Toggle : O5Object {
     private ITweenHandle? _circleTween, _tintTween, _changeTween;
 
     /// <summary>Creates a toggle over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Label text.</param>
@@ -43,6 +44,7 @@ public class O5Toggle : O5Object {
     /// <param name="value">Initial value.</param>
     /// <param name="onChanged">Change callback.</param>
     public O5Toggle(
+        O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
@@ -52,7 +54,7 @@ public class O5Toggle : O5Object {
         bool defaultValue,
         bool value,
         Action<bool>? onChanged
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         Label = label;
 
         CircleImage = circleImage;
@@ -99,15 +101,15 @@ public class O5Toggle : O5Object {
         _tintTween?.Kill();
         _changeTween?.Kill();
 
-        var onSprite = O5Boot.Sprites.Icon("toggle-on");
-        var offSprite = O5Boot.Sprites.Icon("toggle-off");
+        var onSprite = Ctx.Sprites.Icon("toggle-on");
+        var offSprite = Ctx.Sprites.Icon("toggle-off");
         if (Value && onSprite != null) {
             CircleImage.sprite = onSprite;
         } else if (!Value && offSprite != null) {
             CircleImage.sprite = offSprite;
         }
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         Color targetColor = Value ? theme.ObjectActive : theme.ObjectInactive;
         float changedTarget = DefaultValue != Value ? 1f : 0f;
 
@@ -126,7 +128,7 @@ public class O5Toggle : O5Object {
         var fromSize = new Vector2(30f, 30f);
         var toSize = new Vector2(26f, 26f);
         var rect = CircleRect;
-        _circleTween = O5Boot.Tween.TweenFloat(
+        _circleTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (rect) {
@@ -136,10 +138,10 @@ public class O5Toggle : O5Object {
             1f, 0.3f, ease: O5Ease.OutQuad);
 
         var img = CircleImage;
-        _tintTween = O5Boot.Tween.TweenColor(() => img.color, v => img.color = v, targetColor, 0.15f, ease: O5Ease.OutQuad);
+        _tintTween = Ctx.Tween.TweenColor(() => img.color, v => img.color = v, targetColor, 0.15f, ease: O5Ease.OutQuad);
 
         var changed = ChangedImage;
-        _changeTween = O5Boot.Tween.TweenFloat(
+        _changeTween = Ctx.Tween.TweenFloat(
             () => changed.color.a,
             v => {
                 if (changed) {

@@ -27,43 +27,47 @@ public class O5Button : O5Object {
     private ITweenHandle? _hoverTween;
 
     /// <summary>Creates a text button.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect, usually from <see cref="Factory.O5Factory"/>.</param>
     /// <param name="label">Text label.</param>
     /// <param name="background">Background image.</param>
     /// <param name="onClick">Click callback.</param>
     public O5Button(
+        O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
         Image background,
         Action? onClick
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         Label = label;
         Background = background;
         OnClick = onClick;
-        NormalColor = O5Boot.Theme.ObjectButton;
+        NormalColor = Ctx.Theme.ObjectButton;
 
         UpdateVisual(true);
     }
 
     /// <summary>Creates an icon button.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect, usually from <see cref="Factory.O5Factory"/>.</param>
     /// <param name="icon">Icon image.</param>
     /// <param name="background">Background image.</param>
     /// <param name="onClick">Click callback.</param>
     public O5Button(
+        O5Context ctx,
         string id,
         RectTransform rect,
         Image icon,
         Image background,
         Action? onClick
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         Icon = icon;
         Background = background;
         OnClick = onClick;
-        NormalColor = O5Boot.Theme.ObjectButton;
+        NormalColor = Ctx.Theme.ObjectButton;
 
         UpdateVisual(true);
     }
@@ -76,8 +80,8 @@ public class O5Button : O5Object {
 
         _hoverTween?.Kill();
         var bg = Background;
-        _hoverTween = O5Boot.Tween.TweenColor(() => bg.color, v => bg.color = v,
-            O5Boot.Theme.ObjectActiveBright, 0.12f);
+        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
+            Ctx.Theme.ObjectActiveBright, 0.12f);
     }
 
     /// <summary>Plays the hover-out tint. Wired to pointer-exit by the factory.</summary>
@@ -89,7 +93,7 @@ public class O5Button : O5Object {
         _hoverTween?.Kill();
         var bg = Background;
         var normal = NormalColor;
-        _hoverTween = O5Boot.Tween.TweenColor(() => bg.color, v => bg.color = v,
+        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
             normal, 0.12f);
     }
 
@@ -123,7 +127,7 @@ public class O5Button : O5Object {
 
         var bg = Background;
         var normal = NormalColor;
-        _hoverTween = O5Boot.Tween.TweenColor(() => bg.color, v => bg.color = v,
+        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
             normal, 0.2f);
     }
 

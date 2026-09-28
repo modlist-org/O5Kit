@@ -27,6 +27,9 @@ public class UIScrollController
     /// <summary>Visible window the content scrolls inside.</summary>
     public RectTransform? viewport;
 
+    /// <summary>Owning kit context. Assign after AddComponent; required for smooth scrolling.</summary>
+    public O5Context? Ctx { get; set; }
+
     /// <summary>Pixels scrolled per wheel notch.</summary>
     public float wheelStrength = 42f;
 
@@ -147,7 +150,9 @@ public class UIScrollController
 
         var c = content;
         float target = _targetY;
-        _scrollTween = O5Boot.Tween.TweenFloat(
+        O5Context ctx = Ctx ?? throw new InvalidOperationException(
+            "O5Kit: UIScrollController.Ctx is not set. Assign your O5Context after AddComponent.");
+        _scrollTween = ctx.Tween.TweenFloat(
             () => c.anchoredPosition.y,
             x => {
                 if (c) {

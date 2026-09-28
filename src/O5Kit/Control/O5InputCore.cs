@@ -12,6 +12,9 @@ namespace O5Kit.Control;
 
 /// <summary>Shared focus/caret/placeholder logic behind text-based controls.</summary>
 public class O5InputCore {
+    /// <summary>Owning kit context.</summary>
+    public O5Context Ctx { get; }
+
     /// <summary>Current text.</summary>
     public string Value { get; private set; }
 
@@ -32,13 +35,15 @@ public class O5InputCore {
     private bool _suppressChanged;
 
     /// <summary>Wires a TMP input with focus tracking and caret animation.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="inputField">TMP input to drive.</param>
     /// <param name="placeholder">Placeholder text, if any.</param>
     /// <param name="value">Initial text.</param>
     /// <param name="onChanged">Change callback.</param>
     /// <param name="onEndEdit">End-edit callback.</param>
     /// <param name="multiline">Multi-line mode.</param>
-    public O5InputCore(TMPro.TMP_InputField inputField, TMPro.TextMeshProUGUI? placeholder, string value, Action<string>? onChanged, Action<string>? onEndEdit, bool multiline = false) {
+    public O5InputCore(O5Context ctx, TMPro.TMP_InputField inputField, TMPro.TextMeshProUGUI? placeholder, string value, Action<string>? onChanged, Action<string>? onEndEdit, bool multiline = false) {
+        Ctx = ctx;
         InputField = inputField;
         Placeholder = placeholder;
         Value = value;
@@ -109,10 +114,10 @@ public class O5InputCore {
         InputField.lineLimit = 0;
         InputField.richText = false;
         InputField.customCaretColor = true;
-        InputField.caretColor = O5Boot.Theme.ObjectActive;
+        InputField.caretColor = Ctx.Theme.ObjectActive;
         InputField.caretBlinkRate = 0f;
         InputField.caretWidth = 2;
-        InputField.selectionColor = O5Boot.Theme.MenuHover;
+        InputField.selectionColor = Ctx.Theme.MenuHover;
     }
 
     private void OnValueChanged(string value) {
@@ -133,14 +138,14 @@ public class O5InputCore {
 
             _caretLooping = true;
             _caretTween?.Kill();
-            InputField.caretColor = O5Boot.Theme.ObjectActive;
+            InputField.caretColor = Ctx.Theme.ObjectActive;
             PlayCaretDown();
             return;
         }
 
         _caretLooping = false;
         _caretTween?.Kill();
-        InputField.caretColor = O5Boot.Theme.ObjectActive;
+        InputField.caretColor = Ctx.Theme.ObjectActive;
     }
 
     private void PlayCaretDown() {
@@ -149,8 +154,8 @@ public class O5InputCore {
         }
 
         var field = InputField;
-        var active = O5Boot.Theme.ObjectActive;
-        _caretTween = O5Boot.Tween.TweenFloat(
+        var active = Ctx.Theme.ObjectActive;
+        _caretTween = Ctx.Tween.TweenFloat(
             () => field ? field.caretColor.a : 0.35f,
             v => {
                 if (field) {
@@ -168,8 +173,8 @@ public class O5InputCore {
         }
 
         var field = InputField;
-        var active = O5Boot.Theme.ObjectActive;
-        _caretTween = O5Boot.Tween.TweenFloat(
+        var active = Ctx.Theme.ObjectActive;
+        _caretTween = Ctx.Tween.TweenFloat(
             () => field ? field.caretColor.a : 1f,
             v => {
                 if (field) {
@@ -192,7 +197,7 @@ public class O5InputCore {
         float duration = focused ? 0.2f : 0.3f;
 
         var ph = Placeholder;
-        _placeholderTween = O5Boot.Tween.TweenFloat(
+        _placeholderTween = Ctx.Tween.TweenFloat(
             () => ph.color.a,
             v => {
                 if (ph) {

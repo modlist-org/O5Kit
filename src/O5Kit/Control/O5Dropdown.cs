@@ -62,6 +62,7 @@ public class O5Dropdown<T> : O5Object {
     private readonly List<ITweenHandle> _itemHoverTweens = new();
 
     /// <summary>Creates a dropdown over factory-built visuals.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Header label.</param>
@@ -77,6 +78,7 @@ public class O5Dropdown<T> : O5Object {
     /// <param name="value">Initial value.</param>
     /// <param name="onChanged">Change callback.</param>
     public O5Dropdown(
+        O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
@@ -91,7 +93,7 @@ public class O5Dropdown<T> : O5Object {
         T? defaultValue,
         T? value,
         Action<T?>? onChanged
-    ) : base(id, rect) {
+    ) : base(ctx, id, rect) {
         Label = label;
 
         TriangleImage = triangleImage;
@@ -193,7 +195,7 @@ public class O5Dropdown<T> : O5Object {
         _triangleTintTween?.Kill();
         _changeTween?.Kill();
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         bool isDefault = DefaultValue == null || EqualityComparer<T>.Default.Equals(DefaultValue, Value);
         float targetRot = Expanded ? 180f : 0f;
         Color targetColor = Expanded ? theme.ObjectActive : theme.ObjectInactive;
@@ -215,7 +217,7 @@ public class O5Dropdown<T> : O5Object {
             startRot -= 360f;
         }
 
-        _triangleTween = O5Boot.Tween.TweenFloat(
+        _triangleTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (triRect) {
@@ -225,13 +227,13 @@ public class O5Dropdown<T> : O5Object {
             1f, 0.4f, ease: O5Ease.OutBack);
 
         var triImg = TriangleImage;
-        _triangleTintTween = O5Boot.Tween.TweenColor(
+        _triangleTintTween = Ctx.Tween.TweenColor(
             () => triImg.color, v => triImg.color = v, targetColor, 0.2f);
 
         var changed = ChangedImage;
         float changedStart = changed.color.a;
         float changedTarget = isDefault ? 0f : 1f;
-        _changeTween = O5Boot.Tween.TweenFloat(
+        _changeTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
                 if (changed) {
@@ -266,7 +268,7 @@ public class O5Dropdown<T> : O5Object {
             }
         }
 
-        var theme = O5Boot.Theme;
+        var theme = Ctx.Theme;
         foreach (T item in Values) {
             GameObject row = new("Row");
             row.transform.SetParent(ListObject.transform, false);
@@ -275,7 +277,7 @@ public class O5Dropdown<T> : O5Object {
             rowRect.sizeDelta = new Vector2(0f, 50f);
 
             Image rowImage = row.AddComponent<Image>();
-            rowImage.sprite = O5Boot.Sprites.RoundedControl;
+            rowImage.sprite = Ctx.Sprites.RoundedControl;
             rowImage.type = Image.Type.Sliced;
             rowImage.color = Color.clear;
 
@@ -291,7 +293,7 @@ public class O5Dropdown<T> : O5Object {
                 (EventTriggerType.PointerEnter, (e) => {
                     hoverTween?.Kill();
                     _itemHoverTweens.Remove(hoverTween!);
-                    hoverTween = O5Boot.Tween.TweenColor(
+                    hoverTween = Ctx.Tween.TweenColor(
                         () => img.color, v => img.color = v, theme.ObjectActive, 0.12f);
                     _itemHoverTweens.Add(hoverTween);
                 }
@@ -299,7 +301,7 @@ public class O5Dropdown<T> : O5Object {
                 (EventTriggerType.PointerExit, (e) => {
                     hoverTween?.Kill();
                     _itemHoverTweens.Remove(hoverTween!);
-                    hoverTween = O5Boot.Tween.TweenColor(
+                    hoverTween = Ctx.Tween.TweenColor(
                         () => img.color, v => img.color = v, Color.clear, 0.12f);
                     _itemHoverTweens.Add(hoverTween);
                 }
@@ -324,8 +326,8 @@ public class O5Dropdown<T> : O5Object {
         }
     }
 
-    private static TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
-        var theme = O5Boot.Theme;
+    private TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
+        var theme = Ctx.Theme;
         var obj = new GameObject("Text");
         obj.transform.SetParent(parent, false);
 
@@ -336,7 +338,7 @@ public class O5Dropdown<T> : O5Object {
         rect.offsetMax = Vector2.zero;
 
         var tmp = obj.AddComponent<TMPro.TextMeshProUGUI>();
-        tmp.font = O5Boot.Fonts.Regular;
+        tmp.font = Ctx.Fonts.Regular;
         tmp.fontSize = theme.FontSizeBody;
         tmp.color = Color.white;
         tmp.alignment = TMPro.TextAlignmentOptions.Left;

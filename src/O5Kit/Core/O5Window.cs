@@ -30,8 +30,8 @@ public sealed class O5Window : O5Object {
 
     private ITweenHandle? _closeTween;
 
-    private O5Window(string id, RectTransform panel, RectTransform content, Image iconImage, TMPro.TextMeshProUGUI titleText, O5WindowOptions options)
-        : base(id, panel) {
+    private O5Window(O5Context ctx, string id, RectTransform panel, RectTransform content, Image iconImage, TMPro.TextMeshProUGUI titleText, O5WindowOptions options)
+        : base(ctx, id, panel) {
         Content = content;
         IconImage = iconImage;
         TitleText = titleText;
@@ -39,12 +39,13 @@ public sealed class O5Window : O5Object {
     }
 
     /// <summary>Builds a window under <paramref name="parent"/>. Visibility is untouched; show it yourself.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Canvas or layout to parent under.</param>
     /// <param name="options">Appearance and behaviour. Null uses defaults.</param>
-    public static O5Window Create(Transform parent, O5WindowOptions? options = null) {
+    public static O5Window Create(O5Context ctx, Transform parent, O5WindowOptions? options = null) {
         options ??= new O5WindowOptions();
-        var theme = O5Boot.Theme;
-        var sprites = O5Boot.Sprites;
+        var theme = ctx.Theme;
+        var sprites = ctx.Sprites;
 
         var panel = new GameObject("Panel").AddComponent<RectTransform>();
         panel.SetParent(parent, false);
@@ -99,7 +100,7 @@ public sealed class O5Window : O5Object {
         var titleText = new GameObject("Title").AddComponent<TMPro.TextMeshProUGUI>();
         titleText.transform.SetParent(topBar, false);
         titleText.text = options.Title;
-        titleText.font = O5Boot.Fonts.Medium;
+        titleText.font = ctx.Fonts.Medium;
         titleText.fontSize = options.TitleFontSize ?? theme.FontSizeBody;
         titleText.color = options.TitleColor ?? Color.white;
         titleText.alignment = TMPro.TextAlignmentOptions.Left;
@@ -119,6 +120,7 @@ public sealed class O5Window : O5Object {
         content.offsetMax = new Vector2(-pad.right, -(topH + pad.top));
 
         var window = new O5Window(
+            ctx,
             options.Id ?? options.Title,
             panel, content, iconImage, titleText, options);
 
@@ -141,7 +143,7 @@ public sealed class O5Window : O5Object {
         }
 
         if (options.Resizable) {
-            ResizeHandle.CreateResizeHandles(panel, parent as RectTransform);
+            ResizeHandle.CreateResizeHandles(ctx, panel, parent as RectTransform);
         }
 
         var focusTrigger = panel.gameObject.AddComponent<EventTrigger>();
@@ -150,12 +152,13 @@ public sealed class O5Window : O5Object {
         return window;
     }
 
-    /// <summary>Builds a window with a title and size. Shorthand for <see cref="Create(Transform, O5WindowOptions)"/>.</summary>
+    /// <summary>Builds a window with a title and size. Shorthand for <see cref="Create(O5Context, Transform, O5WindowOptions)"/>.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Canvas or layout to parent under.</param>
     /// <param name="title">Top bar title.</param>
     /// <param name="size">Initial panel size.</param>
-    public static O5Window Create(Transform parent, string title, Vector2 size)
-        => Create(parent, new O5WindowOptions { Title = title, Size = size });
+    public static O5Window Create(O5Context ctx, Transform parent, string title, Vector2 size)
+        => Create(ctx, parent, new O5WindowOptions { Title = title, Size = size });
 
     private static void BuildCloseButton(RectTransform topBar, O5Window window) {
         var close = new GameObject("Close").AddComponent<RectTransform>();
@@ -182,7 +185,7 @@ public sealed class O5Window : O5Object {
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
         var bgImage = bgObj.AddComponent<Image>();
-        bgImage.sprite = O5Boot.Sprites.Circle;
+        bgImage.sprite = window.Ctx.Sprites.Circle;
         bgImage.color = new Color(0.886f, 0.404f, 0.427f, 0f);
 
         var xObj = new GameObject("X");
@@ -193,7 +196,7 @@ public sealed class O5Window : O5Object {
         xRect.offsetMin = new Vector2(4f, 4f);
         xRect.offsetMax = new Vector2(-4f, -4f);
         var xImage = xObj.AddComponent<Image>();
-        xImage.sprite = O5Boot.Sprites.Icon("x") ?? O5Boot.Sprites.Circle;
+        xImage.sprite = window.Ctx.Sprites.Icon("x") ?? window.Ctx.Sprites.Circle;
         xImage.preserveAspect = true;
 
         var trigger = close.gameObject.AddComponent<EventTrigger>();
@@ -201,7 +204,7 @@ public sealed class O5Window : O5Object {
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, () => {
                 window._closeTween?.Kill();
-                window._closeTween = O5Boot.Tween.TweenFloat(
+                window._closeTween = window.Ctx.Tween.TweenFloat(
                     () => bg.color.a,
                     v => {
                         if (bg) {
@@ -214,7 +217,7 @@ public sealed class O5Window : O5Object {
             }),
             (EventTriggerType.PointerExit, () => {
                 window._closeTween?.Kill();
-                window._closeTween = O5Boot.Tween.TweenFloat(
+                window._closeTween = window.Ctx.Tween.TweenFloat(
                     () => bg.color.a,
                     v => {
                         if (bg) {

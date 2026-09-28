@@ -13,6 +13,7 @@ namespace O5Kit.Factory;
 
 public static partial class O5Factory {
     /// <summary>Builds a color picker: header preview, hex field, wheel popup and channel sliders.</summary>
+    /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="canvasRect">Popup coordinate space (usually the canvas rect).</param>
     /// <param name="canvasCamera">Camera for hover checks. Null for overlay canvases.</param>
@@ -23,6 +24,7 @@ public static partial class O5Factory {
     /// <param name="id">Stable identifier.</param>
     /// <param name="label">Preview label. Empty hides it.</param>
     public static O5ColorPicker ColorPicker(
+        O5Context ctx,
         Transform parent,
         RectTransform canvasRect,
         Camera? canvasCamera,
@@ -41,7 +43,7 @@ public static partial class O5Factory {
         root.offsetMin = Vector2.zero;
         root.offsetMax = Vector2.zero;
 
-        RectTransform header = ControlBackground(root);
+        RectTransform header = ControlBackground(ctx, root);
         header.name = "Header";
         header.anchorMin = new Vector2(0f, 1f);
         header.anchorMax = new Vector2(1f, 1f);
@@ -57,9 +59,9 @@ public static partial class O5Factory {
         previewRect.offsetMin = new Vector2(9f, 8f);
         previewRect.offsetMax = new Vector2(-5f, -8f);
         Image preview = previewObject.AddComponent<Image>();
-        preview.sprite = O5Boot.Sprites.RoundedControl;
+        preview.sprite = ctx.Sprites.RoundedControl;
         preview.type = Image.Type.Sliced;
-        TMPro.TextMeshProUGUI previewLabel = ControlText(previewRect, 16f);
+        TMPro.TextMeshProUGUI previewLabel = ControlText(ctx, previewRect, 16f);
         previewLabel.name = "ColorLabel";
         previewLabel.text = label ?? string.Empty;
         previewLabel.alignment = TMPro.TextAlignmentOptions.Center;
@@ -68,6 +70,7 @@ public static partial class O5Factory {
 
         O5ColorPicker? picker = null;
         O5InputField hexInput = Input(
+            ctx,
             header,
             ColorUtility.ToHtmlStringRGBA(defaultValue),
             ColorUtility.ToHtmlStringRGBA(value),
@@ -105,9 +108,9 @@ public static partial class O5Factory {
         body.offsetMin = new Vector2(12f, -566f);
         body.offsetMax = new Vector2(-262f, -62f);
         Image bodyBackground = bodyObject.AddComponent<Image>();
-        bodyBackground.sprite = O5Boot.Sprites.RoundedControl;
+        bodyBackground.sprite = ctx.Sprites.RoundedControl;
         bodyBackground.type = Image.Type.Sliced;
-        bodyBackground.color = O5Boot.Theme.PanelBG;
+        bodyBackground.color = ctx.Theme.PanelBG;
         CanvasGroup bodyCanvas = bodyObject.AddComponent<CanvasGroup>();
 
         VerticalLayoutGroup bodyLayout = bodyObject.AddComponent<VerticalLayoutGroup>();
@@ -128,18 +131,18 @@ public static partial class O5Factory {
         wheelImage.preserveAspect = true;
         wheelImage.color = Color.white;
 
-        RectTransform hueHandle = CreateHandle(wheel, "HueHandle", new Vector2(15f, 15f));
-        RectTransform colorHandle = CreateHandle(wheel, "ColorHandle", new Vector2(13f, 13f));
+        RectTransform hueHandle = CreateHandle(ctx, wheel, "HueHandle", new Vector2(15f, 15f));
+        RectTransform colorHandle = CreateHandle(ctx, wheel, "ColorHandle", new Vector2(13f, 13f));
 
-        RectTransform modeRow = Row(body, 30f);
+        RectTransform modeRow = Row(ctx, body, 30f);
         HorizontalLayoutGroup modeLayout = modeRow.gameObject.AddComponent<HorizontalLayoutGroup>();
         modeLayout.spacing = 4f;
         modeLayout.childControlWidth = true;
         modeLayout.childControlHeight = true;
         modeLayout.childForceExpandWidth = true;
         modeLayout.childForceExpandHeight = true;
-        var (rgbModeBackground, rgbModeLabel) = CreateModeButton(modeRow, "RGB", () => picker?.SetMode(false));
-        var (hsvModeBackground, hsvModeLabel) = CreateModeButton(modeRow, "HSV", () => picker?.SetMode(true));
+        var (rgbModeBackground, rgbModeLabel) = CreateModeButton(ctx, modeRow, "RGB", () => picker?.SetMode(false));
+        var (hsvModeBackground, hsvModeLabel) = CreateModeButton(ctx, modeRow, "HSV", () => picker?.SetMode(true));
 
         O5Slider[] sliders = new O5Slider[4];
         string[] names = ["R", "G", "B", "A"];
@@ -151,9 +154,9 @@ public static partial class O5Factory {
         ];
         for (int i = 0; i < sliders.Length; i++) {
             int channel = i;
-            RectTransform row = Row(body, 36f);
+            RectTransform row = Row(ctx, body, 36f);
             sliders[i] = Slider(
-                row, defaultValue[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
+                ctx, row, defaultValue[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
                 next => picker?.SetChannel(channel, next),
                 _ => onComplete?.Invoke(picker!.Value),
                 names[i], id + "_" + names[i].ToLowerInvariant()
@@ -163,9 +166,9 @@ public static partial class O5Factory {
             sliders[i].Label.fontSize = 18f;
         }
 
-        Image sharedOutline = O5Effects.HoverOutline(header.gameObject, header.gameObject.AddComponent<EventTrigger>());
+        Image sharedOutline = O5Effects.HoverOutline(ctx, header.gameObject, header.gameObject.AddComponent<EventTrigger>());
         picker = new O5ColorPicker(
-            id, root, canvasRect, canvasCamera, bodyObject, bodyCanvas, preview, previewLabel,
+            ctx, id, root, canvasRect, canvasCamera, bodyObject, bodyCanvas, preview, previewLabel,
             wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
             rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel,
             defaultValue, value, onChanged, onComplete
@@ -197,7 +200,7 @@ public static partial class O5Factory {
                     break;
 
                 case InputButton.Middle:
-                    if (O5Boot.Config.MiddleClickToDefault) {
+                    if (ctx.Config.MiddleClickToDefault) {
                         picker.Reset();
                     }
 
@@ -208,7 +211,9 @@ public static partial class O5Factory {
         return picker;
     }
 
+    /// <param name="ctx">Owning kit context.</param>
     private static (Image Background, TMPro.TextMeshProUGUI Label) CreateModeButton(
+        O5Context ctx,
         Transform parent,
         string text,
         Action onClick
@@ -217,9 +222,9 @@ public static partial class O5Factory {
         buttonObject.transform.SetParent(parent, false);
         RectTransform rect = buttonObject.AddComponent<RectTransform>();
         Image background = buttonObject.AddComponent<Image>();
-        background.sprite = O5Boot.Sprites.RoundedControl;
+        background.sprite = ctx.Sprites.RoundedControl;
         background.type = Image.Type.Sliced;
-        TMPro.TextMeshProUGUI label = ControlText(rect, 15f);
+        TMPro.TextMeshProUGUI label = ControlText(ctx, rect, 15f);
         label.text = text;
         label.alignment = TMPro.TextAlignmentOptions.Center;
         label.rectTransform.offsetMin = Vector2.zero;
@@ -234,7 +239,8 @@ public static partial class O5Factory {
         return (background, label);
     }
 
-    private static RectTransform CreateHandle(RectTransform parent, string name, Vector2 size) {
+    /// <param name="ctx">Owning kit context.</param>
+    private static RectTransform CreateHandle(O5Context ctx, RectTransform parent, string name, Vector2 size) {
         GameObject handleObject = new(name);
         handleObject.transform.SetParent(parent, false);
         RectTransform rect = handleObject.AddComponent<RectTransform>();
@@ -243,7 +249,7 @@ public static partial class O5Factory {
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = size;
         Image image = handleObject.AddComponent<Image>();
-        image.sprite = O5Boot.Sprites.RoundedOutline;
+        image.sprite = ctx.Sprites.RoundedOutline;
         image.type = Image.Type.Sliced;
         image.color = Color.white;
         image.raycastTarget = false;
