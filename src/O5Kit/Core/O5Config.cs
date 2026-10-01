@@ -16,6 +16,12 @@ public sealed class O5Config {
     /// <summary>Horizontal drag distance multiplier for sliders.</summary>
     public float SliderSensitivity { get; set; } = 1f;
 
+    /// <summary>Global animation speed multiplier (KDE-style). 1 is normal, higher is faster,
+    /// 0 or below collapses every duration to near-instant. Applies to the built-in
+    /// LitMotion/Simple tween runners; custom <see cref="ITweenRunner"/> implementations
+    /// must scale durations themselves. Completions still fire asynchronously.</summary>
+    public float AnimationSpeed { get; set; } = 1f;
+
     /// <summary>Toggle hotkey. Default matches Overlayer: Alt+BackQuote (Ctrl on Linux).</summary>
     public UnityEngine.KeyCode ToggleKey { get; set; } = UnityEngine.KeyCode.BackQuote;
 

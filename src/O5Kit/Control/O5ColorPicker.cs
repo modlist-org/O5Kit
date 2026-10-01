@@ -373,8 +373,8 @@ public sealed class O5ColorPicker : O5Object {
         _hsvMode = useHsv;
         _rgbModeBackground.color = useHsv ? Color.clear : theme.ObjectActive;
         _hsvModeBackground.color = useHsv ? theme.ObjectActive : Color.clear;
-        _rgbModeLabel.color = useHsv ? new Color(1f, 1f, 1f, 0.55f) : Color.white;
-        _hsvModeLabel.color = useHsv ? Color.white : new Color(1f, 1f, 1f, 0.55f);
+        _rgbModeLabel.color = useHsv ? theme.TextDim : theme.Text;
+        _hsvModeLabel.color = useHsv ? theme.Text : theme.TextDim;
 
         string[] labels = useHsv ? ["H", "S", "V", "A"] : ["R", "G", "B", "A"];
         Color.RGBToHSV(DefaultValue, out float defaultHue, out float defaultSaturation, out float defaultBrightness);
@@ -384,15 +384,15 @@ public sealed class O5ColorPicker : O5Object {
         Color[] colors = useHsv
             ? [
                 Color.HSVToRGB(_hue, 1f, 1f),
-                new Color(0.38f, 0.78f, 1f, 1f),
-                new Color(1f, 0.82f, 0.35f, 1f),
-                new Color(0.45f, 0.45f, 0.45f, 1f)
+                theme.ChannelS,
+                theme.ChannelV,
+                theme.ChannelA
             ]
             : [
-                new Color(1f, 0.42f, 0.44f, 1f),
-                new Color(0.48f, 0.82f, 0.48f, 1f),
-                new Color(0.56f, 0.56f, 0.9f, 1f),
-                new Color(0.45f, 0.45f, 0.45f, 1f)
+                theme.ChannelR,
+                theme.ChannelG,
+                theme.ChannelB,
+                theme.ChannelA
             ];
         for (int i = 0; i < _sliders.Length; i++) {
             _sliders[i].Label.text = labels[i];
@@ -643,7 +643,7 @@ public sealed class O5ColorPicker : O5Object {
                 new Color(color.r, color.g, color.b, alpha), 0.2f);
         }
 
-        _hexInput.InputField.textComponent.color = Color.white;
+        _hexInput.InputField.textComponent.color = Ctx.Theme.Text;
     }
 
     private static bool IsPartialHex(string text) {

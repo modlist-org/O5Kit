@@ -102,7 +102,7 @@ public sealed class O5Window : O5Object {
         titleText.text = options.Title;
         titleText.font = ctx.Fonts.Medium;
         titleText.fontSize = options.TitleFontSize ?? theme.FontSizeBody;
-        titleText.color = options.TitleColor ?? Color.white;
+        titleText.color = options.TitleColor ?? theme.Text;
         titleText.alignment = TMPro.TextAlignmentOptions.Left;
         titleText.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         var titleRect = titleText.rectTransform;
@@ -132,7 +132,7 @@ public sealed class O5Window : O5Object {
             var outline = new GameObject("Outline").AddComponent<Image>();
             outline.transform.SetParent(panel, false);
             outline.transform.SetAsLastSibling();
-            outline.color = Color.white;
+            outline.color = theme.Outline;
             outline.sprite = sprites.RoundedOutline;
             outline.type = Image.Type.Sliced;
             outline.raycastTarget = false;
@@ -143,7 +143,7 @@ public sealed class O5Window : O5Object {
         }
 
         if (options.Resizable) {
-            ResizeHandle.CreateResizeHandles(ctx, panel, parent as RectTransform);
+            ResizeHandle.CreateResizeHandles(ctx, panel, parent as RectTransform, options.MinSize.x, options.MinSize.y);
         }
 
         var focusTrigger = panel.gameObject.AddComponent<EventTrigger>();
@@ -186,7 +186,8 @@ public sealed class O5Window : O5Object {
         bgRect.offsetMax = Vector2.zero;
         var bgImage = bgObj.AddComponent<Image>();
         bgImage.sprite = window.Ctx.Sprites.Circle;
-        bgImage.color = new Color(0.886f, 0.404f, 0.427f, 0f);
+        Color softRed = window.Ctx.Theme.SoftRed;
+        bgImage.color = new Color(softRed.r, softRed.g, softRed.b, 0f);
 
         var xObj = new GameObject("X");
         xObj.transform.SetParent(close, false);

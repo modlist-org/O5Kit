@@ -14,24 +14,54 @@ using MelonLoader;
 
 namespace O5Kit.Resource;
 
-/// <summary>Bundled artwork keys (see <c>Assets/NOTICE.md</c>, CC BY 4.0).</summary>
+/// <summary>Bundled artwork keys. Images are shared with Overlayer verbatim (see <c>Asset/NOTICE.md</c>).</summary>
 public enum O5Asset {
-    /// <summary>Large rounded panel background.</summary>
-    Panel256,
-    /// <summary>Small rounded control background.</summary>
-    Control256,
-    /// <summary>Rounded-top bar background.</summary>
-    TopBar256,
-    /// <summary>Rounded outline ring.</summary>
-    Outline256,
-    /// <summary>Solid circle.</summary>
+    /// <summary>Solid circle (panels, controls, dots, toggle-on).</summary>
     Circle256,
-    /// <summary>Circle ring (toggle-off).</summary>
-    Ring256,
+    /// <summary>Top-rounded bar.</summary>
+    CircleHalf256,
+    /// <summary>Circle outline ring, 32px stroke.</summary>
+    CircleOutline256O32,
+    /// <summary>Circle outline ring, 64px stroke (panel/hover outlines).</summary>
+    CircleOutline256O64,
+    /// <summary>Toggle-off circle.</summary>
+    ToggleCircle128,
     /// <summary>Close X icon.</summary>
     X128,
     /// <summary>Foldout triangle icon (points down).</summary>
     Triangle128,
+    /// <summary>Overlayer logo outline.</summary>
+    OV5LogoOutline256,
+    /// <summary>Book icon.</summary>
+    Book128,
+    /// <summary>Box icon.</summary>
+    Box128,
+    /// <summary>Clone icon.</summary>
+    Clone128,
+    /// <summary>Code-block icon.</summary>
+    CodeBlock128,
+    /// <summary>Cube icon.</summary>
+    Cube128,
+    /// <summary>F icon.</summary>
+    F128,
+    /// <summary>Gear icon.</summary>
+    Gear128,
+    /// <summary>Image icon.</summary>
+    Image128,
+    /// <summary>Magnifying-glass icon.</summary>
+    MagnifyingGlass128,
+    /// <summary>Monitor icon.</summary>
+    Monitor128,
+    /// <summary>Ping icon.</summary>
+    Ping128,
+    /// <summary>Plus icon.</summary>
+    Plus128,
+    /// <summary>Power icon.</summary>
+    Power128,
+    /// <summary>Star icon.</summary>
+    Star128,
+    /// <summary>Text icon.</summary>
+    Text128,
 }
 
 /// <summary>Embedded-asset loader. Mirrors Overlayer's ResourceManager: manifest streams with a texture cache.</summary>
@@ -41,14 +71,29 @@ public sealed class O5Resources : IDisposable {
     private readonly Dictionary<string, object> _cache = new();
 
     private static readonly Dictionary<O5Asset, string> AssetMap = new() {
-        [O5Asset.Panel256] = "Image.Panel256.png",
-        [O5Asset.Control256] = "Image.Control256.png",
-        [O5Asset.TopBar256] = "Image.TopBar256.png",
-        [O5Asset.Outline256] = "Image.Outline256.png",
         [O5Asset.Circle256] = "Image.Circle256.png",
-        [O5Asset.Ring256] = "Image.Ring256.png",
+        [O5Asset.CircleHalf256] = "Image.CircleHalf256.png",
+        [O5Asset.CircleOutline256O32] = "Image.CircleOutline256O32.png",
+        [O5Asset.CircleOutline256O64] = "Image.CircleOutline256O64.png",
+        [O5Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
         [O5Asset.X128] = "Image.X128.png",
         [O5Asset.Triangle128] = "Image.Triangle128.png",
+        [O5Asset.OV5LogoOutline256] = "Image.OV5LogoOutline256.png",
+        [O5Asset.Book128] = "Image.Book128.png",
+        [O5Asset.Box128] = "Image.Box128.png",
+        [O5Asset.Clone128] = "Image.Clone128.png",
+        [O5Asset.CodeBlock128] = "Image.CodeBlock128.png",
+        [O5Asset.Cube128] = "Image.Cube128.png",
+        [O5Asset.F128] = "Image.F128.png",
+        [O5Asset.Gear128] = "Image.Gear128.png",
+        [O5Asset.Image128] = "Image.Image128.png",
+        [O5Asset.MagnifyingGlass128] = "Image.MagnifyingGlass128.png",
+        [O5Asset.Monitor128] = "Image.Monitor128.png",
+        [O5Asset.Ping128] = "Image.Ping128.png",
+        [O5Asset.Plus128] = "Image.Plus128.png",
+        [O5Asset.Power128] = "Image.Power128.png",
+        [O5Asset.Star128] = "Image.Star128.png",
+        [O5Asset.Text128] = "Image.Text128.png",
     };
 
     /// <summary>Creates a loader over an assembly manifest prefix.</summary>

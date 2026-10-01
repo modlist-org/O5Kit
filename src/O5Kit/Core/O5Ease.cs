@@ -30,4 +30,41 @@ public enum O5Ease {
     OutCirc,
     /// <summary>Overshooting stop. Foldouts and popups.</summary>
     OutBack,
+    // --- Restored GTween set (compat: overlay texts predate the O5Ease trim) ---
+    /// <summary>Quartic acceleration.</summary>
+    InQuart,
+    /// <summary>Quartic stop.</summary>
+    OutQuart,
+    /// <summary>Quartic both ends.</summary>
+    InOutQuart,
+    /// <summary>Quintic acceleration.</summary>
+    InQuint,
+    /// <summary>Quintic stop.</summary>
+    OutQuint,
+    /// <summary>Quintic both ends.</summary>
+    InOutQuint,
+    /// <summary>Exponential start.</summary>
+    InExpo,
+    /// <summary>Exponential both ends.</summary>
+    InOutExpo,
+    /// <summary>Circular start.</summary>
+    InCirc,
+    /// <summary>Circular both ends.</summary>
+    InOutCirc,
+    /// <summary>Anticipatory start.</summary>
+    InBack,
+    /// <summary>Overshoot both ends.</summary>
+    InOutBack,
+    /// <summary>Springy start.</summary>
+    InElastic,
+    /// <summary>Springy stop.</summary>
+    OutElastic,
+    /// <summary>Springy both ends.</summary>
+    InOutElastic,
+    /// <summary>Bouncing start.</summary>
+    InBounce,
+    /// <summary>Bouncing stop.</summary>
+    OutBounce,
+    /// <summary>Bouncing both ends.</summary>
+    InOutBounce,
 }

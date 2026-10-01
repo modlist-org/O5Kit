@@ -90,7 +90,7 @@ public static partial class O5Factory {
         previewLabel.alignment = TMPro.TextAlignmentOptions.Right;
         previewLabel.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         previewLabel.font = ctx.Fonts.Monospace;
-        previewLabel.color = new Color(1f, 1f, 1f, 0.6f);
+        previewLabel.color = ctx.Theme.TextDim;
 
         TMPro.TMP_InputField inputField = inputObj.AddComponent<TMPro.TMP_InputField>();
         var textComp = ControlText(ctx, inputObj.transform, ctx.Theme.FontSizeBody);
@@ -358,7 +358,7 @@ public static partial class O5Factory {
         if (icon == null) {
             iconImage.enabled = false;
         } else {
-            iconImage.color = new Color(1f, 1f, 1f, 0.2f);
+            iconImage.color = ctx.Theme.TextFaint;
         }
 
         GameObject inputObj = new("Input");
@@ -406,7 +406,7 @@ public static partial class O5Factory {
         placeholderText.text = placeholder;
         placeholderText.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
         placeholderText.textWrappingMode = multiline ? TMPro.TextWrappingModes.Normal : TMPro.TextWrappingModes.NoWrap;
-        placeholderText.color = new Color(1f, 1f, 1f, 0.2f);
+        placeholderText.color = ctx.Theme.TextFaint;
         placeholderText.extraPadding = true;
         placeholderText.raycastTarget = false;
 

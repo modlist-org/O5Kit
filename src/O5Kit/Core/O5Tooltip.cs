@@ -55,7 +55,7 @@ public sealed class O5Tooltip : IDisposable {
         bg.offsetMin = bg.offsetMax = Vector2.zero;
 
         var img = bg.gameObject.AddComponent<Image>();
-        img.color = new Color(0f, 0f, 0f, 0.6f);
+        img.color = _ctx.Theme.TooltipBG;
         img.sprite = _ctx.Sprites.RoundedControl;
         img.type = Image.Type.Sliced;
 
@@ -63,7 +63,7 @@ public sealed class O5Tooltip : IDisposable {
         _text.transform.SetParent(_obj.transform, false);
         _text.font = _ctx.Fonts.Regular;
         _text.fontSize = 20f;
-        _text.color = Color.white;
+        _text.color = _ctx.Theme.Text;
         _text.alignment = TMPro.TextAlignmentOptions.Left;
         var tr = _text.rectTransform;
         tr.anchorMin = Vector2.zero;

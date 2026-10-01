@@ -42,6 +42,30 @@ public sealed record O5Theme {
     /// <summary>Semantic red (delete, errors).</summary>
     public Color SoftRed { get; init; } = new(0.886f, 0.404f, 0.427f, 1f);
 
+    /// <summary>Button background on hover. Slightly brighter than <see cref="ObjectButton"/>.</summary>
+    public Color ButtonHover { get; init; } = new(0.612f, 0.639f, 0.925f, 1f);
+
+    /// <summary>Button background while pressed. Strongly brighter; settles back to hover/normal on release.</summary>
+    public Color ButtonPressed { get; init; } = new(0.812f, 0.827f, 1f, 1f);
+
+    /// <summary>Primary text.</summary>
+    public Color Text { get; init; } = new(1f, 1f, 1f, 1f);
+
+    /// <summary>Secondary text (previews, hints, inactive labels).</summary>
+    public Color TextDim { get; init; } = new(1f, 1f, 1f, 0.6f);
+
+    /// <summary>Faint text (placeholders, ghost icons).</summary>
+    public Color TextFaint { get; init; } = new(1f, 1f, 1f, 0.2f);
+
+    /// <summary>Tooltip background.</summary>
+    public Color TooltipBG { get; init; } = new(0f, 0f, 0f, 0.6f);
+
+    /// <summary>Full-screen dim behind modal editors.</summary>
+    public Color OverlayScrim { get; init; } = new(0f, 0f, 0f, 0.58f);
+
+    /// <summary>Window/panel outline ring tint.</summary>
+    public Color Outline { get; init; } = new(1f, 1f, 1f, 1f);
+
     /// <summary>Formula input: valid result.</summary>
     public Color MathOk { get; init; } = new(0.588f, 1f, 0.569f, 1f);
 
@@ -50,6 +74,33 @@ public sealed record O5Theme {
 
     /// <summary>Formula input: invalid expression.</summary>
     public Color MathErr { get; init; } = new(1f, 0.569f, 0.569f, 1f);
+
+    /// <summary>Sprite-editor guide accent (9-slice guides, handles).</summary>
+    public Color EditorGuide { get; init; } = new(0.15f, 1f, 0.25f, 1f);
+
+    /// <summary>Dark plate under guide lines/handles for contrast.</summary>
+    public Color EditorGuideShadow { get; init; } = new(0f, 0f, 0f, 0.9f);
+
+    /// <summary>Empty sprite-editor workspace wash.</summary>
+    public Color WorkspaceEmpty { get; init; } = new(1f, 1f, 1f, 0.08f);
+
+    /// <summary>Color-picker red channel.</summary>
+    public Color ChannelR { get; init; } = new(1f, 0.42f, 0.44f, 1f);
+
+    /// <summary>Color-picker green channel.</summary>
+    public Color ChannelG { get; init; } = new(0.48f, 0.82f, 0.48f, 1f);
+
+    /// <summary>Color-picker blue channel.</summary>
+    public Color ChannelB { get; init; } = new(0.56f, 0.56f, 0.9f, 1f);
+
+    /// <summary>Color-picker alpha channel.</summary>
+    public Color ChannelA { get; init; } = new(0.45f, 0.45f, 0.45f, 1f);
+
+    /// <summary>Color-picker saturation channel.</summary>
+    public Color ChannelS { get; init; } = new(0.38f, 0.78f, 1f, 1f);
+
+    /// <summary>Color-picker value channel.</summary>
+    public Color ChannelV { get; init; } = new(1f, 0.82f, 0.35f, 1f);
 
     /// <summary>Default corner radius hint for rounded sprites.</summary>
     public float CornerRadius { get; init; } = 12f;
@@ -84,5 +135,15 @@ public sealed record O5Theme {
         ObjectActive = new Color(0.35f, 0.40f, 0.90f, 1f),
         ObjectActiveBright = new Color(0.20f, 0.25f, 0.75f, 1f),
         ObjectInactive = new Color(0.35f, 0.40f, 0.90f, 0.4f),
+        ButtonHover = new Color(0.332f, 0.376f, 0.81f, 1f),
+        ButtonPressed = new Color(0.20f, 0.25f, 0.75f, 1f),
+        Text = new Color(0.1f, 0.1f, 0.14f, 1f),
+        TextDim = new Color(0.1f, 0.1f, 0.14f, 0.6f),
+        TextFaint = new Color(0.1f, 0.1f, 0.14f, 0.2f),
+        TooltipBG = new Color(0.95f, 0.95f, 0.98f, 0.95f),
+        Outline = new Color(0.1f, 0.1f, 0.14f, 0.5f),
+        EditorGuide = new Color(0f, 0.55f, 0.2f, 1f),
+        EditorGuideShadow = new Color(1f, 1f, 1f, 0.9f),
+        WorkspaceEmpty = new Color(0f, 0f, 0f, 0.06f),
     };
 }

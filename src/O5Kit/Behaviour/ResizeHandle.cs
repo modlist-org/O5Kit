@@ -51,10 +51,15 @@ public class ResizeHandle
     private Vector2 _startSize;
     private Vector2 _startPos;
 
-    /// <summary>Minimum panel width before UI scale.</summary>
-    public const float MIN_WIDTH = 900f;
-    /// <summary>Minimum panel height before UI scale.</summary>
-    public const float MIN_HEIGHT = 500f;
+    /// <summary>Default minimum panel width before UI scale (Overlayer panel size).</summary>
+    public static float DefaultMinWidth = 900f;
+    /// <summary>Default minimum panel height before UI scale (Overlayer panel size).</summary>
+    public static float DefaultMinHeight = 500f;
+
+    /// <summary>Minimum panel width before UI scale. Non-positive falls back to <see cref="DefaultMinWidth"/>.</summary>
+    public float minWidthBeforeScale = -1f;
+    /// <summary>Minimum panel height before UI scale. Non-positive falls back to <see cref="DefaultMinHeight"/>.</summary>
+    public float minHeightBeforeScale = -1f;
 
     private void Awake() {
         var trigger = gameObject.AddComponent<EventTrigger>();
@@ -92,8 +97,8 @@ public class ResizeHandle
 
         O5Context ctx = Ctx ?? throw new InvalidOperationException(
             "O5Kit: ResizeHandle.Ctx is not set. Create handles via ResizeHandle.CreateResizeHandles(ctx, ...).");
-        float minW = MIN_WIDTH / ctx.Config.UIScale;
-        float minH = MIN_HEIGHT / ctx.Config.UIScale;
+        float minW = (minWidthBeforeScale > 0f ? minWidthBeforeScale : DefaultMinWidth) / ctx.Config.UIScale;
+        float minH = (minHeightBeforeScale > 0f ? minHeightBeforeScale : DefaultMinHeight) / ctx.Config.UIScale;
 
         Vector2 pivot = Panel.pivot;
 
@@ -147,7 +152,9 @@ public class ResizeHandle
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="panel">Panel to make resizable.</param>
     /// <param name="panelParent">Coordinate space for measuring drags.</param>
-    public static void CreateResizeHandles(O5Context ctx, RectTransform panel, RectTransform panelParent) {
+    /// <param name="minWidth">Minimum width before UI scale. Non-positive uses <see cref="DefaultMinWidth"/>.</param>
+    /// <param name="minHeight">Minimum height before UI scale. Non-positive uses <see cref="DefaultMinHeight"/>.</param>
+    public static void CreateResizeHandles(O5Context ctx, RectTransform panel, RectTransform panelParent, float minWidth = -1f, float minHeight = -1f) {
         foreach (ResizeHandleType type in HandleOrder) {
             GameObject handle = new($"Resize_{type}");
             handle.transform.SetParent(panel, false);
@@ -230,8 +237,6 @@ public class ResizeHandle
                     break;
             }
 
-            rect.anchoredPosition = Vector2.zero;
-
             Image image = handle.AddComponent<Image>();
             image.sprite = ctx.Sprites.Circle;
             image.color = Color.clear;
@@ -242,6 +247,8 @@ public class ResizeHandle
             resize.Type = type;
             resize.Panel = panel;
             resize.PanelParent = panelParent;
+            resize.minWidthBeforeScale = minWidth;
+            resize.minHeightBeforeScale = minHeight;
         }
     }
 }

@@ -18,6 +18,8 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <IsPackable>true</IsPackable>
     <Configurations>Debug_Mono;Release_Mono;Debug_IL2CPP;Release_IL2CPP</Configurations>
+    <!-- Enables LitMotion's direct uGUI component bindings (BindToAlpha/BindToColor/...). -->
+    <DefineConstants>$(DefineConstants);LITMOTION_SUPPORT_UGUI</DefineConstants>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -75,10 +77,12 @@
 
   <!-- LitMotion v2 (MIT): compiled from submodule source (Runtime only).
        External/* (UniTask/UniRx/R3 bridges) and Extensions/* (separate asmdefs,
-       opt-in later) are excluded. -->
+       opt-in later) are excluded, except the direct uGUI component bindings
+       used by the tween runner (needs LITMOTION_SUPPORT_UGUI above). -->
   <ItemGroup>
     <Compile Include="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/**/*.cs"
              Exclude="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/External/**/*.cs;../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/Extensions/**/*.cs" />
+    <Compile Include="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/Extensions/uGUI/**/*.cs" />
   </ItemGroup>
 
   <Target Name="CheckLitMotion" BeforeTargets="BeforeBuild">
@@ -86,10 +90,12 @@
            Text="LitMotion submodule is missing. Run: git submodule update --init --depth 1" />
   </Target>
 
-  <!-- Bundled CC BY 4.0 artwork + OFL fonts (see Asset/NOTICE.md). -->
+  <!-- Bundled modlist-org artwork + OFL fonts (see Asset/NOTICE.md). -->
   <ItemGroup>
     <EmbeddedResource Include="Asset\**\*.png" />
     <EmbeddedResource Include="Asset\**\*.otf" />
     <EmbeddedResource Include="Asset\**\*.ttf" />
+    <!-- Superseded O5Kit-original shapes (kept on disk only, unreferenced). -->
+    <EmbeddedResource Remove="Asset\Image\Panel256.png;Asset\Image\Control256.png;Asset\Image\TopBar256.png;Asset\Image\Outline256.png;Asset\Image\Ring256.png" />
   </ItemGroup>
 </Project>

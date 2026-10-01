@@ -72,9 +72,21 @@ public class UIScrollController
             return;
         }
 
+        if (!IsPointerOverViewport()) {
+            return;
+        }
+
         float wheel = O5Input.MouseScrollDelta.y;
 
         if (Math.Abs(wheel) <= 0.0001f) {
+            return;
+        }
+
+        if (content == null || viewport == null) {
+            return;
+        }
+
+        if (content.rect.height <= viewport.rect.height) {
             return;
         }
 
@@ -88,10 +100,10 @@ public class UIScrollController
         }
 
         if (O5Input.GetMouseButtonDown(1)) {
-            _rightDragging = true;
+            _rightDragging = IsPointerOverViewport();
         }
 
-        if (O5Input.GetMouseButtonUp(1)) {
+        if (O5Input.GetMouseButtonUp(1) && _rightDragging) {
             _rightDragging = false;
             ApplyTween();
         }
@@ -175,5 +187,16 @@ public class UIScrollController
         if (content != null) {
             _targetY = content.anchoredPosition.y;
         }
+    }
+
+    /// <summary>True when the pointer is inside the viewport. Wheel and right-drag
+    /// only engage then, so stacked windows don't scroll each other.</summary>
+    private bool IsPointerOverViewport() {
+        if (viewport == null) {
+            return false;
+        }
+
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            viewport, O5Input.MousePosition, null);
     }
 }

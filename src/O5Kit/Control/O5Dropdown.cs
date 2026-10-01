@@ -340,7 +340,7 @@ public class O5Dropdown<T> : O5Object {
         var tmp = obj.AddComponent<TMPro.TextMeshProUGUI>();
         tmp.font = Ctx.Fonts.Regular;
         tmp.fontSize = theme.FontSizeBody;
-        tmp.color = Color.white;
+        tmp.color = theme.Text;
         tmp.alignment = TMPro.TextAlignmentOptions.Left;
         tmp.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
 

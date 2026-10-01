@@ -31,6 +31,9 @@ public sealed class O5WindowOptions {
     /// <summary>Allow dragging by the top bar.</summary>
     public bool Draggable { get; set; } = true;
 
+    /// <summary>Minimum panel size before UI scale when <see cref="Resizable"/>. Defaults to the Overlayer panel size.</summary>
+    public Vector2 MinSize { get; set; } = new(900f, 500f);
+
     /// <summary>Add edge/corner resize handles.</summary>
     public bool Resizable { get; set; }
 

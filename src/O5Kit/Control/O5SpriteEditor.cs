@@ -133,7 +133,7 @@ public sealed class O5SpriteEditor : O5Object {
         blockerRect.offsetMin = Vector2.zero;
         blockerRect.offsetMax = Vector2.zero;
         var blockerImage = blocker.AddComponent<Image>();
-        blockerImage.color = new Color(0f, 0f, 0f, 0.58f);
+        blockerImage.color = ctx.Theme.OverlayScrim;
         blockerImage.raycastTarget = true;
         blocker.SetActive(false);
 
@@ -199,7 +199,7 @@ public sealed class O5SpriteEditor : O5Object {
         hint.rectTransform.pivot = new Vector2(0.5f, 0f);
         hint.rectTransform.offsetMin = new Vector2(22f, 60f);
         hint.rectTransform.offsetMax = new Vector2(-22f, 82f);
-        hint.color = new Color(1f, 1f, 1f, 0.65f);
+        hint.color = ctx.Theme.TextDim;
 
         var cancel = O5Factory.Button(ctx, content, null, options.CancelLabel, "sprite_editor_cancel");
         cancel.Rect.anchorMin = new Vector2(1f, 0f);
@@ -335,13 +335,14 @@ public sealed class O5SpriteEditor : O5Object {
         rect.sizeDelta = vertical ? new Vector2(24f, 0f) : new Vector2(0f, 24f);
 
         Image hitArea = guideObject.AddComponent<Image>();
-        Color idleColor = new(0.15f, 1f, 0.25f, 0.12f);
-        Color hoverColor = new(0.15f, 1f, 0.25f, 0.32f);
+        Color guideBase = ctx.Theme.EditorGuide;
+        Color idleColor = new(guideBase.r, guideBase.g, guideBase.b, 0.12f);
+        Color hoverColor = new(guideBase.r, guideBase.g, guideBase.b, 0.32f);
         hitArea.color = idleColor;
         hitArea.raycastTarget = true;
 
-        CreateGuideLine(guideObject.transform, vertical, 6f, new Color(0f, 0f, 0f, 0.9f));
-        CreateGuideLine(guideObject.transform, vertical, 3f, new Color(0.15f, 1f, 0.25f, 1f));
+        CreateGuideLine(guideObject.transform, vertical, 6f, ctx.Theme.EditorGuideShadow);
+        CreateGuideLine(guideObject.transform, vertical, 3f, ctx.Theme.EditorGuide);
 
         GameObject handleObject = new("Handle");
         handleObject.transform.SetParent(guideObject.transform, false);
@@ -352,7 +353,7 @@ public sealed class O5SpriteEditor : O5Object {
         Image handleImage = handleObject.AddComponent<Image>();
         handleImage.sprite = ctx.Sprites.RoundedControl;
         handleImage.type = Image.Type.Sliced;
-        handleImage.color = new Color(0f, 0f, 0f, 0.9f);
+        handleImage.color = ctx.Theme.EditorGuideShadow;
         handleImage.raycastTarget = false;
 
         GameObject handleFillObject = new("Fill");
@@ -365,7 +366,7 @@ public sealed class O5SpriteEditor : O5Object {
         Image handleFillImage = handleFillObject.AddComponent<Image>();
         handleFillImage.sprite = ctx.Sprites.RoundedControl;
         handleFillImage.type = Image.Type.Sliced;
-        handleFillImage.color = new Color(0.15f, 1f, 0.25f, 1f);
+        handleFillImage.color = ctx.Theme.EditorGuide;
         handleFillImage.raycastTarget = false;
 
         UnityUtils.AddEvents(
@@ -468,7 +469,7 @@ public sealed class O5SpriteEditor : O5Object {
         }
 
         _image.texture = texture;
-        _image.color = hasTexture ? Color.white : new Color(1f, 1f, 1f, 0.08f);
+        _image.color = hasTexture ? Color.white : Ctx.Theme.WorkspaceEmpty;
         if (hasTexture) {
             RectTransform workspace = _preview.parent as RectTransform;
             float maxWidth = Mathf.Max(120f, workspace.rect.width - 56f);

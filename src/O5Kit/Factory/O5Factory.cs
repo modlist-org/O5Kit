@@ -56,7 +56,7 @@ public static partial class O5Factory {
         var tmp = obj.AddComponent<TMPro.TextMeshProUGUI>();
         tmp.font = ctx.Fonts.Regular;
         tmp.fontSize = fontSize;
-        tmp.color = Color.white;
+        tmp.color = ctx.Theme.Text;
         tmp.alignment = TMPro.TextAlignmentOptions.Left;
         tmp.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         tmp.characterSpacing = -3f;
@@ -97,18 +97,34 @@ public static partial class O5Factory {
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerEnter, button.OnHoverEnter),
-            (EventTriggerType.PointerExit, button.OnHoverExit)
+            (EventTriggerType.PointerEnter, _ => button.OnHoverEnter()),
+            (EventTriggerType.PointerExit, _ => button.OnHoverExit()),
+            (EventTriggerType.PointerDown, e => {
+                if (IsLeftPress(e)) {
+                    button.OnPressEnter();
+                }
+            }),
+            (EventTriggerType.PointerUp, _ => button.OnPressExit())
         );
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnClick += btn => {
             if (btn == PointerEventData.InputButton.Left) {
-                button.Click();
+                button.Press();
             }
         };
 
         return button;
+    }
+
+    private static bool IsLeftPress(BaseEventData e) {
+        PointerEventData? ped =
+#if IL2CPP
+            e.TryCast<PointerEventData>();
+#else
+            e as PointerEventData;
+#endif
+        return ped != null && ped.button == PointerEventData.InputButton.Left;
     }
 
     /// <summary>Builds an icon button.</summary>
@@ -149,13 +165,19 @@ public static partial class O5Factory {
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnClick += btn => {
             if (btn == PointerEventData.InputButton.Left) {
-                button.Click();
+                button.Press();
             }
         };
 
         UnityUtils.AddEvents(trigger,
-            (EventTriggerType.PointerEnter, button.OnHoverEnter),
-            (EventTriggerType.PointerExit, button.OnHoverExit)
+            (EventTriggerType.PointerEnter, _ => button.OnHoverEnter()),
+            (EventTriggerType.PointerExit, _ => button.OnHoverExit()),
+            (EventTriggerType.PointerDown, e => {
+                if (IsLeftPress(e)) {
+                    button.OnPressEnter();
+                }
+            }),
+            (EventTriggerType.PointerUp, _ => button.OnPressExit())
         );
 
         return button;

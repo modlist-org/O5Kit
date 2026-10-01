@@ -1,6 +1,11 @@
-# O5Kit bundled artwork — no copyright
+# O5Kit bundled artwork — modlist-org shared art
 
-The UI shapes in `Image/` are too simple for copyright. No rights claimed; use freely.
+The UI shapes and icons in `Image/` are modlist-org's own artwork.
+The canonical copy lives here in O5Kit under O5Kit's license terms
+(LGPL-3.0-or-later, same as the library); Overlayer consumes them from
+O5Kit instead of duplicating the files. Loaded by
+`O5Kit.Core.DefaultSpriteProvider` with Overlayer's slice table; no game
+assets required.
 
 # O5Kit bundled fonts — OFL-1.1
 

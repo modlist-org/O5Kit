@@ -147,10 +147,10 @@ public static partial class O5Factory {
         O5Slider[] sliders = new O5Slider[4];
         string[] names = ["R", "G", "B", "A"];
         Color[] colors = [
-            new Color(1f, 0.42f, 0.44f, 1f),
-            new Color(0.48f, 0.82f, 0.48f, 1f),
-            new Color(0.56f, 0.56f, 0.9f, 1f),
-            new Color(0.45f, 0.45f, 0.45f, 1f)
+            ctx.Theme.ChannelR,
+            ctx.Theme.ChannelG,
+            ctx.Theme.ChannelB,
+            ctx.Theme.ChannelA
         ];
         for (int i = 0; i < sliders.Length; i++) {
             int channel = i;

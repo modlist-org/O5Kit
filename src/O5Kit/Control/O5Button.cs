@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace O5Kit.Control;
 
-/// <summary>Clickable button with hover tint. Content is either a text label or an icon.</summary>
+/// <summary>Clickable button with hover and pressed tints. Content is either a text label or an icon.</summary>
 public class O5Button : O5Object {
     /// <summary>Fired on left-click via <see cref="Click"/>.</summary>
     public Action? OnClick { get; set; }
@@ -25,6 +25,8 @@ public class O5Button : O5Object {
     public Color NormalColor { get; set; }
 
     private ITweenHandle? _hoverTween;
+    private bool _hovered;
+    private bool _pressed;
 
     /// <summary>Creates a text button.</summary>
     /// <param name="ctx">Owning kit context.</param>
@@ -78,10 +80,12 @@ public class O5Button : O5Object {
             return;
         }
 
-        _hoverTween?.Kill();
-        var bg = Background;
-        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
-            Ctx.Theme.ObjectActiveBright, 0.12f);
+        _hovered = true;
+        if (_pressed) {
+            return;
+        }
+
+        Tint(Ctx.Theme.ButtonHover, 0.12f);
     }
 
     /// <summary>Plays the hover-out tint. Wired to pointer-exit by the factory.</summary>
@@ -90,14 +94,45 @@ public class O5Button : O5Object {
             return;
         }
 
-        _hoverTween?.Kill();
-        var bg = Background;
-        var normal = NormalColor;
-        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
-            normal, 0.12f);
+        _hovered = false;
+        if (_pressed) {
+            return;
+        }
+
+        Tint(NormalColor, 0.12f);
     }
 
-    /// <summary>Invokes <see cref="OnClick"/> and flashes the background.</summary>
+    /// <summary>Plays the pressed tint. Wired to left pointer-down by the factory.</summary>
+    public void OnPressEnter() {
+        if (IsDisposed) {
+            return;
+        }
+
+        _pressed = true;
+        Tint(Ctx.Theme.ButtonPressed, 0.08f);
+    }
+
+    /// <summary>Settles back to the hover tint (still over the button) or the normal tint. Wired to pointer-up by the factory.</summary>
+    public void OnPressExit() {
+        if (IsDisposed || !_pressed) {
+            return;
+        }
+
+        _pressed = false;
+        Tint(_hovered ? Ctx.Theme.ButtonHover : NormalColor, 0.12f);
+    }
+
+    /// <summary>Physical press: plays the pressed tint and invokes <see cref="OnClick"/> on press-down.</summary>
+    public void Press() {
+        if (IsDisposed) {
+            return;
+        }
+
+        OnPressEnter();
+        OnClick?.Invoke();
+    }
+
+    /// <summary>Invokes <see cref="OnClick"/> and flashes the pressed tint (for programmatic clicks).</summary>
     /// <param name="invoke">False to play only the visual.</param>
     public void Click(bool invoke = true) {
         if (IsDisposed) {
@@ -108,7 +143,7 @@ public class O5Button : O5Object {
             OnClick?.Invoke();
         }
 
-        UpdateVisual();
+        Flash();
     }
 
     /// <summary>Snaps or fades the background back to <see cref="NormalColor"/>.</summary>
@@ -118,17 +153,38 @@ public class O5Button : O5Object {
             return;
         }
 
-        _hoverTween?.Kill();
-
+        _pressed = false;
         if (noAnimate) {
+            _hoverTween?.Kill();
             Background.color = NormalColor;
             return;
         }
 
+        Tint(NormalColor, 0.2f);
+    }
+
+    private void Flash() {
+        _hoverTween?.Kill();
+
         var bg = Background;
-        var normal = NormalColor;
+        var pressed = Ctx.Theme.ButtonPressed;
+        Color settle = _hovered ? Ctx.Theme.ButtonHover : NormalColor;
         _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
-            normal, 0.2f);
+            pressed, 0.06f, () => {
+                if (IsDisposed) {
+                    return;
+                }
+
+                Tint(settle, 0.12f);
+            });
+    }
+
+    private void Tint(Color target, float duration) {
+        _hoverTween?.Kill();
+
+        var bg = Background;
+        _hoverTween = Ctx.Tween.TweenColor(() => bg.color, v => bg.color = v,
+            target, duration);
     }
 
     /// <inheritdoc/>

@@ -190,7 +190,7 @@ public static partial class O5Factory {
         titleText.font = ctx.Fonts.Medium;
         titleText.fontSize = 18f;
         titleText.text = title;
-        titleText.color = Color.white;
+        titleText.color = ctx.Theme.Text;
         titleText.alignment = TMPro.TextAlignmentOptions.Left;
         titleText.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         titleText.raycastTarget = false;
