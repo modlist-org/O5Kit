@@ -139,13 +139,7 @@ public class O5Slider : O5Object {
                     return;
                 }
 
-                var (result, state) = ClampMode switch {
-                    ClampMode.None => Evaluator<float>.Evaluate(val, Value),
-                    ClampMode.Slider => Evaluator<float>.Evaluate(val, Value),
-                    ClampMode.Input => Evaluator<float>.Evaluate(val, Value, Min, Max),
-                    ClampMode.All => Evaluator<float>.Evaluate(val, Value, Min, Max),
-                    _ => throw new ArgumentOutOfRangeException(nameof(ClampMode), (object)ClampMode, null)
-                };
+                var (result, state) = Evaluator<float>.Evaluate(val, Value);
 
                 LastValidValue = state != EvalState.Error ? ApplyFilter(result) : null;
 
@@ -335,7 +329,7 @@ public class O5Slider : O5Object {
         if (noAnimate) {
             if (ShowFill) {
                 Vector2 fra = FillRect.anchorMax;
-                fra.x = Normalize();
+                fra.x = Mathf.Clamp01(Normalize());
                 FillRect.anchorMax = fra;
             }
 
@@ -352,7 +346,7 @@ public class O5Slider : O5Object {
         }
 
         if (ShowFill) {
-            _fillTween = TweenAnchorMaxX(FillRect, Normalize(), 0.6f, O5Ease.OutExpo);
+            _fillTween = TweenAnchorMaxX(FillRect, Mathf.Clamp01(Normalize()), 0.6f, O5Ease.OutExpo);
         }
 
         var changed = ChangedImage;
@@ -420,7 +414,7 @@ public class O5Slider : O5Object {
 
         if (showFill && value.HasValue && isCalculating) {
             _fillTween?.Kill();
-            _fillTween = TweenAnchorMaxX(FillRect, Normalize(value.Value), 0.4f, O5Ease.OutExpo);
+            _fillTween = TweenAnchorMaxX(FillRect, Mathf.Clamp01(Normalize(value.Value)), 0.4f, O5Ease.OutExpo);
         }
     }
 
