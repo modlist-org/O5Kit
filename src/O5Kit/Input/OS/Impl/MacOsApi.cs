@@ -18,38 +18,30 @@ public sealed class MacOsApi : OsApi {
     private static extern int CGWarpMouseCursorPosition(CGPoint newCursorPosition);
 
     [DllImport("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")]
-    private static extern IntPtr CGEventCreate(IntPtr source);
+    private static extern int CGAssociateMouseAndMouseCursorPosition(int connected);
 
-    [DllImport("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")]
-    private static extern CGPoint CGEventGetLocation(IntPtr eventRef);
+    // Out-param instead of CGEventGetLocation's struct return: Unity's arm64 Mono returns garbage/zero for HFA structs.
+    [DllImport("/System/Library/Frameworks/Carbon.framework/Carbon")]
+    private static extern IntPtr HIGetMousePosition(uint space, IntPtr obj, out CGPoint point);
 
-    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
-    private static extern void CFRelease(IntPtr cf);
+    private const uint kHICoordSpace72DPIGlobal = 1;
 
     public override void SetCursorPosition(int x, int y) {
         try {
             CGWarpMouseCursorPosition(new CGPoint(x, y));
+            // Warping suppresses mouse input for ~250ms unless re-associated.
+            CGAssociateMouseAndMouseCursorPosition(1);
         } catch {
         }
     }
 
     public override Vector2Int GetCursorPosition() {
         try {
-            IntPtr eventRef = CGEventCreate(IntPtr.Zero);
-
-            if (eventRef == IntPtr.Zero) {
-                return Vector2Int.zero;
-            }
-
-            try {
-                CGPoint p = CGEventGetLocation(eventRef);
-                return new Vector2Int(
-                    Mathf.RoundToInt((float)p.x),
-                    Mathf.RoundToInt((float)p.y)
-                );
-            } finally {
-                CFRelease(eventRef);
-            }
+            HIGetMousePosition(kHICoordSpace72DPIGlobal, IntPtr.Zero, out CGPoint p);
+            return new Vector2Int(
+                Mathf.RoundToInt((float)p.x),
+                Mathf.RoundToInt((float)p.y)
+            );
         } catch {
         }
 
