@@ -33,7 +33,7 @@ public static partial class O5Factory {
     public static O5Slider Slider(
         O5Context ctx,
         Transform parent,
-        float defaultValue,
+        float? defaultValue,
         float min,
         float max,
         float value,
@@ -142,8 +142,10 @@ public static partial class O5Factory {
                         break;
                     }
 
-                    slider.Set(Apply(slider.DefaultValue));
-                    slider.OnComplete?.Invoke(slider.Value);
+                    if (slider.DefaultValue.HasValue) {
+                        slider.Set(Apply(slider.DefaultValue.Value));
+                        slider.OnComplete?.Invoke(slider.Value);
+                    }
                     break;
             }
         };

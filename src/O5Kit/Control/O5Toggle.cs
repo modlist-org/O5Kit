@@ -9,8 +9,8 @@ namespace O5Kit.Control;
 
 /// <summary>On/off toggle with a sliding circle, tint and a changed-dot.</summary>
 public class O5Toggle : O5Object {
-    /// <summary>Value to reset to on middle-click.</summary>
-    public bool DefaultValue { get; }
+    /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
+    public bool? DefaultValue { get; }
 
     /// <summary>Current value.</summary>
     public bool Value { get; private set; }
@@ -51,7 +51,7 @@ public class O5Toggle : O5Object {
         Image circleImage,
         RectTransform circleRect,
         Image changedImage,
-        bool defaultValue,
+        bool? defaultValue,
         bool value,
         Action<bool>? onChanged
     ) : base(ctx, id, rect) {
@@ -87,8 +87,12 @@ public class O5Toggle : O5Object {
     /// <summary>Flips the current value.</summary>
     public void Toggle() => Set(!Value);
 
-    /// <summary>Restores <see cref="DefaultValue"/>.</summary>
-    public void Reset() => Set(DefaultValue);
+    /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
+    public void Reset() {
+        if (DefaultValue.HasValue) {
+            Set(DefaultValue.Value);
+        }
+    }
 
     /// <summary>Refreshes circle sprite, tint and changed-dot.</summary>
     /// <param name="noAnimate">Snap instead of animating.</param>
@@ -111,7 +115,7 @@ public class O5Toggle : O5Object {
 
         var theme = Ctx.Theme;
         Color targetColor = Value ? theme.ObjectActive : theme.ObjectInactive;
-        float changedTarget = DefaultValue != Value ? 1f : 0f;
+        float changedTarget = DefaultValue.HasValue && DefaultValue.Value != Value ? 1f : 0f;
 
         if (noAnimate) {
             CircleRect.sizeDelta = new Vector2(26f, 26f);

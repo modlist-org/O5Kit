@@ -28,7 +28,7 @@ public static partial class O5Factory {
         Transform parent,
         RectTransform canvasRect,
         Camera? canvasCamera,
-        Color defaultValue,
+        Color? defaultValue,
         Color value,
         Action<Color>? onChanged,
         Action<Color>? onComplete,
@@ -72,7 +72,7 @@ public static partial class O5Factory {
         O5InputField hexInput = Input(
             ctx,
             header,
-            ColorUtility.ToHtmlStringRGBA(defaultValue),
+            ColorUtility.ToHtmlStringRGBA(defaultValue ?? value),
             ColorUtility.ToHtmlStringRGBA(value),
             text => picker?.ValidateHex(text),
             string.Empty,
@@ -156,7 +156,7 @@ public static partial class O5Factory {
             int channel = i;
             RectTransform row = Row(ctx, body, 36f);
             sliders[i] = Slider(
-                ctx, row, defaultValue[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
+                ctx, row, (defaultValue ?? value)[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
                 next => picker?.SetChannel(channel, next),
                 _ => onComplete?.Invoke(picker!.Value),
                 names[i], id + "_" + names[i].ToLowerInvariant()

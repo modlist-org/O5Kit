@@ -159,8 +159,12 @@ public class O5Dropdown<T> : O5Object {
         }
     }
 
-    /// <summary>Restores <see cref="DefaultValue"/>.</summary>
-    public void Reset() => Set(DefaultValue);
+    /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
+    public void Reset() {
+        if (DefaultValue != null) {
+            Set(DefaultValue);
+        }
+    }
 
     /// <summary>Opens or closes the list.</summary>
     /// <param name="expanded">True to open.</param>

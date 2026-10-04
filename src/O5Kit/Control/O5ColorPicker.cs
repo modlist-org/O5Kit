@@ -21,7 +21,8 @@ public sealed class O5ColorPicker : O5Object {
     private const float TriangleRadius = 0.32f;
 
     /// <summary>Value to reset to on middle-click.</summary>
-    public Color DefaultValue { get; }
+    /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
+    public Color? DefaultValue { get; }
 
     /// <summary>Current color.</summary>
     public Color Value { get; private set; }
@@ -111,7 +112,7 @@ public sealed class O5ColorPicker : O5Object {
         TMPro.TextMeshProUGUI rgbModeLabel,
         Image hsvModeBackground,
         TMPro.TextMeshProUGUI hsvModeLabel,
-        Color defaultValue,
+        Color? defaultValue,
         Color value,
         Action<Color>? onChanged,
         Action<Color>? onComplete
@@ -336,9 +337,12 @@ public sealed class O5ColorPicker : O5Object {
         _popupRect.anchoredPosition = bottomPosition;
     }
 
-    /// <summary>Restores <see cref="DefaultValue"/> and commits.</summary>
+    /// <summary>Restores <see cref="DefaultValue"/> and commits. No-op when null.</summary>
     public void Reset() {
-        Set(DefaultValue);
+        if (!DefaultValue.HasValue) {
+            return;
+        }
+        Set(DefaultValue.Value);
         _onComplete?.Invoke(Value);
     }
 
@@ -377,10 +381,11 @@ public sealed class O5ColorPicker : O5Object {
         _hsvModeLabel.color = useHsv ? theme.Text : theme.TextDim;
 
         string[] labels = useHsv ? ["H", "S", "V", "A"] : ["R", "G", "B", "A"];
-        Color.RGBToHSV(DefaultValue, out float defaultHue, out float defaultSaturation, out float defaultBrightness);
+        Color baseColor = DefaultValue ?? Value;
+        Color.RGBToHSV(baseColor, out float defaultHue, out float defaultSaturation, out float defaultBrightness);
         float[] defaults = useHsv
-            ? [defaultHue, defaultSaturation, defaultBrightness, DefaultValue.a]
-            : [DefaultValue.r, DefaultValue.g, DefaultValue.b, DefaultValue.a];
+            ? [defaultHue, defaultSaturation, defaultBrightness, baseColor.a]
+            : [baseColor.r, baseColor.g, baseColor.b, baseColor.a];
         Color[] colors = useHsv
             ? [
                 Color.HSVToRGB(_hue, 1f, 1f),
@@ -397,7 +402,7 @@ public sealed class O5ColorPicker : O5Object {
         for (int i = 0; i < _sliders.Length; i++) {
             _sliders[i].Label.text = labels[i];
             _sliders[i].FillImage.color = colors[i];
-            _sliders[i].SetDefaultValue(defaults[i], true);
+            _sliders[i].SetDefaultValue(DefaultValue.HasValue ? defaults[i] : null, true);
         }
 
         UpdateSliderValues();

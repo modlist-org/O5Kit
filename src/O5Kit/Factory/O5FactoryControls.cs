@@ -63,7 +63,7 @@ public static partial class O5Factory {
     public static O5Toggle Toggle(
         O5Context ctx,
         Transform parent,
-        bool defaultValue,
+        bool? defaultValue,
         bool value,
         Action<bool>? onChanged,
         string text,
@@ -114,7 +114,8 @@ public static partial class O5Factory {
                     break;
 
                 case InputButton.Middle:
-                    if (ctx.Config.MiddleClickToDefault && toggle.Value != toggle.DefaultValue) {
+                    if (ctx.Config.MiddleClickToDefault && toggle.DefaultValue.HasValue &&
+                        toggle.Value != toggle.DefaultValue.Value) {
                         toggle.Reset();
                     }
 

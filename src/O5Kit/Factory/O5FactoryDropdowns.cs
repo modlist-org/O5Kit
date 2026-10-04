@@ -216,7 +216,7 @@ public static partial class O5Factory {
     public static O5MultiDropdown<T> MultiDropDown<T>(
         O5Context ctx,
         Transform parent,
-        T defaultValue,
+        T? defaultValue,
         T value,
         IReadOnlyList<T> values,
         Func<T, string> display,
@@ -378,8 +378,9 @@ public static partial class O5Factory {
                     break;
 
                 case InputButton.Middle:
-                    if (ctx.Config.MiddleClickToDefault &&
-                        !EqualityComparer<T>.Default.Equals(dropdown.Value, dropdown.DefaultValue)
+                    if (ctx.Config.MiddleClickToDefault && dropdown.HasDefault &&
+                        dropdown.DefaultValue is T md &&
+                        !EqualityComparer<T>.Default.Equals(dropdown.Value, md)
                     ) {
                         dropdown.Reset();
                     }

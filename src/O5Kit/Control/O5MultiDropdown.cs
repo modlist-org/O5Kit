@@ -13,7 +13,8 @@ namespace O5Kit.Control;
 /// <summary>Flag-style multi-select dropdown with checkmark rows and a summary label.</summary>
 public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <summary>Value to reset to on middle-click.</summary>
-    public T DefaultValue { get; }
+    public T? DefaultValue { get; }
+    internal bool HasDefault => DefaultValue != null;
 
     /// <summary>Current combined flags value.</summary>
     public T Value { get; private set; }
@@ -93,7 +94,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         IReadOnlyList<T> values,
         Func<T, string> display,
         Func<T, string> summary,
-        T defaultValue,
+        T? defaultValue,
         T value,
         Action<T>? onChanged
     ) : base(ctx, id, rect) {
@@ -143,8 +144,12 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         Set((T)Enum.ToObject(typeof(T), current ^ flag));
     }
 
-    /// <summary>Restores <see cref="DefaultValue"/>.</summary>
-    public void Reset() => Set(DefaultValue);
+    /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
+    public void Reset() {
+        if (DefaultValue is T d) {
+            Set(d);
+        }
+    }
 
     /// <summary>Opens or closes the list.</summary>
     /// <param name="expanded">True to open.</param>
@@ -180,7 +185,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         _changeTween?.Kill();
 
         var theme = Ctx.Theme;
-        bool isDefault = EqualityComparer<T>.Default.Equals(DefaultValue, Value);
+        bool isDefault = DefaultValue is not T d || EqualityComparer<T>.Default.Equals(d, Value);
         float targetRot = Expanded ? 180f : 0f;
         Color targetColor = Expanded ? theme.ObjectActive : theme.ObjectInactive;
 

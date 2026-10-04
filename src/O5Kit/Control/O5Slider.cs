@@ -26,8 +26,8 @@ public enum ClampMode {
 
 /// <summary>Numeric slider with fill bar, formula input box and live preview.</summary>
 public class O5Slider : O5Object {
-    /// <summary>Value to reset to on middle-click.</summary>
-    public float DefaultValue { get; private set; }
+    /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
+    public float? DefaultValue { get; private set; }
 
     /// <summary>Range lower bound.</summary>
     public float Min { get; set; }
@@ -119,7 +119,7 @@ public class O5Slider : O5Object {
         Image changedImage,
         Image changedUpImage,
         Image outlineImage,
-        float defaultValue,
+        float? defaultValue,
         float min,
         float max,
         float value,
@@ -271,12 +271,18 @@ public class O5Slider : O5Object {
     /// <summary>Moves the reset target and refreshes visuals.</summary>
     /// <param name="value">New default.</param>
     /// <param name="noAnimate">Snap instead of animating.</param>
-    public void SetDefaultValue(float value, bool noAnimate = false) {
-        if (IsDisposed || float.IsNaN(value)) {
+    public void SetDefaultValue(float? value, bool noAnimate = false) {
+        if (IsDisposed) {
             return;
         }
 
-        DefaultValue = ClampSafe(ApplyFilter(value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
+        if (value == null || float.IsNaN(value.Value)) {
+            DefaultValue = null;
+            UpdateVisual(noAnimate);
+            return;
+        }
+
+        DefaultValue = ClampSafe(ApplyFilter(value.Value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
         UpdateVisual(noAnimate);
     }
 
@@ -324,7 +330,7 @@ public class O5Slider : O5Object {
         _fillTween?.Kill();
         _changeTween?.Kill();
 
-        float changeAlpha = Math.Abs(DefaultValue - Value) > 0.001f ? 1f : 0f;
+        float changeAlpha = DefaultValue.HasValue && Math.Abs(DefaultValue.Value - Value) > 0.001f ? 1f : 0f;
 
         if (noAnimate) {
             if (ShowFill) {
