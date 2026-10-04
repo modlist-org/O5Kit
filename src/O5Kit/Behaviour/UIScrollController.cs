@@ -63,8 +63,60 @@ public class UIScrollController
             return;
         }
 
+        ClampScrollPosition();
         HandleWheel();
         HandleRightDrag();
+    }
+
+    /// <summary>Keeps target and actual scroll offset inside the current valid range.
+    /// Content/viewport size changes (items added/removed, window resized) otherwise
+    /// leave a stale <see cref="_targetY"/> behind: next wheel input jumps, and a
+    /// shrunken list keeps showing blank space at the bottom.</summary>
+    private void ClampScrollPosition() {
+        if (content == null || viewport == null) {
+            return;
+        }
+
+        // The mouse-up edge can be missed (focus loss, hierarchy rebuild):
+        // held-state is truth, so a stuck drag can't pin the scroll forever.
+        if (_rightDragging && !O5Input.GetMouseButton(1)) {
+            _rightDragging = false;
+        }
+
+        float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
+
+        if (_targetY < 0f || _targetY > maxOffset) {
+            _targetY = Math.Clamp(_targetY, 0f, maxOffset);
+            if (_scrollTween?.IsAlive == true) {
+                // Retarget the in-flight glide instead of freezing mid-way:
+                // killing it here is what made the scroll feel dead near the bottom.
+                _scrollTween?.Kill();
+                _scrollTween = null;
+                if (Ctx != null) {
+                    ApplyTween();
+                }
+            }
+        }
+
+        // While a glide is in flight its setter owns the position, so leave it alone.
+        if (_scrollTween?.IsAlive == true) {
+            return;
+        }
+
+        float y = content.anchoredPosition.y;
+        float clampedY = Math.Clamp(y, 0f, maxOffset);
+        if (Math.Abs(y - clampedY) > 0.01f) {
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, clampedY);
+            _targetY = clampedY;
+            return;
+        }
+
+        // Idle and in range, but target drifted from the visible position
+        // (external move, killed glide). Position wins: otherwise the next
+        // wheel notch jumps from the stale target.
+        if (!_rightDragging && Math.Abs(y - _targetY) > 0.5f) {
+            _targetY = y;
+        }
     }
 
     private void HandleWheel() {
@@ -103,9 +155,11 @@ public class UIScrollController
             _rightDragging = IsPointerOverViewport();
         }
 
-        if (O5Input.GetMouseButtonUp(1) && _rightDragging) {
+        // Held-state heals a missed mouse-up edge (same as in ClampScrollPosition).
+        if (_rightDragging && !O5Input.GetMouseButton(1)) {
             _rightDragging = false;
-            ApplyTween();
+        } else if (O5Input.GetMouseButtonUp(1) && _rightDragging) {
+            _rightDragging = false;
         }
 
         if (!_rightDragging) {
@@ -137,7 +191,11 @@ public class UIScrollController
 
         _targetY = normalized * maxOffset;
 
-        ApplyTween();
+        // Absolute mapping: drive the position directly. Restarting a 0.2s tween
+        // every frame here only lags behind the cursor and churns handles.
+        _scrollTween?.Kill();
+        _scrollTween = null;
+        content.anchoredPosition = new Vector2(content.anchoredPosition.x, _targetY);
     }
 
     private void AddDelta(float deltaPixels) {
@@ -186,6 +244,42 @@ public class UIScrollController
 
         if (content != null) {
             _targetY = content.anchoredPosition.y;
+        }
+    }
+
+    /// <summary>Maximum scroll offset for the current content/viewport sizes.</summary>
+    public float MaxOffset {
+        get {
+            if (content == null || viewport == null) {
+                return 0f;
+            }
+
+            return Math.Max(0f, content.rect.height - viewport.rect.height);
+        }
+    }
+
+    /// <summary>Snaps scroll back to the top. Call after clearing/rebuilding rows
+    /// so a stale bottom offset doesn't linger on a fresh list.</summary>
+    public void ResetScroll() => ScrollTo(0f, true);
+
+    /// <summary>Scrolls to an absolute offset (0 = top).</summary>
+    /// <param name="offsetY">Desired offset in pixels.</param>
+    /// <param name="instant">True snaps immediately; false glides with the scroll tween.</param>
+    public void ScrollTo(float offsetY, bool instant = false) {
+        if (content == null || viewport == null) {
+            _targetY = 0f;
+            return;
+        }
+
+        float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
+        _targetY = Math.Clamp(offsetY, 0f, maxOffset);
+        _scrollTween?.Kill();
+        _scrollTween = null;
+
+        if (instant || Ctx == null) {
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, _targetY);
+        } else {
+            ApplyTween();
         }
     }
 

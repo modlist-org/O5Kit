@@ -50,6 +50,7 @@ public class ResizeHandle
     private Vector2 _startMouse;
     private Vector2 _startSize;
     private Vector2 _startPos;
+    private bool _dragging;
 
     /// <summary>Default minimum panel width before UI scale (Overlayer panel size).</summary>
     public static float DefaultMinWidth = 900f;
@@ -66,8 +67,56 @@ public class ResizeHandle
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerDown, OnPointerDownInternal),
-            (EventTriggerType.Drag, OnDragInternal)
+            (EventTriggerType.Drag, OnDragInternal),
+            (EventTriggerType.PointerEnter, OnPointerEnterInternal),
+            (EventTriggerType.PointerExit, OnPointerExitInternal),
+            (EventTriggerType.PointerUp, OnPointerUpInternal),
+            (EventTriggerType.Cancel, OnPointerUpInternal)
         );
+    }
+
+    private void OnPointerUpInternal() {
+        _dragging = false;
+        ShowIndicator(false);
+    }
+
+    private void OnPointerEnterInternal() {
+        ShowIndicator(true);
+    }
+
+    private void OnPointerExitInternal() {
+        if(!_dragging) {
+            ShowIndicator(false);
+        }
+    }
+
+    private void OnDisable() {
+        _dragging = false;
+        if(_indicator != null) {
+            _indicator.gameObject.SetActive(false);
+        }
+    }
+
+    private Image _indicator;
+
+    private void ShowIndicator(bool visible) {
+        if(visible && _indicator == null) {
+            var go = new GameObject("ResizeCursor");
+            go.transform.SetParent(transform, false);
+            var rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(44f, 44f);
+            var image = go.AddComponent<Image>();
+            image.sprite = O5ResizeCursor.GetSprite(Type);
+            image.raycastTarget = false;
+            _indicator = image;
+        }
+        if(_indicator != null) {
+            _indicator.gameObject.SetActive(visible);
+        }
     }
 
     private void OnPointerDownInternal() {
@@ -84,6 +133,7 @@ public class ResizeHandle
 
     /// <summary>Applies the in-progress resize. Wired to the drag event.</summary>
     public void OnDragInternal() {
+        _dragging = true;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             PanelParent,
             O5Input.MousePosition,
@@ -133,15 +183,14 @@ public class ResizeHandle
     }
 
     private static readonly ResizeHandleType[] HandleOrder = {
-        ResizeHandleType.TopLeft,
         ResizeHandleType.Top,
-        ResizeHandleType.TopRight,
-
+        ResizeHandleType.Bottom,
         ResizeHandleType.Left,
         ResizeHandleType.Right,
 
+        ResizeHandleType.TopLeft,
+        ResizeHandleType.TopRight,
         ResizeHandleType.BottomLeft,
-        ResizeHandleType.Bottom,
         ResizeHandleType.BottomRight
     };
 
@@ -176,8 +225,8 @@ public class ResizeHandle
                     rect.anchorMin = new Vector2(0f, 1f);
                     rect.anchorMax = new Vector2(1f, 1f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(HANDLE_SIDE, -HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(-HANDLE_SIDE, HANDLE_SIDE);
+                    rect.offsetMin = new Vector2(HANDLE_CORNER, -HANDLE_SIDE);
+                    rect.offsetMax = new Vector2(-HANDLE_CORNER, HANDLE_SIDE);
                     rect.anchoredPosition = Vector2.zero;
                     break;
 
@@ -185,8 +234,8 @@ public class ResizeHandle
                     rect.anchorMin = new Vector2(0f, 0f);
                     rect.anchorMax = new Vector2(1f, 0f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(HANDLE_SIDE, -HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(-HANDLE_SIDE, HANDLE_SIDE);
+                    rect.offsetMin = new Vector2(HANDLE_CORNER, -HANDLE_SIDE);
+                    rect.offsetMax = new Vector2(-HANDLE_CORNER, HANDLE_SIDE);
                     rect.anchoredPosition = Vector2.zero;
                     break;
 
@@ -194,8 +243,8 @@ public class ResizeHandle
                     rect.anchorMin = new Vector2(0f, 0f);
                     rect.anchorMax = new Vector2(0f, 1f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_SIDE);
+                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_CORNER);
+                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_CORNER);
                     rect.anchoredPosition = Vector2.zero;
                     break;
 
@@ -203,8 +252,8 @@ public class ResizeHandle
                     rect.anchorMin = new Vector2(1f, 0f);
                     rect.anchorMax = new Vector2(1f, 1f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_SIDE);
+                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_CORNER);
+                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_CORNER);
                     rect.anchoredPosition = Vector2.zero;
                     break;
 
@@ -212,28 +261,28 @@ public class ResizeHandle
                     rect.anchorMin = new Vector2(0f, 1f);
                     rect.anchorMax = new Vector2(0f, 1f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
+                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
                     break;
 
                 case ResizeHandleType.TopRight:
                     rect.anchorMin = new Vector2(1f, 1f);
                     rect.anchorMax = new Vector2(1f, 1f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
+                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
                     break;
 
                 case ResizeHandleType.BottomLeft:
                     rect.anchorMin = new Vector2(0f, 0f);
                     rect.anchorMax = new Vector2(0f, 0f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
+                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
                     break;
 
                 case ResizeHandleType.BottomRight:
                     rect.anchorMin = new Vector2(1f, 0f);
                     rect.anchorMax = new Vector2(1f, 0f);
                     rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
+                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
                     break;
             }
 

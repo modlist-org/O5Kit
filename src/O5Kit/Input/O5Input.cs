@@ -100,36 +100,42 @@ public static class O5Input {
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButton(int btn) {
         EnsureInitialized();
-        return t_Mouse != null ? TryInvoke(p_btnIsPressed, GetMouseBtnControl(btn)) : UnityEngine.Input.GetMouseButton(btn);
+        return TryReadMouseButton(p_btnIsPressed, btn, out bool pressed)
+            ? pressed
+            : TryReadLegacyMouseButton(btn, 0);
     }
 
     /// <summary>Whether a mouse button went down this frame.</summary>
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButtonDown(int btn) {
         EnsureInitialized();
-        return t_Mouse != null ? TryInvoke(p_btnWasPressed, GetMouseBtnControl(btn)) : UnityEngine.Input.GetMouseButtonDown(btn);
+        return TryReadMouseButton(p_btnWasPressed, btn, out bool pressed)
+            ? pressed
+            : TryReadLegacyMouseButton(btn, 1);
     }
 
     /// <summary>Whether a mouse button went up this frame.</summary>
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButtonUp(int btn) {
         EnsureInitialized();
-        return t_Mouse != null ? TryInvoke(p_btnWasReleased, GetMouseBtnControl(btn)) : UnityEngine.Input.GetMouseButtonUp(btn);
+        return TryReadMouseButton(p_btnWasReleased, btn, out bool released)
+            ? released
+            : TryReadLegacyMouseButton(btn, 2);
     }
 
     /// <summary>Cursor position in screen pixels (Unity space, origin bottom-left).</summary>
     public static Vector2 MousePosition {
         get {
             EnsureInitialized();
-            if (t_Mouse != null) {
-                try {
-                    return (Vector2)m_ReadV2!.Invoke(p_mousePosition!.GetValue(p_mouseCurrent!.GetValue(null)), null)!;
-                } catch {
-                    return Vector2.zero;
-                }
+            if (TryReadMouseVector(p_mousePosition, out Vector2 position)) {
+                return position;
             }
 
-            return UnityEngine.Input.mousePosition;
+            try {
+                return UnityEngine.Input.mousePosition;
+            } catch {
+                return Vector2.zero;
+            }
         }
     }
 
@@ -170,15 +176,15 @@ public static class O5Input {
     public static Vector2 MouseScrollDelta {
         get {
             EnsureInitialized();
-            if (t_Mouse != null) {
-                try {
-                    return (Vector2)m_ReadV2!.Invoke(p_mouseScroll!.GetValue(p_mouseCurrent!.GetValue(null)), null)!;
-                } catch {
-                    return Vector2.zero;
-                }
+            if (TryReadMouseVector(p_mouseScroll, out Vector2 delta)) {
+                return delta;
             }
 
-            return UnityEngine.Input.mouseScrollDelta;
+            try {
+                return UnityEngine.Input.mouseScrollDelta;
+            } catch {
+                return Vector2.zero;
+            }
         }
     }
 
@@ -197,15 +203,65 @@ public static class O5Input {
         }
     }
 
-    private static object? GetMouseBtnControl(int btn) {
-        EnsureInitialized();
-        var mouse = p_mouseCurrent!.GetValue(null);
-        return btn switch {
-            0 => p_leftBtn!.GetValue(mouse),
-            1 => p_rightBtn!.GetValue(mouse),
-            2 => p_middleBtn!.GetValue(mouse),
-            _ => null,
-        };
+    private static bool TryReadMouseButton(PropertyInfo? property, int btn, out bool value) {
+        value = false;
+        if (property == null || p_mouseCurrent == null) {
+            return false;
+        }
+
+        try {
+            // The Input System assembly can be present even when it has no active
+            // mouse device (for example, when the game is using the legacy backend).
+            object? mouse = p_mouseCurrent.GetValue(null);
+            PropertyInfo? buttonProperty = btn switch {
+                0 => p_leftBtn,
+                1 => p_rightBtn,
+                2 => p_middleBtn,
+                _ => null,
+            };
+            object? button = buttonProperty?.GetValue(mouse);
+            if (button == null) {
+                return false;
+            }
+
+            value = (bool)property.GetValue(button)!;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private static bool TryReadMouseVector(PropertyInfo? controlProperty, out Vector2 value) {
+        value = Vector2.zero;
+        if (controlProperty == null || p_mouseCurrent == null || m_ReadV2 == null) {
+            return false;
+        }
+
+        try {
+            object? mouse = p_mouseCurrent.GetValue(null);
+            object? control = controlProperty.GetValue(mouse);
+            if (control == null) {
+                return false;
+            }
+
+            value = (Vector2)m_ReadV2.Invoke(control, null)!;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private static bool TryReadLegacyMouseButton(int btn, int state) {
+        try {
+            return state switch {
+                0 => UnityEngine.Input.GetMouseButton(btn),
+                1 => UnityEngine.Input.GetMouseButtonDown(btn),
+                2 => UnityEngine.Input.GetMouseButtonUp(btn),
+                _ => false,
+            };
+        } catch {
+            return false;
+        }
     }
 
     private static bool TryInvoke(PropertyInfo? prop, object? target) {

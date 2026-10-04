@@ -46,6 +46,19 @@ public static class O5PageSwitcher {
 
         KillActive();
 
+        foreach (var pair in pages) {
+            if (pair.Key == to || pair.Value == null) {
+                continue;
+            }
+
+            pair.Value.anchoredPosition = new Vector2(-1100f, pair.Value.anchoredPosition.y);
+            var otherCg = pair.Value.GetComponent<CanvasGroup>();
+            if (otherCg != null) {
+                otherCg.alpha = 0f;
+                otherCg.interactable = otherCg.blocksRaycasts = false;
+            }
+        }
+
         fromPage.anchoredPosition = Vector2.zero;
         toPage.anchoredPosition = new Vector2(1100f, 0f);
 
