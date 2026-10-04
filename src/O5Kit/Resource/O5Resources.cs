@@ -30,7 +30,7 @@ public enum O5Asset {
     Triangle128,
 }
 
-/// <summary>Embedded-asset loader. Mirrors Overlayer's ResourceManager: manifest streams with a texture cache.</summary>
+/// <summary>Loads O5Kit-owned bundled assets. Mod-specific assets belong to the consuming mod and are loaded from that mod's assembly.</summary>
 public sealed class O5Resources : IDisposable {
     private readonly Assembly _assembly;
     private readonly string _prefix;
