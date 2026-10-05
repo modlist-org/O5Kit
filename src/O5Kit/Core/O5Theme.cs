@@ -75,8 +75,11 @@ public sealed record O5Theme {
     /// <summary>Window/panel outline ring tint.</summary>
     public Color Outline { get; init; } = new(1f, 1f, 1f, 1f);
 
-    /// <summary>Resting control outline ring (buttons, inputs, toggles, dropdowns). Transparent by default; the hover ring uses <see cref="ObjectActive"/>.</summary>
-    public Color ControlOutline { get; init; } = new(1f, 1f, 1f, 0f);
+    /// <summary>Control outline when not hovered. Transparent by default.</summary>
+    public Color ControlOutlineIdle { get; init; } = new(1f, 1f, 1f, 0f);
+
+    /// <summary>Control outline on hover.</summary>
+    public Color ControlOutlineHover { get; init; } = new(0.569f, 0.604f, 1f, 1f);
 
     /// <summary>Formula input: valid result.</summary>
     public Color MathOk { get; init; } = new(0.588f, 1f, 0.569f, 1f);
@@ -96,11 +99,11 @@ public sealed record O5Theme {
     /// <summary>Disabled content alpha (e.g. inactive card body).</summary>
     public float DisabledContentAlpha { get; init; } = 0.42f;
 
-    /// <summary>Sprite-editor guide alphas applied to <see cref="EditorGuide"/>.</summary>
-    public float GuideIdleAlpha { get; init; } = 0.12f;
+    /// <summary>Sprite-editor guide color when idle.</summary>
+    public Color EditorGuideIdle { get; init; } = new(0.15f, 1f, 0.25f, 0.12f);
 
-    /// <summary>Sprite-editor guide hover alpha applied to <see cref="EditorGuide"/>.</summary>
-    public float GuideHoverAlpha { get; init; } = 0.32f;
+    /// <summary>Sprite-editor guide color on hover.</summary>
+    public Color EditorGuideHover { get; init; } = new(0.15f, 1f, 0.25f, 0.32f);
 
     /// <summary>Empty sprite-editor workspace wash. Derived from <see cref="Text"/>.</summary>
     public Color WorkspaceEmpty => O5Palette.WithAlpha(Text, WorkspaceAlpha);
@@ -174,8 +177,11 @@ public sealed record O5Theme {
         Text = new Color(0.1f, 0.1f, 0.14f, 1f),
         TooltipBG = new Color(0.95f, 0.95f, 0.98f, 0.95f),
         Outline = new Color(0.1f, 0.1f, 0.14f, 0.5f),
+        ControlOutlineHover = new Color(0.35f, 0.40f, 0.90f, 1f),
         EditorGuide = new Color(0f, 0.55f, 0.2f, 1f),
         EditorGuideShadow = new Color(1f, 1f, 1f, 0.9f),
+        EditorGuideIdle = new Color(0f, 0.55f, 0.2f, 0.12f),
+        EditorGuideHover = new Color(0f, 0.55f, 0.2f, 0.32f),
         WorkspaceAlpha = 0.06f,
     };
 }

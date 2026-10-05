@@ -336,9 +336,8 @@ public sealed class O5SpriteEditor : O5Object {
         rect.sizeDelta = vertical ? new Vector2(24f, 0f) : new Vector2(0f, 24f);
 
         Image hitArea = guideObject.AddComponent<Image>();
-        Color guideBase = ctx.Theme.EditorGuide;
-        Color idleColor = O5Palette.WithAlpha(guideBase, ctx.Theme.GuideIdleAlpha);
-        Color hoverColor = O5Palette.WithAlpha(guideBase, ctx.Theme.GuideHoverAlpha);
+        Color idleColor = ctx.Theme.EditorGuideIdle;
+        Color hoverColor = ctx.Theme.EditorGuideHover;
         hitArea.color = idleColor;
         hitArea.raycastTarget = true;
 
