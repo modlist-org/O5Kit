@@ -48,7 +48,8 @@ public static partial class O5Factory {
         header.anchorMin = new Vector2(0f, 1f);
         header.anchorMax = new Vector2(1f, 1f);
         header.pivot = new Vector2(0.5f, 1f);
-        header.offsetMin = new Vector2(0f, -50f);
+        float headerH = ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
+        header.offsetMin = new Vector2(0f, -headerH);
         header.offsetMax = Vector2.zero;
 
         GameObject previewObject = new("Preview");
@@ -106,7 +107,7 @@ public static partial class O5Factory {
         body.anchorMax = new Vector2(1f, 1f);
         body.pivot = new Vector2(0.5f, 1f);
         body.offsetMin = new Vector2(12f, -566f);
-        body.offsetMax = new Vector2(-262f, -62f);
+        body.offsetMax = new Vector2(-262f, -(headerH + 12f));
         Image bodyBackground = bodyObject.AddComponent<Image>();
         bodyBackground.sprite = ctx.Sprites.RoundedControl;
         bodyBackground.type = Image.Type.Sliced;
@@ -156,7 +157,7 @@ public static partial class O5Factory {
             int channel = i;
             RectTransform row = Row(ctx, body, 36f);
             sliders[i] = Slider(
-                ctx, row, (defaultValue ?? value)[i], 0f, 1f, value[i], "F2", ClampMode.All, null,
+                ctx, row, (double)(defaultValue ?? value)[i], 0d, 1d, (double)value[i], "F2", ClampMode.All, null, null,
                 next => picker?.SetChannel(channel, next),
                 _ => onComplete?.Invoke(picker!.Value),
                 names[i], id + "_" + names[i].ToLowerInvariant()

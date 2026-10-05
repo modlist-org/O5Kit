@@ -187,7 +187,7 @@ public sealed class O5Window : O5Object {
         var bgImage = bgObj.AddComponent<Image>();
         bgImage.sprite = window.Ctx.Sprites.Circle;
         Color softRed = window.Ctx.Theme.SoftRed;
-        bgImage.color = new Color(softRed.r, softRed.g, softRed.b, 0f);
+        bgImage.color = O5Palette.Transparent(softRed);
 
         var xObj = new GameObject("X");
         xObj.transform.SetParent(close, false);

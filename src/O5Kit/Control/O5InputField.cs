@@ -143,7 +143,7 @@ public sealed class O5InputField : O5Object {
                     icon.color = c;
                 }
             },
-            focused ? 0f : 0.2f, focused ? 0.2f : 0.3f, ease: O5Ease.OutQuad);
+            focused ? 0f : Ctx.Theme.TextFaintAlpha, focused ? 0.2f : 0.3f, ease: O5Ease.OutQuad);
     }
 
     /// <inheritdoc/>

@@ -15,16 +15,17 @@ public static partial class O5Factory {
     /// <summary>Layout row with a fixed height for stacking controls.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="height">Row height.</param>
-    public static RectTransform Row(O5Context ctx, Transform parent, float height = 50f) {
+    /// <param name="height">Row height. Null derives from the theme body font size.</param>
+    public static RectTransform Row(O5Context ctx, Transform parent, float? height = null) {
         GameObject obj = new("Row");
         obj.transform.SetParent(parent, false);
 
         RectTransform rect = obj.AddComponent<RectTransform>();
 
+        float heightPx = height ?? ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
         LayoutElement le = obj.AddComponent<LayoutElement>();
-        le.preferredHeight = height;
-        le.minHeight = height;
+        le.preferredHeight = heightPx;
+        le.minHeight = heightPx;
 
         return rect;
     }
@@ -45,9 +46,7 @@ public static partial class O5Factory {
 
         Image img = obj.AddComponent<Image>();
         img.sprite = ctx.Sprites.Circle;
-        Color c = ctx.Theme.ObjectActive;
-        c.a = 0f;
-        img.color = c;
+        img.color = O5Palette.Transparent(ctx.Theme.ObjectActive);
 
         return obj;
     }

@@ -28,7 +28,8 @@ public static partial class O5Factory {
         rect.offsetMax = Vector2.zero;
 
         var layout = obj.AddComponent<LayoutElement>();
-        layout.preferredHeight = layout.minHeight = height ?? theme.ControlHeight;
+        float heightPx = height ?? theme.ControlHeightFor(theme.FontSizeBody);
+        layout.preferredHeight = layout.minHeight = heightPx;
 
         var img = obj.AddComponent<Image>();
         img.color = theme.ObjectBG;
@@ -96,6 +97,7 @@ public static partial class O5Factory {
         var button = new O5Button(ctx, id, rect, tmp, bg, onClick);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
+        O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => button.OnHoverEnter()),
             (EventTriggerType.PointerExit, _ => button.OnHoverExit()),

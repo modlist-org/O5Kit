@@ -14,12 +14,11 @@ public sealed class O5Config {
     public bool MiddleClickToDefault { get; set; } = true;
 
     /// <summary>Horizontal drag distance multiplier for sliders.</summary>
-    public float SliderSensitivity { get; set; } = 1f;
+    public double SliderSensitivity { get; set; } = 1d;
 
     /// <summary>Global animation speed multiplier (KDE-style). 1 is normal, higher is faster,
-    /// 0 or below collapses every duration to near-instant. Applies to the built-in
-    /// LitMotion/Simple tween runners; custom <see cref="ITweenRunner"/> implementations
-    /// must scale durations themselves. Completions still fire asynchronously.</summary>
+    /// 0 or below collapses every duration to near-instant. Applied by the per-context
+    /// tween decorator, so it covers the built-in runners and custom <see cref="ITweenRunner"/> implementations alike. Completions still fire asynchronously.</summary>
     public float AnimationSpeed { get; set; } = 1f;
 
     /// <summary>Toggle hotkey. Default matches Overlayer: Alt+BackQuote (Ctrl on Linux).</summary>

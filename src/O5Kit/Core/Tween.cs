@@ -549,6 +549,69 @@ public sealed class SimpleTweenRunner : ITweenRunner {
     }
 }
 
+/// <summary>Per-context decorator scaling every duration by a config speed multiplier. Higher speed shortens durations; zero or below collapses them to near-instant (completions still fire).</summary>
+public sealed class ScaledTweenRunner : ITweenRunner {
+    private readonly ITweenRunner _inner;
+    private readonly O5Config _config;
+
+    /// <summary>Wraps <paramref name="inner"/>, scaling durations by <paramref name="config"/>.</summary>
+    /// <param name="inner">Backend runner.</param>
+    /// <param name="config">Runtime options owning <see cref="O5Config.AnimationSpeed"/>.</param>
+    public ScaledTweenRunner(ITweenRunner inner, O5Config config) {
+        _inner = inner;
+        _config = config;
+    }
+
+    private float Scale(float duration) {
+        float speed = _config.AnimationSpeed;
+        if (speed <= 0f) {
+            return 0.0001f;
+        }
+
+        return Math.Max(duration / speed, 0.0001f);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenFloat(System.Func<float> getter, System.Action<float> setter, float to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenFloat(getter, setter, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenColor(System.Func<Color> getter, System.Action<Color> setter, Color to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenColor(getter, setter, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenColor(Graphic graphic, Color to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenColor(graphic, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAlpha(CanvasGroup canvasGroup, float to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenAlpha(canvasGroup, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAlpha(Graphic graphic, float to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenAlpha(graphic, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAnchorPos(RectTransform rectTransform, Vector2 to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenAnchorPos(rectTransform, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenSizeDelta(RectTransform rectTransform, Vector2 to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenSizeDelta(rectTransform, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenScale(RectTransform rectTransform, Vector3 to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenScale(rectTransform, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenOffsetMin(RectTransform rectTransform, Vector2 to, float duration, System.Action? onComplete = null, O5Ease ease = O5Ease.OutSine)
+        => _inner.TweenOffsetMin(rectTransform, to, Scale(duration), onComplete, ease);
+
+    /// <inheritdoc/>
+    public ITweenHandle Delay(float seconds, System.Action? onComplete = null)
+        => _inner.Delay(Scale(seconds), onComplete);
+}
+
 /// <summary>Static sugar for the most common control fades.</summary>
 public static partial class O5Tween {
     /// <summary>Fades a <see cref="CanvasGroup"/> to <paramref name="to"/>.</summary>

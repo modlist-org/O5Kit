@@ -27,8 +27,11 @@ public sealed record O5Theme {
     /// <summary>Brighter accent for button hover.</summary>
     public Color ObjectActiveBright { get; init; } = new(0.812f, 0.827f, 1f, 1f);
 
-    /// <summary>Dimmed accent for off states.</summary>
-    public Color ObjectInactive { get; init; } = new(0.569f, 0.604f, 1f, 0.4f);
+    /// <summary>Dimmed accent for off states. Derived from <see cref="ObjectActive"/>.</summary>
+    public Color ObjectInactive => O5Palette.Inactive(ObjectActive, InactiveAlpha);
+
+    /// <summary>Off-state alpha applied to <see cref="ObjectActive"/>.</summary>
+    public float InactiveAlpha { get; init; } = 0.4f;
 
     /// <summary>Selection highlight (e.g. text selection).</summary>
     public Color MenuHover { get; init; } = new(0.635f, 0.655f, 0.878f, 0.4f);
@@ -51,11 +54,17 @@ public sealed record O5Theme {
     /// <summary>Primary text.</summary>
     public Color Text { get; init; } = new(1f, 1f, 1f, 1f);
 
-    /// <summary>Secondary text (previews, hints, inactive labels).</summary>
-    public Color TextDim { get; init; } = new(1f, 1f, 1f, 0.6f);
+    /// <summary>Secondary text (previews, hints, inactive labels). Derived from <see cref="Text"/>.</summary>
+    public Color TextDim => O5Palette.Dim(Text, TextDimAlpha);
 
-    /// <summary>Faint text (placeholders, ghost icons).</summary>
-    public Color TextFaint { get; init; } = new(1f, 1f, 1f, 0.2f);
+    /// <summary>Secondary-text alpha applied to <see cref="Text"/>.</summary>
+    public float TextDimAlpha { get; init; } = 0.6f;
+
+    /// <summary>Faint text (placeholders, ghost icons). Derived from <see cref="Text"/>.</summary>
+    public Color TextFaint => O5Palette.Faint(Text, TextFaintAlpha);
+
+    /// <summary>Faint-text alpha applied to <see cref="Text"/>.</summary>
+    public float TextFaintAlpha { get; init; } = 0.2f;
 
     /// <summary>Tooltip background.</summary>
     public Color TooltipBG { get; init; } = new(0f, 0f, 0f, 0.6f);
@@ -65,6 +74,9 @@ public sealed record O5Theme {
 
     /// <summary>Window/panel outline ring tint.</summary>
     public Color Outline { get; init; } = new(1f, 1f, 1f, 1f);
+
+    /// <summary>Resting control outline ring (buttons, inputs, toggles, dropdowns). Transparent by default; the hover ring uses <see cref="ObjectActive"/>.</summary>
+    public Color ControlOutline { get; init; } = new(1f, 1f, 1f, 0f);
 
     /// <summary>Formula input: valid result.</summary>
     public Color MathOk { get; init; } = new(0.588f, 1f, 0.569f, 1f);
@@ -81,8 +93,20 @@ public sealed record O5Theme {
     /// <summary>Dark plate under guide lines/handles for contrast.</summary>
     public Color EditorGuideShadow { get; init; } = new(0f, 0f, 0f, 0.9f);
 
-    /// <summary>Empty sprite-editor workspace wash.</summary>
-    public Color WorkspaceEmpty { get; init; } = new(1f, 1f, 1f, 0.08f);
+    /// <summary>Disabled content alpha (e.g. inactive card body).</summary>
+    public float DisabledContentAlpha { get; init; } = 0.42f;
+
+    /// <summary>Sprite-editor guide alphas applied to <see cref="EditorGuide"/>.</summary>
+    public float GuideIdleAlpha { get; init; } = 0.12f;
+
+    /// <summary>Sprite-editor guide hover alpha applied to <see cref="EditorGuide"/>.</summary>
+    public float GuideHoverAlpha { get; init; } = 0.32f;
+
+    /// <summary>Empty sprite-editor workspace wash. Derived from <see cref="Text"/>.</summary>
+    public Color WorkspaceEmpty => O5Palette.WithAlpha(Text, WorkspaceAlpha);
+
+    /// <summary>Workspace-wash alpha applied to <see cref="Text"/>.</summary>
+    public float WorkspaceAlpha { get; init; } = 0.08f;
 
     /// <summary>Color-picker red channel.</summary>
     public Color ChannelR { get; init; } = new(1f, 0.42f, 0.44f, 1f);
@@ -108,8 +132,19 @@ public sealed record O5Theme {
     /// <summary>Default outline width hint.</summary>
     public float OutlineWidth { get; init; } = 2f;
 
-    /// <summary>Default control row height.</summary>
+    /// <summary>Default control row height. Floor for <see cref="ControlHeightFor"/>.</summary>
     public float ControlHeight { get; init; } = 50f;
+
+    /// <summary>Vertical padding inside a control row, used to derive height from font size.</summary>
+    public float ControlPaddingY { get; init; } = 8f;
+
+    /// <summary>Line-height multiplier used to derive control height from font size.</summary>
+    public float LineHeight { get; init; } = 1.35f;
+
+    /// <summary>Row height for a font size. Never below <see cref="ControlHeight"/>.</summary>
+    /// <param name="fontSize">Font size driving the content.</param>
+    public float ControlHeightFor(float fontSize)
+        => System.Math.Max(ControlHeight, (fontSize * LineHeight) + (ControlPaddingY * 2f));
 
     /// <summary>Default body font size.</summary>
     public float FontSizeBody { get; init; } = 24f;
@@ -134,16 +169,13 @@ public sealed record O5Theme {
         ObjectButton = new Color(0.42f, 0.46f, 0.85f, 1f),
         ObjectActive = new Color(0.35f, 0.40f, 0.90f, 1f),
         ObjectActiveBright = new Color(0.20f, 0.25f, 0.75f, 1f),
-        ObjectInactive = new Color(0.35f, 0.40f, 0.90f, 0.4f),
         ButtonHover = new Color(0.332f, 0.376f, 0.81f, 1f),
         ButtonPressed = new Color(0.20f, 0.25f, 0.75f, 1f),
         Text = new Color(0.1f, 0.1f, 0.14f, 1f),
-        TextDim = new Color(0.1f, 0.1f, 0.14f, 0.6f),
-        TextFaint = new Color(0.1f, 0.1f, 0.14f, 0.2f),
         TooltipBG = new Color(0.95f, 0.95f, 0.98f, 0.95f),
         Outline = new Color(0.1f, 0.1f, 0.14f, 0.5f),
         EditorGuide = new Color(0f, 0.55f, 0.2f, 1f),
         EditorGuideShadow = new Color(1f, 1f, 1f, 0.9f),
-        WorkspaceEmpty = new Color(0f, 0f, 0f, 0.06f),
+        WorkspaceAlpha = 0.06f,
     };
 }

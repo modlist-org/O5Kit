@@ -144,7 +144,7 @@ public static partial class O5Factory {
                 isCurrentActive = !isCurrentActive;
                 UpdateComponentToggle(true);
                 if (contentCanvasGroup != null) {
-                    contentCanvasGroup.alpha = isCurrentActive ? 1f : 0.42f;
+                    contentCanvasGroup.alpha = isCurrentActive ? 1f : theme.DisabledContentAlpha;
                     contentCanvasGroup.interactable = isCurrentActive;
                     contentCanvasGroup.blocksRaycasts = isCurrentActive;
                 }
@@ -248,7 +248,7 @@ public static partial class O5Factory {
         contentGo.AddComponent<RectMask2D>();
 
         contentCanvasGroup = contentGo.AddComponent<CanvasGroup>();
-        contentCanvasGroup.alpha = activeValue ? 1f : 0.42f;
+        contentCanvasGroup.alpha = activeValue ? 1f : theme.DisabledContentAlpha;
         contentCanvasGroup.interactable = activeValue;
         contentCanvasGroup.blocksRaycasts = activeValue;
 
@@ -293,7 +293,7 @@ public static partial class O5Factory {
             }
 
             if (contentCanvasGroup != null) {
-                contentCanvasGroup.alpha = isCurrentActive ? 1f : 0.42f;
+                contentCanvasGroup.alpha = isCurrentActive ? 1f : theme.DisabledContentAlpha;
             }
 
             if (isExpanded) {

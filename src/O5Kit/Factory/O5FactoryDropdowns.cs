@@ -46,7 +46,9 @@ public static partial class O5Factory {
         rect.pivot = new Vector2(rect.pivot.x, 1f);
         rect.anchorMin = new Vector2(rect.anchorMin.x, 1f);
         rect.anchorMax = new Vector2(rect.anchorMax.x, 1f);
-        rect.sizeDelta = new Vector2(0f, 50f);
+        float headerH = ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
+        float listGap = 12f;
+        rect.sizeDelta = new Vector2(0f, headerH);
         rect.anchoredPosition = Vector2.zero;
 
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
@@ -78,8 +80,8 @@ public static partial class O5Factory {
         listRect.anchorMin = new Vector2(0f, 1f);
         listRect.anchorMax = new Vector2(1f, 1f);
         listRect.pivot = new Vector2(0.5f, 1f);
-        listRect.offsetMin = new Vector2(0f, -62f);
-        listRect.offsetMax = new Vector2(0f, -62f);
+        listRect.offsetMin = new Vector2(0f, -(headerH + listGap));
+        listRect.offsetMax = new Vector2(0f, -(headerH + listGap));
 
         Image listBg = list.AddComponent<Image>();
         listBg.sprite = ctx.Sprites.RoundedControl;
@@ -126,12 +128,12 @@ public static partial class O5Factory {
                 return;
             }
 
-            float rowHeight = 50f;
+            float rowHeight = ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
             float spacing = layout.spacing;
 
             float listHeight = (dropdown.Values.Count * rowHeight) + spacing;
 
-            float targetHeight = dropdown.Expanded ? (62f + listHeight) : 50f;
+            float targetHeight = dropdown.Expanded ? ((headerH + listGap) + listHeight) : headerH;
             float targetAlpha = dropdown.Expanded ? 1f : 0f;
 
             foreach (var h in layoutTweens) {
@@ -238,7 +240,9 @@ public static partial class O5Factory {
         rect.pivot = new Vector2(rect.pivot.x, 1f);
         rect.anchorMin = new Vector2(rect.anchorMin.x, 1f);
         rect.anchorMax = new Vector2(rect.anchorMax.x, 1f);
-        rect.sizeDelta = new Vector2(0f, 50f);
+        float headerH = ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
+        float listGap = 12f;
+        rect.sizeDelta = new Vector2(0f, headerH);
         rect.anchoredPosition = Vector2.zero;
 
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
@@ -270,8 +274,8 @@ public static partial class O5Factory {
         listRect.anchorMin = new Vector2(0f, 1f);
         listRect.anchorMax = new Vector2(1f, 1f);
         listRect.pivot = new Vector2(0.5f, 1f);
-        listRect.offsetMin = new Vector2(0f, -62f);
-        listRect.offsetMax = new Vector2(0f, -62f);
+        listRect.offsetMin = new Vector2(0f, -(headerH + listGap));
+        listRect.offsetMax = new Vector2(0f, -(headerH + listGap));
 
         Image listBg = list.AddComponent<Image>();
         listBg.sprite = ctx.Sprites.RoundedControl;
@@ -318,10 +322,10 @@ public static partial class O5Factory {
                 return;
             }
 
-            float rowHeight = 50f;
+            float rowHeight = ctx.Theme.ControlHeightFor(ctx.Theme.FontSizeBody);
             float spacing = layout.spacing;
             float listHeight = (dropdown.Values.Count * rowHeight) + spacing;
-            float targetHeight = dropdown.Expanded ? (62f + listHeight) : 50f;
+            float targetHeight = dropdown.Expanded ? ((headerH + listGap) + listHeight) : headerH;
             float targetAlpha = dropdown.Expanded ? 1f : 0f;
 
             foreach (var h in layoutTweens) {

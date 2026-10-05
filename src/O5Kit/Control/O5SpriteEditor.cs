@@ -294,16 +294,17 @@ public sealed class O5SpriteEditor : O5Object {
         _sliders.Add(CreateBorderSlider(_fieldRow, _options.TopLabel, O5SpriteGuide.Top, true, false, height, "sprite_border_top"));
     }
 
-    private O5Slider CreateBorderSlider(Transform parent, string label, O5SpriteGuide guide, bool right, bool top, float max, string id) {
+    private O5Slider CreateBorderSlider(Transform parent, string label, O5SpriteGuide guide, bool right, bool top, double max, string id) {
         O5Slider input = O5Factory.Slider(
             Ctx,
             parent,
-            0f,
-            0f,
+            0d,
+            0d,
             max,
-            0f,
+            0d,
             "F0",
             ClampMode.All,
+            value => FilterSlider(guide, value),
             value => FilterSlider(guide, value),
             value => SetBorderFromSlider(guide, value),
             null,
@@ -336,8 +337,8 @@ public sealed class O5SpriteEditor : O5Object {
 
         Image hitArea = guideObject.AddComponent<Image>();
         Color guideBase = ctx.Theme.EditorGuide;
-        Color idleColor = new(guideBase.r, guideBase.g, guideBase.b, 0.12f);
-        Color hoverColor = new(guideBase.r, guideBase.g, guideBase.b, 0.32f);
+        Color idleColor = O5Palette.WithAlpha(guideBase, ctx.Theme.GuideIdleAlpha);
+        Color hoverColor = O5Palette.WithAlpha(guideBase, ctx.Theme.GuideHoverAlpha);
         hitArea.color = idleColor;
         hitArea.raycastTarget = true;
 
@@ -392,21 +393,21 @@ public sealed class O5SpriteEditor : O5Object {
         lineImage.raycastTarget = false;
     }
 
-    private float FilterSlider(O5SpriteGuide guide, float value) {
-        value = Mathf.Round(value);
+    private double FilterSlider(O5SpriteGuide guide, double value) {
+        value = Math.Round(value);
         if (_texture == null) {
-            return Mathf.Max(0f, value);
+            return Math.Max(0d, value);
         }
 
         return guide switch {
-            O5SpriteGuide.Left => Mathf.Clamp(value, 0f, _texture.width - _border.z),
-            O5SpriteGuide.Right => Mathf.Clamp(value, 0f, _texture.width - _border.x),
-            O5SpriteGuide.Bottom => Mathf.Clamp(value, 0f, _texture.height - _border.w),
-            _ => Mathf.Clamp(value, 0f, _texture.height - _border.y)
+            O5SpriteGuide.Left => Math.Clamp(value, 0d, _texture.width - _border.z),
+            O5SpriteGuide.Right => Math.Clamp(value, 0d, _texture.width - _border.x),
+            O5SpriteGuide.Bottom => Math.Clamp(value, 0d, _texture.height - _border.w),
+            _ => Math.Clamp(value, 0d, _texture.height - _border.y)
         };
     }
 
-    private void SetBorderFromSlider(O5SpriteGuide guide, float value) {
+    private void SetBorderFromSlider(O5SpriteGuide guide, double value) {
         if (_texture == null) {
             return;
         }
@@ -414,16 +415,16 @@ public sealed class O5SpriteEditor : O5Object {
         value = FilterSlider(guide, value);
         switch (guide) {
             case O5SpriteGuide.Left:
-                _border.x = value;
+                _border.x = (float)value;
                 break;
             case O5SpriteGuide.Right:
-                _border.z = value;
+                _border.z = (float)value;
                 break;
             case O5SpriteGuide.Bottom:
-                _border.y = value;
+                _border.y = (float)value;
                 break;
             case O5SpriteGuide.Top:
-                _border.w = value;
+                _border.w = (float)value;
                 break;
         }
 
@@ -437,12 +438,12 @@ public sealed class O5SpriteEditor : O5Object {
         UpdateInput(3, _border.w);
     }
 
-    private void UpdateInput(int index, float value) {
+    private void UpdateInput(int index, double value) {
         if (index < 0 || index >= _sliders.Count) {
             return;
         }
 
-        _sliders[index].Set(Mathf.Round(value), false);
+        _sliders[index].Set(Math.Round(value), false);
     }
 
     private void SetEditor(Texture2D? texture, Vector4 border) {

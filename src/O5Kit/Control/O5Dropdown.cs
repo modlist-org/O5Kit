@@ -278,7 +278,7 @@ public class O5Dropdown<T> : O5Object {
             row.transform.SetParent(ListObject.transform, false);
 
             RectTransform rowRect = row.AddComponent<RectTransform>();
-            rowRect.sizeDelta = new Vector2(0f, 50f);
+            rowRect.sizeDelta = new Vector2(0f, Ctx.Theme.ControlHeightFor(Ctx.Theme.FontSizeBody));
 
             Image rowImage = row.AddComponent<Image>();
             rowImage.sprite = Ctx.Sprites.RoundedControl;

@@ -71,7 +71,7 @@ public sealed class O5Context : IDisposable {
             Fonts = owned;
         }
 
-        Tween = tween ?? LitMotionRunner.Instance;
+        Tween = new ScaledTweenRunner(tween ?? LitMotionRunner.Instance, Config);
         Tooltip = new O5Tooltip(this);
     }
 

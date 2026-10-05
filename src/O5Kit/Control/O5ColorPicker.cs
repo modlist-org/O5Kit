@@ -411,27 +411,27 @@ public sealed class O5ColorPicker : O5Object {
     /// <summary>Writes one channel (0..3) in the active color mode.</summary>
     /// <param name="channel">Channel index.</param>
     /// <param name="value">Normalized channel value.</param>
-    public void SetChannel(int channel, float value) {
-        value = Mathf.Clamp01(value);
+    public void SetChannel(int channel, double value) {
+        value = Math.Clamp(value, 0d, 1d);
         if (!_hsvMode) {
             Color color = Value;
-            color[channel] = value;
+            color[channel] = (float)value;
             Set(color);
             return;
         }
 
         switch (channel) {
             case 0:
-                _hue = value;
+                _hue = (float)value;
                 break;
             case 1:
-                _saturation = value;
+                _saturation = (float)value;
                 break;
             case 2:
-                _brightness = value;
+                _brightness = (float)value;
                 break;
             case 3:
-                Value = new Color(Value.r, Value.g, Value.b, value);
+                Value = new Color(Value.r, Value.g, Value.b, (float)value);
                 UpdateVisuals();
                 _onChanged?.Invoke(Value);
                 return;
@@ -607,7 +607,7 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private void UpdateSliderValues() {
-        float[] values = _hsvMode
+        double[] values = _hsvMode
             ? [_hue, _saturation, _brightness, Value.a]
             : [Value.r, Value.g, Value.b, Value.a];
         for (int i = 0; i < _sliders.Length; i++) {
@@ -645,7 +645,7 @@ public sealed class O5ColorPicker : O5Object {
                         outline.color = v;
                     }
                 },
-                new Color(color.r, color.g, color.b, alpha), 0.2f);
+                O5Palette.WithAlpha(color, alpha), 0.2f);
         }
 
         _hexInput.InputField.textComponent.color = Ctx.Theme.Text;

@@ -27,16 +27,28 @@ public enum ClampMode {
 /// <summary>Numeric slider with fill bar, formula input box and live preview.</summary>
 public class O5Slider : O5Object {
     /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
-    public float? DefaultValue { get; private set; }
+    public double? DefaultValue { get; private set; }
 
-    /// <summary>Range lower bound.</summary>
-    public float Min { get; set; }
+    /// <summary>Drag range lower bound.</summary>
+    public double Min { get; set; }
 
-    /// <summary>Range upper bound.</summary>
-    public float Max { get; set; }
+    /// <summary>Drag range upper bound.</summary>
+    public double Max { get; set; }
+
+    /// <summary>Text-input lower bound. Null falls back to <see cref="Min"/>.</summary>
+    public double? InputMin { get; set; }
+
+    /// <summary>Text-input upper bound. Null falls back to <see cref="Max"/>.</summary>
+    public double? InputMax { get; set; }
+
+    /// <summary>Effective text-input lower bound.</summary>
+    public double EffectiveInputMin => InputMin ?? Min;
+
+    /// <summary>Effective text-input upper bound.</summary>
+    public double EffectiveInputMax => InputMax ?? Max;
 
     /// <summary>Current value.</summary>
-    public float Value { get; private set; }
+    public double Value { get; private set; }
 
     /// <summary>Display format, e.g. <c>"F2"</c>.</summary>
     public string Format { get; set; }
@@ -48,13 +60,22 @@ public class O5Slider : O5Object {
     public bool ShowFill { get; set; } = true;
 
     /// <summary>Fired on every value change.</summary>
-    public Action<float>? OnChanged { get; set; }
+    public Action<double>? OnChanged { get; set; }
 
     /// <summary>Fired when a drag or text edit commits.</summary>
-    public Action<float>? OnComplete { get; set; }
+    public Action<double>? OnComplete { get; set; }
 
-    /// <summary>Optional value transform applied on set.</summary>
-    public Func<float, float>? Filter { get; set; }
+    /// <summary>Value transform applied on drag/set.</summary>
+    public Func<double, double>? SliderFilter { get; set; }
+
+    /// <summary>Value transform applied on text input. Null means no transform (free input).</summary>
+    public Func<double, double>? InputFilter { get; set; }
+
+    /// <summary>Maps (min, value, max) to 0..1 for the fill bar and previews. Null means linear.</summary>
+    public Func<double, double, double, double>? NormalizeFunc { get; set; }
+
+    /// <summary>Inverse of <see cref="NormalizeFunc"/>: maps (min, t, max) back to a value. Null means linear. Used by <see cref="SetNormalized"/>.</summary>
+    public Func<double, double, double, double>? DenormalizeFunc { get; set; }
 
     /// <summary>Fill bar rect (anchor-x driven).</summary>
     public RectTransform FillRect { get; }
@@ -81,7 +102,7 @@ public class O5Slider : O5Object {
     public Image OutlineImage { get; }
 
     /// <summary>Last valid formula result, if any.</summary>
-    public float? LastValidValue { get; private set; }
+    public double? LastValidValue { get; private set; }
     private bool _isUpdatingFromCode;
 
     private ITweenHandle? _fillTween, _changeTween, _stateTween;
@@ -99,14 +120,19 @@ public class O5Slider : O5Object {
     /// <param name="changedUpImage">Fill-bar changed-dot image.</param>
     /// <param name="outlineImage">Hover outline image.</param>
     /// <param name="defaultValue">Reset target.</param>
-    /// <param name="min">Range lower bound.</param>
-    /// <param name="max">Range upper bound.</param>
+    /// <param name="min">Drag range lower bound.</param>
+    /// <param name="max">Drag range upper bound.</param>
     /// <param name="value">Initial value.</param>
     /// <param name="format">Display format.</param>
     /// <param name="clampMode">Where clamping applies.</param>
-    /// <param name="filter">Optional value transform.</param>
+    /// <param name="sliderFilter">Value transform for drag/set.</param>
+    /// <param name="inputFilter">Value transform for text input. Null = free.</param>
     /// <param name="onChanged">Change callback.</param>
     /// <param name="onComplete">Commit callback.</param>
+    /// <param name="inputMin">Text-input lower bound. Null falls back to min.</param>
+    /// <param name="inputMax">Text-input upper bound. Null falls back to max.</param>
+    /// <param name="normalizeFunc">(min, value, max) to 0..1 mapping. Null means linear.</param>
+    /// <param name="denormalizeFunc">Inverse mapping for <see cref="SetNormalized"/>. Null means linear.</param>
     public O5Slider(
         O5Context ctx,
         string id,
@@ -119,15 +145,20 @@ public class O5Slider : O5Object {
         Image changedImage,
         Image changedUpImage,
         Image outlineImage,
-        float? defaultValue,
-        float min,
-        float max,
-        float value,
+        double? defaultValue,
+        double min,
+        double max,
+        double value,
         string format,
         ClampMode clampMode,
-        Func<float, float>? filter,
-        Action<float>? onChanged,
-        Action<float>? onComplete
+        Func<double, double>? sliderFilter,
+        Func<double, double>? inputFilter,
+        Action<double>? onChanged,
+        Action<double>? onComplete,
+        double? inputMin = null,
+        double? inputMax = null,
+        Func<double, double, double, double>? normalizeFunc = null,
+        Func<double, double, double, double>? denormalizeFunc = null
     ) : base(ctx, id, rect) {
         FillRect = fillRect;
         FillImage = fillImage;
@@ -139,32 +170,57 @@ public class O5Slider : O5Object {
                     return;
                 }
 
-                var (result, state) = Evaluator<float>.Evaluate(val, Value);
+                var (rawResult, rawState) = Evaluator<double>.Evaluate(val, Value);
+                bool clampsInput = ClampMode is ClampMode.Input or ClampMode.All;
+                LastValidValue = rawState != EvalState.Error
+                    ? ApplyInputFilter(ClampSafe(rawResult, EffectiveInputMin, EffectiveInputMax, clampsInput))
+                    : null;
 
-                LastValidValue = state != EvalState.Error ? ApplyFilter(result) : null;
+                double previewResult = rawResult;
+                EvalState previewState = rawState;
+                if (rawState != EvalState.Error && clampsInput) {
+                    // The text range determines what can be committed; the visible
+                    // preview is bounded by the slider track as well. This keeps
+                    // < and > useful when text input intentionally has a wider range.
+                    double previewMin = Math.Max(Min, EffectiveInputMin);
+                    double previewMax = Math.Min(Max, EffectiveInputMax);
+                    if (previewMin > previewMax) {
+                        previewMin = EffectiveInputMin;
+                        previewMax = EffectiveInputMax;
+                    }
 
-                bool isCalc = state != EvalState.Error;
+                    if (rawResult < previewMin) {
+                        previewResult = previewMin;
+                        previewState = EvalState.UnderRange;
+                    } else if (rawResult > previewMax) {
+                        previewResult = previewMax;
+                        previewState = EvalState.OverRange;
+                    }
+                }
+
+                bool isCalc = rawState != EvalState.Error;
                 if (isCalc) {
-                    bool isSameValue = float.TryParse(val, out float parsedVal) &&
-                        Math.Abs(parsedVal - result) < 0.0001f;
+                    bool isSameValue = double.TryParse(val, out double parsedVal) &&
+                        Math.Abs(parsedVal - previewResult) < 0.0000001 &&
+                        previewState is not (EvalState.OverRange or EvalState.UnderRange);
 
                     if (isSameValue) {
                         PreviewLabel.text = "";
-                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true, result);
+                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, previewState), true, previewResult);
                     } else {
-                        string valStr = (Filter?.Invoke(result) ?? result).ToString();
-                        string symbol = state switch {
+                        string valStr = ApplyInputFilter(previewResult).ToString();
+                        string symbol = previewState switch {
                             EvalState.OverRange => "<",
                             EvalState.UnderRange => ">",
                             _ => "="
                         };
 
                         PreviewLabel.text = $"{valStr} {symbol} <color=#00000000>{val}</color>";
-                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true, result);
+                        SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, previewState), true, previewResult);
                     }
                 } else {
                     PreviewLabel.text = "";
-                    SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, state), true);
+                    SetStateVisuals(MathVisuals.GetStateColor(Ctx.Theme, rawState), true);
                 }
             },
             (val) => {
@@ -196,12 +252,17 @@ public class O5Slider : O5Object {
         DefaultValue = defaultValue;
         Min = min;
         Max = max;
+        InputMin = inputMin;
+        InputMax = inputMax;
         OnChanged = onChanged;
         OnComplete = onComplete;
         Format = format;
         ClampMode = clampMode;
-        Filter = filter;
-        Value = ApplyFilter(value);
+        SliderFilter = sliderFilter;
+        InputFilter = inputFilter;
+        NormalizeFunc = normalizeFunc;
+        DenormalizeFunc = denormalizeFunc;
+        Value = ApplySliderFilter(value);
         Value = ClampSafe(Value, Min, Max, ClampMode is ClampMode.All);
 
         RegisterTick();
@@ -217,21 +278,21 @@ public class O5Slider : O5Object {
         InputCore.OnTick();
     }
 
-    /// <summary>Sets the value, optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Sets the value (drag/code path), optionally invoking <see cref="OnChanged"/>.</summary>
     /// <param name="value">New value. NaN is ignored.</param>
     /// <param name="invoke">Fire the change callback.</param>
-    /// <param name="noFilter">Skip <see cref="Filter"/>.</param>
-    public void Set(float value, bool invoke = true, bool noFilter = false) {
+    /// <param name="noFilter">Skip <see cref="SliderFilter"/>.</param>
+    public void Set(double value, bool invoke = true, bool noFilter = false) {
         if (IsDisposed) {
             return;
         }
 
-        if (float.IsNaN(value)) {
+        if (double.IsNaN(value)) {
             return;
         }
 
         if (!noFilter) {
-            value = ApplyFilter(value);
+            value = ApplySliderFilter(value);
         }
 
         Value = ClampSafe(value, Min, Max, ClampMode is ClampMode.All);
@@ -247,15 +308,15 @@ public class O5Slider : O5Object {
         UpdateVisual();
     }
 
-    private void SetFromInput(float value) {
-        if (IsDisposed || float.IsNaN(value)) {
+    private void SetFromInput(double value) {
+        if (IsDisposed || double.IsNaN(value)) {
             return;
         }
 
         Value = ClampSafe(
             value,
-            Min,
-            Max,
+            EffectiveInputMin,
+            EffectiveInputMax,
             ClampMode is ClampMode.Input or ClampMode.All
         );
 
@@ -271,24 +332,24 @@ public class O5Slider : O5Object {
     /// <summary>Moves the reset target and refreshes visuals.</summary>
     /// <param name="value">New default.</param>
     /// <param name="noAnimate">Snap instead of animating.</param>
-    public void SetDefaultValue(float? value, bool noAnimate = false) {
+    public void SetDefaultValue(double? value, bool noAnimate = false) {
         if (IsDisposed) {
             return;
         }
 
-        if (value == null || float.IsNaN(value.Value)) {
+        if (value == null || double.IsNaN(value.Value)) {
             DefaultValue = null;
             UpdateVisual(noAnimate);
             return;
         }
 
-        DefaultValue = ClampSafe(ApplyFilter(value.Value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
+        DefaultValue = ClampSafe(ApplySliderFilter(value.Value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
         UpdateVisual(noAnimate);
     }
 
-    private float ClampSafe(float value, float min, float max, bool clamp) {
-        if (float.IsNaN(value)) {
-            return Value;
+    private static double ClampSafe(double value, double min, double max, bool clamp) {
+        if (double.IsNaN(value)) {
+            return value;
         }
 
         if (!clamp) {
@@ -306,19 +367,54 @@ public class O5Slider : O5Object {
         return value;
     }
 
-    /// <summary>Current value as 0..1 across the range.</summary>
-    public float Normalize() => Mathf.InverseLerp(Min, Max, Value);
+    /// <summary>Current value as 0..1 across the drag range.</summary>
+    public double Normalize() => Normalize(Value);
 
-    /// <summary>Arbitrary value as 0..1 across the range.</summary>
+    /// <summary>Arbitrary value as 0..1 across the drag range.</summary>
     /// <param name="value">Value to normalize.</param>
-    public float Normalize(float value) => Mathf.InverseLerp(Min, Max, value);
+    public double Normalize(double value) => (NormalizeFunc ?? LinearNormalize)(Min, value, Max);
 
     /// <summary>Sets the value from a 0..1 position.</summary>
     /// <param name="t">Normalized position.</param>
     /// <param name="invoke">Fire the change callback.</param>
-    public void SetNormalized(float t, bool invoke = true) => Set(Mathf.Lerp(Min, Max, t), invoke);
+    public void SetNormalized(double t, bool invoke = true) => Set((DenormalizeFunc ?? LinearDenormalize)(Min, t, Max), invoke);
 
-    private float ApplyFilter(float v) => Filter?.Invoke(v) ?? v;
+    /// <summary>Default linear (min, value, max) to 0..1 mapping.</summary>
+    public static double LinearNormalize(double min, double value, double max) {
+        double span = max - min;
+        if (span == 0d) {
+            return 0d;
+        }
+
+        return (value - min) / span;
+    }
+
+    /// <summary>Default linear (min, t, max) to value mapping.</summary>
+    public static double LinearDenormalize(double min, double t, double max) => min + ((max - min) * t);
+
+    /// <summary>Logarithmic (min, value, max) to 0..1 mapping. Requires min &gt; 0; falls back to linear otherwise.</summary>
+    public static double LogNormalize(double min, double value, double max) {
+        if (min <= 0d || max <= 0d || value <= 0d || max == min) {
+            return LinearNormalize(min, value, max);
+        }
+
+        return Math.Log(value / min) / Math.Log(max / min);
+    }
+
+    /// <summary>Inverse of <see cref="LogNormalize"/>. Requires min &gt; 0; falls back to linear otherwise.</summary>
+    public static double LogDenormalize(double min, double t, double max) {
+        if (min <= 0d || max <= 0d || max == min) {
+            return LinearDenormalize(min, t, max);
+        }
+
+        return min * Math.Pow(max / min, t);
+    }
+
+    private double ApplySliderFilter(double v) => SliderFilter?.Invoke(v) ?? v;
+
+    private double ApplyInputFilter(double v) => InputFilter?.Invoke(v) ?? v;
+
+    private static float ToFillT(double normalized) => (float)Math.Clamp(normalized, 0d, 1d);
 
     /// <summary>Refreshes fill, changed-dots and value box.</summary>
     /// <param name="noAnimate">Snap instead of animating.</param>
@@ -330,12 +426,12 @@ public class O5Slider : O5Object {
         _fillTween?.Kill();
         _changeTween?.Kill();
 
-        float changeAlpha = DefaultValue.HasValue && Math.Abs(DefaultValue.Value - Value) > 0.001f ? 1f : 0f;
+        float changeAlpha = DefaultValue.HasValue && Math.Abs(DefaultValue.Value - Value) > 0.0001 ? 1f : 0f;
 
         if (noAnimate) {
             if (ShowFill) {
                 Vector2 fra = FillRect.anchorMax;
-                fra.x = Mathf.Clamp01(Normalize());
+                fra.x = ToFillT(Normalize());
                 FillRect.anchorMax = fra;
             }
 
@@ -352,7 +448,7 @@ public class O5Slider : O5Object {
         }
 
         if (ShowFill) {
-            _fillTween = TweenAnchorMaxX(FillRect, Mathf.Clamp01(Normalize()), 0.6f, O5Ease.OutExpo);
+            _fillTween = TweenAnchorMaxX(FillRect, ToFillT(Normalize()), 0.6f, O5Ease.OutExpo);
         }
 
         var changed = ChangedImage;
@@ -378,7 +474,7 @@ public class O5Slider : O5Object {
             1f, 0.2f);
     }
 
-    private void SetStateVisuals(Color targetColor, bool isCalculating, float? value = null) {
+    private void SetStateVisuals(Color targetColor, bool isCalculating, double? value = null) {
         if (IsDisposed) {
             return;
         }
@@ -401,26 +497,26 @@ public class O5Slider : O5Object {
             () => 0f,
             x => {
                 if (outline) {
-                    outline.color = Color.Lerp(startOutline, new Color(targetColor.r, targetColor.g, targetColor.b, isCalculating ? targetColor.a : 0f), x);
+                    outline.color = Color.Lerp(startOutline, O5Palette.WithAlpha(targetColor, isCalculating ? targetColor.a : 0f), x);
                 }
 
                 if (fill) {
-                    fill.color = Color.Lerp(startFill, new Color(targetColor.r, targetColor.g, targetColor.b, targetFillAlpha), x);
+                    fill.color = Color.Lerp(startFill, O5Palette.WithAlpha(targetColor, targetFillAlpha), x);
                 }
 
                 if (changed) {
-                    changed.color = Color.Lerp(startChanged, new Color(targetColor.r, targetColor.g, targetColor.b, changed.color.a), x);
+                    changed.color = Color.Lerp(startChanged, O5Palette.WithAlpha(targetColor, changed.color.a), x);
                 }
 
                 if (field) {
-                    field.caretColor = Color.Lerp(startCaret, new Color(targetColor.r, targetColor.g, targetColor.b, field.caretColor.a), x);
+                    field.caretColor = Color.Lerp(startCaret, O5Palette.WithAlpha(targetColor, field.caretColor.a), x);
                 }
             },
             1f, 0.2f);
 
         if (showFill && value.HasValue && isCalculating) {
             _fillTween?.Kill();
-            _fillTween = TweenAnchorMaxX(FillRect, Mathf.Clamp01(Normalize(value.Value)), 0.4f, O5Ease.OutExpo);
+            _fillTween = TweenAnchorMaxX(FillRect, ToFillT(Normalize(value.Value)), 0.4f, O5Ease.OutExpo);
         }
     }
 

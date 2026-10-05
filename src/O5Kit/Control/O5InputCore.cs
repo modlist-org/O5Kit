@@ -154,12 +154,11 @@ public class O5InputCore {
         }
 
         var field = InputField;
-        var active = Ctx.Theme.ObjectActive;
         _caretTween = Ctx.Tween.TweenFloat(
             () => field ? field.caretColor.a : 0.35f,
             v => {
                 if (field) {
-                    var color = active;
+                    var color = field.caretColor;
                     color.a = v;
                     field.caretColor = color;
                 }
@@ -173,12 +172,11 @@ public class O5InputCore {
         }
 
         var field = InputField;
-        var active = Ctx.Theme.ObjectActive;
         _caretTween = Ctx.Tween.TweenFloat(
             () => field ? field.caretColor.a : 1f,
             v => {
                 if (field) {
-                    var color = active;
+                    var color = field.caretColor;
                     color.a = v;
                     field.caretColor = color;
                 }
@@ -193,7 +191,7 @@ public class O5InputCore {
 
         _placeholderTween?.Kill();
 
-        float target = focused ? 0f : 0.2f;
+        float target = focused ? 0f : Ctx.Theme.TextFaintAlpha;
         float duration = focused ? 0.2f : 0.3f;
 
         var ph = Placeholder;

@@ -17,36 +17,46 @@ public static partial class O5Factory {
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
     /// <param name="defaultValue">Reset target.</param>
-    /// <param name="min">Range lower bound.</param>
-    /// <param name="max">Range upper bound.</param>
+    /// <param name="min">Drag range lower bound.</param>
+    /// <param name="max">Drag range upper bound.</param>
     /// <param name="value">Initial value.</param>
     /// <param name="format">Display format, e.g. <c>"F2"</c>.</param>
     /// <param name="clampMode">Where clamping applies.</param>
-    /// <param name="filter">Optional value transform.</param>
+    /// <param name="sliderFilter">Value transform for drag/set.</param>
+    /// <param name="inputFilter">Value transform for text input. Null = free.</param>
     /// <param name="onChanged">Change callback.</param>
     /// <param name="onComplete">Drag/edit commit callback.</param>
     /// <param name="text">Label text.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="showFill">Show the fill bar.</param>
+    /// <param name="inputMin">Text-input lower bound. Null falls back to min.</param>
+    /// <param name="inputMax">Text-input upper bound. Null falls back to max.</param>
     /// <param name="dragStep">Value per pixel. Null scales by control width.</param>
     /// <param name="blockHoverWhileDragging">Cover the canvas with a drag blocker.</param>
+    /// <param name="normalizeFunc">(min, value, max) to 0..1 mapping. Null means linear.</param>
+    /// <param name="denormalizeFunc">Inverse mapping for <see cref="O5Slider.SetNormalized"/>. Null means linear.</param>
     public static O5Slider Slider(
         O5Context ctx,
         Transform parent,
-        float? defaultValue,
-        float min,
-        float max,
-        float value,
+        double? defaultValue,
+        double min,
+        double max,
+        double value,
         string format,
         ClampMode clampMode,
-        Func<float, float>? filter,
-        Action<float>? onChanged,
-        Action<float>? onComplete,
+        Func<double, double>? sliderFilter,
+        Func<double, double>? inputFilter,
+        Action<double>? onChanged,
+        Action<double>? onComplete,
         string text,
         string id,
         bool showFill = true,
-        float? dragStep = null,
-        bool blockHoverWhileDragging = false
+        double? inputMin = null,
+        double? inputMax = null,
+        double? dragStep = null,
+        bool blockHoverWhileDragging = false,
+        Func<double, double, double, double>? normalizeFunc = null,
+        Func<double, double, double, double>? denormalizeFunc = null
     ) {
         RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
@@ -119,7 +129,8 @@ public static partial class O5Factory {
         O5Slider slider = new(
             ctx, id, rect, fillRect, fillImg, label, inputField, previewLabel,
             changeImg, changeUpImg, O5Effects.HoverOutline(ctx, rect.gameObject, trigger), defaultValue, min, max,
-            value, format, clampMode, filter, onChanged, onComplete
+            value, format, clampMode, sliderFilter, inputFilter, onChanged, onComplete, inputMin, inputMax,
+            normalizeFunc, denormalizeFunc
         ) {
             ShowFill = showFill
         };
@@ -150,13 +161,13 @@ public static partial class O5Factory {
             }
         };
 
-        float Apply(float v) {
-            v = filter != null ? filter(v) : v;
+        double Apply(double v) {
+            v = sliderFilter != null ? sliderFilter(v) : v;
             return slider.ClampMode is ClampMode.Slider or ClampMode.All ? Math.Clamp(v, min, max) : v;
         }
 
         bool isDragging = false;
-        float cachedValue = 0f;
+        double cachedValue = 0d;
         Vector2Int resetPos = Vector2Int.zero;
         Vector2 previousMousePos = Vector2.zero;
         Vector2 startMousePos = Vector2.zero;
