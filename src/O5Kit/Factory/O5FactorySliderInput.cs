@@ -143,7 +143,7 @@ public static partial class O5Factory {
                     }
 
                     if (slider.DefaultValue.HasValue) {
-                        slider.Set(Apply(slider.DefaultValue.Value));
+                        slider.Set(slider.DefaultValue.Value);
                         slider.OnComplete?.Invoke(slider.Value);
                     }
                     break;
@@ -152,7 +152,7 @@ public static partial class O5Factory {
 
         float Apply(float v) {
             v = filter != null ? filter(v) : v;
-            return slider.ClampMode == ClampMode.None ? v : Math.Clamp(v, min, max);
+            return slider.ClampMode is ClampMode.Slider or ClampMode.All ? Math.Clamp(v, min, max) : v;
         }
 
         bool isDragging = false;
@@ -206,7 +206,7 @@ public static partial class O5Factory {
                         cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * ctx.Config.SliderSensitivity / finalPixelWidth;
                     }
 
-                    if (slider.ClampMode != ClampMode.None) {
+                    if (slider.ClampMode is ClampMode.Slider or ClampMode.All) {
                         cachedValue = Math.Clamp(cachedValue, min, max);
                     }
 
@@ -295,7 +295,7 @@ public static partial class O5Factory {
             }
         };
 
-        slider.Set(Apply(value), false);
+        slider.Set(value, false);
 
         return slider;
     }

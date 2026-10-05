@@ -202,7 +202,7 @@ public class O5Slider : O5Object {
         ClampMode = clampMode;
         Filter = filter;
         Value = ApplyFilter(value);
-        Value = ClampSafe(Value, Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
+        Value = ClampSafe(Value, Min, Max, ClampMode is ClampMode.All);
 
         RegisterTick();
         UpdateVisual(true);
@@ -234,7 +234,7 @@ public class O5Slider : O5Object {
             value = ApplyFilter(value);
         }
 
-        Value = ClampSafe(value, Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
+        Value = ClampSafe(value, Min, Max, ClampMode is ClampMode.All);
 
         if (invoke) {
             OnChanged?.Invoke(Value);
