@@ -130,6 +130,12 @@ public class O5Button : O5Object {
 
         OnPressEnter();
         OnClick?.Invoke();
+        if (IsDisposed) {
+            return;
+        }
+
+        _pressed = false;
+        Tint(_hovered ? Ctx.Theme.ButtonHover : NormalColor, 0.12f);
     }
 
     /// <summary>Invokes <see cref="OnClick"/> and flashes the pressed tint (for programmatic clicks).</summary>
