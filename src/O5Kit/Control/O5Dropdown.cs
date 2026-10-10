@@ -130,13 +130,15 @@ public class O5Dropdown<T> : O5Object {
 
         Value = value;
 
-        Label.text = Value != null ? Display(Value) : "";
+        if (Label != null && Label) {
+            Label.text = Value != null ? Display(Value) : "";
+        }
 
         if (invoke) {
             OnChanged?.Invoke(value);
         }
 
-        UpdateVisual();
+        UpdateVisual(true);
 
         OnLayoutChanged?.Invoke();
     }
@@ -191,7 +193,7 @@ public class O5Dropdown<T> : O5Object {
     /// <summary>Refreshes triangle, tint and changed-dot.</summary>
     /// <param name="noAnimate">Snap instead of animating.</param>
     public void UpdateVisual(bool noAnimate = false) {
-        if (IsDisposed) {
+        if (IsDisposed || Rect == null || !Rect) {
             return;
         }
 
@@ -205,17 +207,27 @@ public class O5Dropdown<T> : O5Object {
         Color targetColor = Expanded ? theme.ObjectActive : theme.ObjectInactive;
 
         if (noAnimate) {
-            TriangleRect.localRotation = Quaternion.Euler(0f, 0f, targetRot);
-            TriangleImage.color = targetColor;
+            if (TriangleRect) {
+                TriangleRect.localRotation = Quaternion.Euler(0f, 0f, targetRot);
+            }
+            if (TriangleImage) {
+                TriangleImage.color = targetColor;
+            }
 
-            Color c = ChangedImage.color;
-            c.a = isDefault ? 0f : 1f;
-            ChangedImage.color = c;
+            if (ChangedImage) {
+                Color c = ChangedImage.color;
+                c.a = isDefault ? 0f : 1f;
+                ChangedImage.color = c;
+            }
 
             return;
         }
 
         var triRect = TriangleRect;
+        if (!triRect) {
+            return;
+        }
+
         float startRot = triRect.localRotation.eulerAngles.z;
         if (startRot > 180f) {
             startRot -= 360f;
@@ -231,22 +243,26 @@ public class O5Dropdown<T> : O5Object {
             1f, 0.4f, ease: O5Ease.OutBack);
 
         var triImg = TriangleImage;
-        _triangleTintTween = Ctx.Tween.TweenColor(
-            () => triImg.color, v => triImg.color = v, targetColor, 0.2f);
+        if (triImg) {
+            _triangleTintTween = Ctx.Tween.TweenColor(
+                () => triImg.color, v => { if (triImg) triImg.color = v; }, targetColor, 0.2f);
+        }
 
         var changed = ChangedImage;
-        float changedStart = changed.color.a;
-        float changedTarget = isDefault ? 0f : 1f;
-        _changeTween = Ctx.Tween.TweenFloat(
-            () => 0f,
-            t => {
-                if (changed) {
-                    var c = changed.color;
-                    c.a = Mathf.LerpUnclamped(changedStart, changedTarget, t);
-                    changed.color = c;
-                }
-            },
-            1f, 0.2f);
+        if (changed) {
+            float changedStart = changed.color.a;
+            float changedTarget = isDefault ? 0f : 1f;
+            _changeTween = Ctx.Tween.TweenFloat(
+                () => 0f,
+                t => {
+                    if (changed) {
+                        var c = changed.color;
+                        c.a = Mathf.LerpUnclamped(changedStart, changedTarget, t);
+                        changed.color = c;
+                    }
+                },
+                1f, 0.2f);
+        }
     }
 
     /// <summary>Rebuilds list rows from <see cref="Values"/>.</summary>

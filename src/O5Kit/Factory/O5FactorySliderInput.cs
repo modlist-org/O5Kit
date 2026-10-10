@@ -163,7 +163,7 @@ public static partial class O5Factory {
 
         double Apply(double v) {
             v = sliderFilter != null ? sliderFilter(v) : v;
-            return slider.ClampMode is ClampMode.Slider or ClampMode.All ? Math.Clamp(v, min, max) : v;
+            return slider.ClampMode is ClampMode.Slider or ClampMode.All ? MathCompat.Clamp(v, min, max) : v;
         }
 
         bool isDragging = false;
@@ -175,7 +175,7 @@ public static partial class O5Factory {
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.BeginDrag, (e) => {
-                Debug.Log($"[O5DBG] BeginDrag btn={O5Input.GetMouseButton(0)} legacyBtn={UnityEngine.Input.GetMouseButton(0)} os={O5Input.OSMousePosition} unity={O5Input.MousePosition} legacy={(Vector2)UnityEngine.Input.mousePosition} screen={Screen.width}x{Screen.height}");
+                Debug.Log($"[O5DBG] BeginDrag btn={O5Input.GetMouseButton(0)} os={O5Input.OSMousePosition} unity={O5Input.MousePosition} screen={Screen.width}x{Screen.height}");
                 if (!O5Input.GetMouseButton(0)) {
                     return;
                 }
@@ -218,7 +218,7 @@ public static partial class O5Factory {
                     }
 
                     if (slider.ClampMode is ClampMode.Slider or ClampMode.All) {
-                        cachedValue = Math.Clamp(cachedValue, min, max);
+                        cachedValue = MathCompat.Clamp(cachedValue, min, max);
                     }
 
                     slider.Set(Apply(cachedValue));
@@ -405,7 +405,7 @@ public static partial class O5Factory {
         text.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
         text.text = value ?? string.Empty;
         text.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
-        text.textWrappingMode = multiline ? TMPro.TextWrappingModes.Normal : TMPro.TextWrappingModes.NoWrap;
+        text.enableWordWrapping = multiline;
         text.extraPadding = true;
         text.raycastTarget = false;
 
@@ -419,7 +419,7 @@ public static partial class O5Factory {
         placeholderText.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
         placeholderText.text = placeholder;
         placeholderText.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
-        placeholderText.textWrappingMode = multiline ? TMPro.TextWrappingModes.Normal : TMPro.TextWrappingModes.NoWrap;
+        placeholderText.enableWordWrapping = multiline;
         placeholderText.color = ctx.Theme.TextFaint;
         placeholderText.extraPadding = true;
         placeholderText.raycastTarget = false;

@@ -13,6 +13,7 @@
 // * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using O5Kit.Input.OS;
 using O5Kit.Input.OS.Impl;
@@ -28,27 +29,53 @@ namespace O5Kit.Input;
 /// </summary>
 public static class O5Input {
     private static Type? t_Keyboard, t_Key, t_ButtonControl, t_Mouse, t_Pointer;
-    private static PropertyInfo? p_kbCurrent, p_kbIndexer, p_btnIsPressed, p_btnWasPressed, p_btnWasReleased;
+    private static PropertyInfo? p_kbCurrent, p_kbIndexer, p_kbAnyKey, p_kbAllKeys;
+    private static PropertyInfo? p_btnIsPressed, p_btnWasPressed, p_btnWasReleased;
     private static PropertyInfo? p_mouseCurrent, p_mousePosition, p_mouseScroll, p_mouseDelta;
     private static PropertyInfo? p_leftBtn, p_rightBtn, p_middleBtn;
     private static MethodInfo? m_ReadV2;
     private static OsApi? _osAPI;
     private static bool _initialized;
 
+    private static object? _lastKeyboardInstance;
+    private static object[]? _cachedKeyControls;
+    private static readonly Dictionary<KeyCode, object[]?> _keyIndexerArgsCache = new();
+
+    private static Type? FindType(string typeName, string assemblyName) {
+        Type? type = Type.GetType($"{typeName}, {assemblyName}");
+        if (type != null) {
+            return type;
+        }
+
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        for (int i = 0; i < assemblies.Length; i++) {
+            var asm = assemblies[i];
+            if (string.Equals(asm.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase)) {
+                type = asm.GetType(typeName);
+                if (type != null) {
+                    return type;
+                }
+            }
+        }
+        return null;
+    }
+
     private static void EnsureInitialized() {
         if (_initialized) {
             return;
         }
 
-        t_Keyboard = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
-        t_Key = Type.GetType("UnityEngine.InputSystem.Key, Unity.InputSystem");
-        t_ButtonControl = Type.GetType("UnityEngine.InputSystem.Controls.ButtonControl, Unity.InputSystem");
-        t_Mouse = Type.GetType("UnityEngine.InputSystem.Mouse, Unity.InputSystem");
-        t_Pointer = Type.GetType("UnityEngine.InputSystem.Pointer, Unity.InputSystem");
+        t_Keyboard = FindType("UnityEngine.InputSystem.Keyboard", "Unity.InputSystem");
+        t_Key = FindType("UnityEngine.InputSystem.Key", "Unity.InputSystem");
+        t_ButtonControl = FindType("UnityEngine.InputSystem.Controls.ButtonControl", "Unity.InputSystem");
+        t_Mouse = FindType("UnityEngine.InputSystem.Mouse", "Unity.InputSystem");
+        t_Pointer = FindType("UnityEngine.InputSystem.Pointer", "Unity.InputSystem");
 
         if (t_Keyboard != null) {
             p_kbCurrent = t_Keyboard.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
             p_kbIndexer = t_Keyboard.GetProperty("Item", [t_Key!]);
+            p_kbAnyKey = t_Keyboard.GetProperty("anyKey", BindingFlags.Public | BindingFlags.Instance);
+            p_kbAllKeys = t_Keyboard.GetProperty("allKeys", BindingFlags.Public | BindingFlags.Instance);
             p_btnIsPressed = t_ButtonControl!.GetProperty("isPressed");
             p_btnWasPressed = t_ButtonControl.GetProperty("wasPressedThisFrame");
             p_btnWasReleased = t_ButtonControl.GetProperty("wasReleasedThisFrame");
@@ -75,65 +102,195 @@ public static class O5Input {
         _initialized = true;
     }
 
+    private static object? GetActiveKeyboard() {
+        if (p_kbCurrent == null) {
+            return null;
+        }
+
+        try {
+            object? kb = p_kbCurrent.GetValue(null);
+            if (kb != null && !ReferenceEquals(kb, _lastKeyboardInstance)) {
+                _lastKeyboardInstance = kb;
+                UpdateKeyControlsCache(kb);
+            }
+            return kb;
+        } catch {
+            return null;
+        }
+    }
+
+    private static void UpdateKeyControlsCache(object kb) {
+        if (p_kbAllKeys == null) {
+            _cachedKeyControls = null;
+            return;
+        }
+
+        try {
+            object? allKeysObj = p_kbAllKeys.GetValue(kb);
+            if (allKeysObj is System.Collections.IEnumerable enumerable) {
+                var list = new List<object>();
+                foreach (var item in enumerable) {
+                    if (item != null) {
+                        list.Add(item);
+                    }
+                }
+                _cachedKeyControls = list.ToArray();
+            } else {
+                _cachedKeyControls = null;
+            }
+        } catch {
+            _cachedKeyControls = null;
+        }
+    }
+
     /// <summary>Whether a keyboard key is held.</summary>
     /// <param name="key">Key to query.</param>
     public static bool GetKey(KeyCode key) {
         EnsureInitialized();
-        return t_Keyboard != null ? TryInvoke(p_btnIsPressed, GetKeyControl(key)) : UnityEngine.Input.GetKey(key);
+        if (TryReadKeyboardKey(p_btnIsPressed, key, out bool pressed) && pressed) {
+            return true;
+        }
+        return TryReadLegacyKey(key, 0);
     }
 
     /// <summary>Whether a keyboard key went down this frame.</summary>
     /// <param name="key">Key to query.</param>
     public static bool GetKeyDown(KeyCode key) {
         EnsureInitialized();
-        return t_Keyboard != null ? TryInvoke(p_btnWasPressed, GetKeyControl(key)) : UnityEngine.Input.GetKeyDown(key);
+        if (TryReadKeyboardKey(p_btnWasPressed, key, out bool pressed) && pressed) {
+            return true;
+        }
+        return TryReadLegacyKey(key, 1);
     }
 
     /// <summary>Whether a keyboard key went up this frame.</summary>
     /// <param name="key">Key to query.</param>
     public static bool GetKeyUp(KeyCode key) {
         EnsureInitialized();
-        return t_Keyboard != null ? TryInvoke(p_btnWasReleased, GetKeyControl(key)) : UnityEngine.Input.GetKeyUp(key);
+        if (TryReadKeyboardKey(p_btnWasReleased, key, out bool released) && released) {
+            return true;
+        }
+        return TryReadLegacyKey(key, 2);
     }
 
     /// <summary>Whether a mouse button is held.</summary>
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButton(int btn) {
         EnsureInitialized();
-        return TryReadMouseButton(p_btnIsPressed, btn, out bool pressed)
-            ? pressed
-            : TryReadLegacyMouseButton(btn, 0);
+        if (TryReadMouseButton(p_btnIsPressed, btn, out bool pressed) && pressed) {
+            return true;
+        }
+        return TryReadLegacyMouseButton(btn, 0);
     }
 
     /// <summary>Whether a mouse button went down this frame.</summary>
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButtonDown(int btn) {
         EnsureInitialized();
-        return TryReadMouseButton(p_btnWasPressed, btn, out bool pressed)
-            ? pressed
-            : TryReadLegacyMouseButton(btn, 1);
+        if (TryReadMouseButton(p_btnWasPressed, btn, out bool pressed) && pressed) {
+            return true;
+        }
+        return TryReadLegacyMouseButton(btn, 1);
     }
 
     /// <summary>Whether a mouse button went up this frame.</summary>
     /// <param name="btn">0 = left, 1 = right, 2 = middle.</param>
     public static bool GetMouseButtonUp(int btn) {
         EnsureInitialized();
-        return TryReadMouseButton(p_btnWasReleased, btn, out bool released)
-            ? released
-            : TryReadLegacyMouseButton(btn, 2);
+        if (TryReadMouseButton(p_btnWasReleased, btn, out bool released) && released) {
+            return true;
+        }
+        return TryReadLegacyMouseButton(btn, 2);
+    }
+
+    /// <summary>True if any keyboard key or mouse button is currently held down.</summary>
+    public static bool AnyKey {
+        get {
+            EnsureInitialized();
+            try {
+                if (UnityEngine.Input.anyKey) {
+                    return true;
+                }
+            } catch { }
+            return TryReadAnyKey(out bool held) && held;
+        }
+    }
+
+    /// <summary>True if any keyboard key or mouse button went down this frame.</summary>
+    public static bool AnyKeyDown {
+        get {
+            EnsureInitialized();
+            try {
+                if (UnityEngine.Input.anyKeyDown) {
+                    return true;
+                }
+            } catch { }
+            return TryReadAnyKeyDown(out bool down) && down;
+        }
+    }
+
+    /// <summary>True if any keyboard key went down this frame.</summary>
+    public static bool AnyKeyboardKeyDown {
+        get {
+            EnsureInitialized();
+            try {
+                if (UnityEngine.Input.anyKeyDown) {
+                    return true;
+                }
+            } catch { }
+            return TryReadAnyKeyboardKeyDown(out bool down) && down;
+        }
+    }
+
+    /// <summary>Current IME composition string.</summary>
+    public static string CompositionString {
+        get {
+            EnsureInitialized();
+            try {
+                return UnityEngine.Input.compositionString;
+            } catch {
+                return string.Empty;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the number of keys that went down this frame.
+    /// Prefers Input System's active keyboard controls and falls back to testing legacyCandidateKeys.
+    /// </summary>
+    public static int GetDownKeyCount(KeyCode[]? legacyCandidateKeys = null) {
+        EnsureInitialized();
+        if (TryCountNewInputDownKeys(out int count)) {
+            return count;
+        }
+
+        if (legacyCandidateKeys == null) {
+            return 0;
+        }
+
+        try {
+            int legacyCount = 0;
+            for (int i = 0; i < legacyCandidateKeys.Length; i++) {
+                if (UnityEngine.Input.GetKeyDown(legacyCandidateKeys[i])) {
+                    legacyCount++;
+                }
+            }
+            return legacyCount;
+        } catch {
+            return 0;
+        }
     }
 
     /// <summary>Cursor position in screen pixels (Unity space, origin bottom-left).</summary>
     public static Vector2 MousePosition {
         get {
             EnsureInitialized();
-            if (TryReadMouseVector(p_mousePosition, out Vector2 position)) {
-                return position;
-            }
-
             try {
                 return UnityEngine.Input.mousePosition;
             } catch {
+                if (TryReadMouseVector(p_mousePosition, out Vector2 position)) {
+                    return position;
+                }
                 return Vector2.zero;
             }
         }
@@ -176,20 +333,47 @@ public static class O5Input {
     public static Vector2 MouseScrollDelta {
         get {
             EnsureInitialized();
-            if (TryReadMouseVector(p_mouseScroll, out Vector2 delta)) {
-                return delta;
-            }
-
             try {
                 return UnityEngine.Input.mouseScrollDelta;
             } catch {
+                if (TryReadMouseVector(p_mouseScroll, out Vector2 delta)) {
+                    return delta;
+                }
                 return Vector2.zero;
             }
         }
     }
 
-    private static object? GetKeyControl(KeyCode key) {
-        EnsureInitialized();
+    private static object? GetKeyControl(object kb, KeyCode key) {
+        if (p_kbIndexer == null) {
+            return null;
+        }
+
+        object[]? args;
+        lock (_keyIndexerArgsCache) {
+            if (!_keyIndexerArgsCache.TryGetValue(key, out args)) {
+                object? keyEnum = ParseKeyEnum(key);
+                args = keyEnum != null ? [keyEnum] : null;
+                _keyIndexerArgsCache[key] = args;
+            }
+        }
+
+        if (args == null) {
+            return null;
+        }
+
+        try {
+            return p_kbIndexer.GetValue(kb, args);
+        } catch {
+            return null;
+        }
+    }
+
+    private static object? ParseKeyEnum(KeyCode key) {
+        if (t_Key == null) {
+            return null;
+        }
+
         string s = key.ToString();
         if (s == "BackQuote") {
             s = "Backquote";
@@ -197,9 +381,183 @@ public static class O5Input {
 
         s = s.Replace("Alpha", "Digit").Replace("Control", "Ctrl").Replace("Return", "Enter");
         try {
-            return p_kbIndexer!.GetValue(p_kbCurrent!.GetValue(null), [Enum.Parse(t_Key!, s)]);
+            return Enum.Parse(t_Key, s);
         } catch {
             return null;
+        }
+    }
+
+    private static bool TryReadKeyboardKey(PropertyInfo? property, KeyCode key, out bool value) {
+        value = false;
+        if (property == null) {
+            return false;
+        }
+
+        object? kb = GetActiveKeyboard();
+        if (kb == null) {
+            return false;
+        }
+
+        try {
+            object? control = GetKeyControl(kb, key);
+            if (control == null) {
+                return false;
+            }
+
+            value = (bool)property.GetValue(control)!;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private static bool TryReadLegacyKey(KeyCode key, int state) {
+        try {
+            return state switch {
+                0 => UnityEngine.Input.GetKey(key),
+                1 => UnityEngine.Input.GetKeyDown(key),
+                2 => UnityEngine.Input.GetKeyUp(key),
+                _ => false,
+            };
+        } catch {
+            return false;
+        }
+    }
+
+    private static bool TryCountNewInputDownKeys(out int count) {
+        count = 0;
+        object? kb = GetActiveKeyboard();
+        if (kb == null) {
+            return false;
+        }
+
+        if (p_kbAnyKey != null && p_btnWasPressed != null) {
+            try {
+                object? anyKey = p_kbAnyKey.GetValue(kb);
+                if (anyKey != null && !(bool)p_btnWasPressed.GetValue(anyKey)!) {
+                    return true;
+                }
+            } catch { }
+        }
+
+        if (_cachedKeyControls != null && p_btnWasPressed != null) {
+            try {
+                int c = 0;
+                for (int i = 0; i < _cachedKeyControls.Length; i++) {
+                    if ((bool)p_btnWasPressed.GetValue(_cachedKeyControls[i])!) {
+                        c++;
+                    }
+                }
+                count = c;
+                return true;
+            } catch { }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadAnyKeyboardKeyDown(out bool value) {
+        value = false;
+        object? kb = GetActiveKeyboard();
+        if (kb == null) {
+            return false;
+        }
+
+        if (p_kbAnyKey != null && p_btnWasPressed != null) {
+            try {
+                object? anyKey = p_kbAnyKey.GetValue(kb);
+                if (anyKey != null) {
+                    value = (bool)p_btnWasPressed.GetValue(anyKey)!;
+                    return true;
+                }
+            } catch { }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadAnyKeyDown(out bool value) {
+        value = false;
+        bool hasDevice = false;
+
+        object? kb = GetActiveKeyboard();
+        if (kb != null) {
+            hasDevice = true;
+            if (p_kbAnyKey != null && p_btnWasPressed != null) {
+                try {
+                    object? anyKey = p_kbAnyKey.GetValue(kb);
+                    if (anyKey != null && (bool)p_btnWasPressed.GetValue(anyKey)!) {
+                        value = true;
+                        return true;
+                    }
+                } catch { }
+            }
+        }
+
+        if (p_mouseCurrent != null && p_btnWasPressed != null) {
+            try {
+                object? mouse = p_mouseCurrent.GetValue(null);
+                if (mouse != null) {
+                    hasDevice = true;
+                    if (IsButtonActive(p_leftBtn, mouse, p_btnWasPressed) ||
+                        IsButtonActive(p_rightBtn, mouse, p_btnWasPressed) ||
+                        IsButtonActive(p_middleBtn, mouse, p_btnWasPressed)) {
+                        value = true;
+                        return true;
+                    }
+                }
+            } catch { }
+        }
+
+        return hasDevice;
+    }
+
+    private static bool TryReadAnyKey(out bool value) {
+        value = false;
+        bool hasDevice = false;
+
+        object? kb = GetActiveKeyboard();
+        if (kb != null) {
+            hasDevice = true;
+            if (p_kbAnyKey != null && p_btnIsPressed != null) {
+                try {
+                    object? anyKey = p_kbAnyKey.GetValue(kb);
+                    if (anyKey != null && (bool)p_btnIsPressed.GetValue(anyKey)!) {
+                        value = true;
+                        return true;
+                    }
+                } catch { }
+            }
+        }
+
+        if (p_mouseCurrent != null && p_btnIsPressed != null) {
+            try {
+                object? mouse = p_mouseCurrent.GetValue(null);
+                if (mouse != null) {
+                    hasDevice = true;
+                    if (IsButtonActive(p_leftBtn, mouse, p_btnIsPressed) ||
+                        IsButtonActive(p_rightBtn, mouse, p_btnIsPressed) ||
+                        IsButtonActive(p_middleBtn, mouse, p_btnIsPressed)) {
+                        value = true;
+                        return true;
+                    }
+                }
+            } catch { }
+        }
+
+        return hasDevice;
+    }
+
+    private static bool IsButtonActive(PropertyInfo? btnProp, object mouse, PropertyInfo stateProp) {
+        if (btnProp == null) {
+            return false;
+        }
+
+        try {
+            object? btn = btnProp.GetValue(mouse);
+            return btn != null && (bool)stateProp.GetValue(btn)!;
+        } catch {
+            return false;
         }
     }
 
@@ -259,14 +617,6 @@ public static class O5Input {
                 2 => UnityEngine.Input.GetMouseButtonUp(btn),
                 _ => false,
             };
-        } catch {
-            return false;
-        }
-    }
-
-    private static bool TryInvoke(PropertyInfo? prop, object? target) {
-        try {
-            return target != null && prop != null && (bool)prop.GetValue(target)!;
         } catch {
             return false;
         }

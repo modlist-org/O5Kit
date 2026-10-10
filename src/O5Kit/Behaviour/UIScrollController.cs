@@ -86,7 +86,7 @@ public class UIScrollController
         float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
 
         if (_targetY < 0f || _targetY > maxOffset) {
-            _targetY = Math.Clamp(_targetY, 0f, maxOffset);
+            _targetY = MathCompat.Clamp(_targetY, 0f, maxOffset);
             if (_scrollTween?.IsAlive == true) {
                 // Retarget the in-flight glide instead of freezing mid-way:
                 // killing it here is what made the scroll feel dead near the bottom.
@@ -104,7 +104,7 @@ public class UIScrollController
         }
 
         float y = content.anchoredPosition.y;
-        float clampedY = Math.Clamp(y, 0f, maxOffset);
+        float clampedY = MathCompat.Clamp(y, 0f, maxOffset);
         if (Math.Abs(y - clampedY) > 0.01f) {
             content.anchoredPosition = new Vector2(content.anchoredPosition.x, clampedY);
             _targetY = clampedY;
@@ -184,7 +184,7 @@ public class UIScrollController
             out Vector2 local
         );
 
-        float normalized = 1f - Math.Clamp(
+        float normalized = 1f - MathCompat.Clamp(
             (local.y + (viewportHeight * 0.5f)) / viewportHeight,
             0f, 1f
         );
@@ -208,7 +208,7 @@ public class UIScrollController
         float maxOffset = Math.Max(0f, contentHeight - viewportHeight);
 
         _targetY += deltaPixels;
-        _targetY = Math.Clamp(_targetY, 0f, maxOffset);
+        _targetY = MathCompat.Clamp(_targetY, 0f, maxOffset);
     }
 
     private void ApplyTween() {
@@ -272,7 +272,7 @@ public class UIScrollController
         }
 
         float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
-        _targetY = Math.Clamp(offsetY, 0f, maxOffset);
+        _targetY = MathCompat.Clamp(offsetY, 0f, maxOffset);
         _scrollTween?.Kill();
         _scrollTween = null;
 

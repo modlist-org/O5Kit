@@ -399,10 +399,10 @@ public sealed class O5SpriteEditor : O5Object {
         }
 
         return guide switch {
-            O5SpriteGuide.Left => Math.Clamp(value, 0d, _texture.width - _border.z),
-            O5SpriteGuide.Right => Math.Clamp(value, 0d, _texture.width - _border.x),
-            O5SpriteGuide.Bottom => Math.Clamp(value, 0d, _texture.height - _border.w),
-            _ => Math.Clamp(value, 0d, _texture.height - _border.y)
+            O5SpriteGuide.Left => MathCompat.Clamp(value, 0d, _texture.width - _border.z),
+            O5SpriteGuide.Right => MathCompat.Clamp(value, 0d, _texture.width - _border.x),
+            O5SpriteGuide.Bottom => MathCompat.Clamp(value, 0d, _texture.height - _border.w),
+            _ => MathCompat.Clamp(value, 0d, _texture.height - _border.y)
         };
     }
 

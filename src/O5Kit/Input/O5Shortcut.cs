@@ -25,8 +25,25 @@ public readonly struct O5KeyCombo {
     /// <summary>True while every key is held.</summary>
     public bool IsHeld() => ModifiersHeld() && O5Input.GetKey(Main);
 
-    /// <summary>True on the frame the main key goes down while modifiers are held.</summary>
-    public bool WasPressed() => ModifiersHeld() && O5Input.GetKeyDown(Main);
+    /// <summary>True on the frame the combo was pressed (either main key down while modifiers held, or modifier down while main held).</summary>
+    public bool WasPressed() {
+        if (Modifiers.Length == 0) {
+            return O5Input.GetKeyDown(Main);
+        }
+        bool mainDown = O5Input.GetKeyDown(Main);
+        bool modHeld = ModifiersHeld();
+        if (mainDown && modHeld) {
+            return true;
+        }
+        if (O5Input.GetKey(Main)) {
+            foreach (var mod in Modifiers) {
+                if (O5Input.GetKeyDown(mod) && modHeld) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     /// <summary>True on the frame the main key goes up.</summary>
     public bool WasReleased() => O5Input.GetKeyUp(Main);

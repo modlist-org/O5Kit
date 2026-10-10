@@ -54,7 +54,7 @@ public static partial class O5Factory {
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
         tmp.text = value != null ? display(value) : "";
         tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
-        tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        tmp.enableWordWrapping = false;
         tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
 
         GameObject change = AddSmallChangedCircle(ctx, rect);
@@ -248,7 +248,7 @@ public static partial class O5Factory {
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
         tmp.text = summary(value);
         tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
-        tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        tmp.enableWordWrapping = false;
         tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
 
         GameObject change = AddSmallChangedCircle(ctx, rect);

@@ -41,9 +41,9 @@ public static class O5ResizeCursor {
             wrapMode = TextureWrapMode.Clamp
         };
         bool[] shape = new bool[Size * Size];
-        float rad = angleDegrees * MathF.PI / 180f;
-        float cos = MathF.Cos(rad);
-        float sin = MathF.Sin(rad);
+        float rad = angleDegrees * Mathf.PI / 180f;
+        float cos = Mathf.Cos(rad);
+        float sin = Mathf.Sin(rad);
         float half = Size / 2f;
         for(int y = 0; y < Size; y++) {
             for(int x = 0; x < Size; x++) {

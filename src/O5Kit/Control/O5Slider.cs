@@ -414,7 +414,7 @@ public class O5Slider : O5Object {
 
     private double ApplyInputFilter(double v) => InputFilter?.Invoke(v) ?? v;
 
-    private static float ToFillT(double normalized) => (float)Math.Clamp(normalized, 0d, 1d);
+    private static float ToFillT(double normalized) => (float)MathCompat.Clamp(normalized, 0d, 1d);
 
     /// <summary>Refreshes fill, changed-dots and value box.</summary>
     /// <param name="noAnimate">Snap instead of animating.</param>

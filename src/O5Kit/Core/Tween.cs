@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+#if LITMOTION
 using LitMotion;
 using LitMotion.Extensions;
+#endif
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -68,6 +70,7 @@ public interface ITweenRunner {
     ITweenHandle Delay(float seconds, System.Action? onComplete = null);
 }
 
+#if LITMOTION
 /// <summary>LitMotion-backed runner (default). Driven by a hidden pump through a manual dispatcher, so it works regardless of mod load order.</summary>
 public sealed class LitMotionRunner : ITweenRunner {
     /// <summary>Shared instance used as the <see cref="O5Context"/> default unless overridden.</summary>
@@ -307,6 +310,7 @@ public sealed class LitMotionRunner : ITweenRunner {
         }
     }
 }
+#endif
 
 /// <summary>Zero-dependency unscaled-time runner. Fallback for LitMotion-less builds; good enough for hover/fade micro-animation.</summary>
 public sealed class SimpleTweenRunner : ITweenRunner {
@@ -411,33 +415,33 @@ public sealed class SimpleTweenRunner : ITweenRunner {
 
     private static float ApplyEase(O5Ease ease, float t) => ease switch {
         O5Ease.Linear => t,
-        O5Ease.InSine => 1f - MathF.Cos(t * MathF.PI * 0.5f),
-        O5Ease.OutSine => MathF.Sin(t * MathF.PI * 0.5f),
-        O5Ease.InOutSine => -(MathF.Cos(MathF.PI * t) - 1f) * 0.5f,
+        O5Ease.InSine => 1f - Mathf.Cos(t * Mathf.PI * 0.5f),
+        O5Ease.OutSine => Mathf.Sin(t * Mathf.PI * 0.5f),
+        O5Ease.InOutSine => -(Mathf.Cos(Mathf.PI * t) - 1f) * 0.5f,
         O5Ease.InQuad => t * t,
         O5Ease.OutQuad => 1f - (1f - t) * (1f - t),
-        O5Ease.InOutQuad => t < 0.5f ? 2f * t * t : 1f - MathF.Pow(-2f * t + 2f, 2f) / 2f,
+        O5Ease.InOutQuad => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f,
         O5Ease.InCubic => t * t * t,
-        O5Ease.OutCubic => 1f - MathF.Pow(1f - t, 3f),
-        O5Ease.InOutCubic => t < 0.5f ? 4f * t * t * t : 1f - MathF.Pow(-2f * t + 2f, 3f) / 2f,
-        O5Ease.OutExpo => t >= 1f ? 1f : 1f - MathF.Pow(2f, -10f * t),
-        O5Ease.OutCirc => MathF.Sqrt(1f - MathF.Pow(t - 1f, 2f)),
-        O5Ease.OutBack => 1f + 2.70158f * MathF.Pow(t - 1f, 3f) + 1.70158f * MathF.Pow(t - 1f, 2f),
+        O5Ease.OutCubic => 1f - Mathf.Pow(1f - t, 3f),
+        O5Ease.InOutCubic => t < 0.5f ? 4f * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 3f) / 2f,
+        O5Ease.OutExpo => t >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * t),
+        O5Ease.OutCirc => Mathf.Sqrt(1f - Mathf.Pow(t - 1f, 2f)),
+        O5Ease.OutBack => 1f + 2.70158f * Mathf.Pow(t - 1f, 3f) + 1.70158f * Mathf.Pow(t - 1f, 2f),
         O5Ease.InQuart => t * t * t * t,
-        O5Ease.OutQuart => 1f - MathF.Pow(1f - t, 4f),
-        O5Ease.InOutQuart => t < 0.5f ? 8f * t * t * t * t : 1f - MathF.Pow(-2f * t + 2f, 4f) / 2f,
+        O5Ease.OutQuart => 1f - Mathf.Pow(1f - t, 4f),
+        O5Ease.InOutQuart => t < 0.5f ? 8f * t * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 4f) / 2f,
         O5Ease.InQuint => t * t * t * t * t,
-        O5Ease.OutQuint => 1f - MathF.Pow(1f - t, 5f),
-        O5Ease.InOutQuint => t < 0.5f ? 16f * t * t * t * t * t : 1f - MathF.Pow(-2f * t + 2f, 5f) / 2f,
-        O5Ease.InExpo => t <= 0f ? 0f : MathF.Pow(2f, 10f * t - 10f),
-        O5Ease.InOutExpo => t <= 0f ? 0f : t >= 1f ? 1f : t < 0.5f ? MathF.Pow(2f, 20f * t - 10f) / 2f : (2f - MathF.Pow(2f, -20f * t + 10f)) / 2f,
-        O5Ease.InCirc => 1f - MathF.Sqrt(1f - t * t),
-        O5Ease.InOutCirc => t < 0.5f ? (1f - MathF.Sqrt(1f - 4f * t * t)) / 2f : (MathF.Sqrt(1f - MathF.Pow(-2f * t + 2f, 2f)) + 1f) / 2f,
+        O5Ease.OutQuint => 1f - Mathf.Pow(1f - t, 5f),
+        O5Ease.InOutQuint => t < 0.5f ? 16f * t * t * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 5f) / 2f,
+        O5Ease.InExpo => t <= 0f ? 0f : Mathf.Pow(2f, 10f * t - 10f),
+        O5Ease.InOutExpo => t <= 0f ? 0f : t >= 1f ? 1f : t < 0.5f ? Mathf.Pow(2f, 20f * t - 10f) / 2f : (2f - Mathf.Pow(2f, -20f * t + 10f)) / 2f,
+        O5Ease.InCirc => 1f - Mathf.Sqrt(1f - t * t),
+        O5Ease.InOutCirc => t < 0.5f ? (1f - Mathf.Sqrt(1f - 4f * t * t)) / 2f : (Mathf.Sqrt(1f - Mathf.Pow(-2f * t + 2f, 2f)) + 1f) / 2f,
         O5Ease.InBack => 2.70158f * t * t * t - 1.70158f * t * t,
-        O5Ease.InOutBack => t < 0.5f ? (4f * t * t * ((3.59491f * 2f * t) - 2.59491f)) / 2f : (MathF.Pow(2f * t - 2f, 2f) * ((3.59491f * (2f * t - 2f)) + 2.59491f) + 2f) / 2f,
-        O5Ease.InElastic => t <= 0f ? 0f : t >= 1f ? 1f : -MathF.Pow(2f, 10f * t - 10f) * MathF.Sin((10f * t - 10.75f) * 2.0944f),
-        O5Ease.OutElastic => t <= 0f ? 0f : t >= 1f ? 1f : MathF.Pow(2f, -10f * t) * MathF.Sin((10f * t - 0.75f) * 2.0944f) + 1f,
-        O5Ease.InOutElastic => t <= 0f ? 0f : t >= 1f ? 1f : t < 0.5f ? -(MathF.Pow(2f, 20f * t - 10f) * MathF.Sin((20f * t - 11.125f) * 1.39626f)) / 2f : MathF.Pow(2f, -20f * t + 10f) * MathF.Sin((20f * t - 11.125f) * 1.39626f) / 2f,
+        O5Ease.InOutBack => t < 0.5f ? (4f * t * t * ((3.59491f * 2f * t) - 2.59491f)) / 2f : (Mathf.Pow(2f * t - 2f, 2f) * ((3.59491f * (2f * t - 2f)) + 2.59491f) + 2f) / 2f,
+        O5Ease.InElastic => t <= 0f ? 0f : t >= 1f ? 1f : -Mathf.Pow(2f, 10f * t - 10f) * Mathf.Sin((10f * t - 10.75f) * 2.0944f),
+        O5Ease.OutElastic => t <= 0f ? 0f : t >= 1f ? 1f : Mathf.Pow(2f, -10f * t) * Mathf.Sin((10f * t - 0.75f) * 2.0944f) + 1f,
+        O5Ease.InOutElastic => t <= 0f ? 0f : t >= 1f ? 1f : t < 0.5f ? -(Mathf.Pow(2f, 20f * t - 10f) * Mathf.Sin((20f * t - 11.125f) * 1.39626f)) / 2f : Mathf.Pow(2f, -20f * t + 10f) * Mathf.Sin((20f * t - 11.125f) * 1.39626f) / 2f,
         O5Ease.InBounce => 1f - BounceOut(1f - t),
         O5Ease.OutBounce => BounceOut(t),
         O5Ease.InOutBounce => t < 0.5f ? (1f - BounceOut(1f - 2f * t)) / 2f : (1f + BounceOut(2f * t - 1f)) / 2f,

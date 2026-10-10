@@ -130,6 +130,44 @@ public abstract class O5Object {
     /// <summary>Opts out of per-frame <see cref="Tick"/> calls.</summary>
     protected void UnregisterTick() => _tickables.Remove(this);
 
+    /// <summary>
+    /// Disposes controls whose GameObject died without <see cref="Dispose"/>
+    /// (e.g. a scene wipe that ignores DontDestroyOnLoad, as seen in
+    /// Superliminal 2019.4) and drops them from the tick list. Otherwise a
+    /// single dead control throws every frame and starves the rest.
+    /// Returns the number removed.
+    /// </summary>
+    public static int PurgeDead() {
+        int removed = 0;
+        for (int i = _tickables.Count - 1; i >= 0; i--) {
+            O5Object t;
+            try {
+                t = _tickables[i];
+            } catch {
+                continue;
+            }
+            bool dead;
+            try {
+                dead = t == null || t.IsDisposed || t.Rect == null;
+            } catch {
+                dead = true;
+            }
+            if (!dead) {
+                continue;
+            }
+            try {
+                t?.Dispose();
+            } catch {
+            }
+            try {
+                _tickables.RemoveAt(i);
+            } catch {
+            }
+            removed++;
+        }
+        return removed;
+    }
+
     /// <summary>Per-frame update for ticking controls. Called by <see cref="TickAll"/>.</summary>
     public virtual void Tick() {
     }

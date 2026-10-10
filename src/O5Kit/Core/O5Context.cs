@@ -22,7 +22,7 @@ public sealed class O5Context : IDisposable {
     /// <summary>Active font source.</summary>
     public IFontProvider Fonts { get; }
 
-    /// <summary>Active tween backend. Defaults to the shared LitMotion pump.</summary>
+    /// <summary>Active tween backend. Defaults to the automatic chain (LitMotion, game DOTween, PrimeTween, instant).</summary>
     public ITweenRunner Tween { get; }
 
     /// <summary>Floating tooltip bound to this context.</summary>
@@ -37,13 +37,13 @@ public sealed class O5Context : IDisposable {
     private readonly List<IDisposable> _owned = new();
     private bool _disposed;
 
-    /// <summary>Creates an owned instance. Null arguments fall back to defaults: fresh config, dark theme, Overlayer slicing style, bundled sprites/fonts, LitMotion tweens.</summary>
+    /// <summary>Creates an owned instance. Null arguments fall back to defaults: fresh config, dark theme, Overlayer slicing style, bundled sprites/fonts, automatic tweens.</summary>
     /// <param name="config">Runtime options. Null creates a fresh one (the shared default is never used).</param>
     /// <param name="theme">Visual theme. Null uses <see cref="O5Theme.Dark"/>.</param>
     /// <param name="spriteStyle">Slicing style for the default sprite provider. Null uses <see cref="O5SpriteStyle.Default"/> (Overlayer values).</param>
     /// <param name="sprites">Sprite source. Null creates a <see cref="DefaultSpriteProvider"/> owned by this context.</param>
     /// <param name="fonts">Font source. Null creates a <see cref="DefaultFontProvider"/> owned by this context.</param>
-    /// <param name="tween">Tween backend. Null uses the shared LitMotion pump.</param>
+    /// <param name="tween">Tween backend. Null uses the automatic chain (LitMotion, game DOTween, PrimeTween, instant).</param>
     public O5Context(
         O5Config? config = null,
         O5Theme? theme = null,
@@ -71,7 +71,7 @@ public sealed class O5Context : IDisposable {
             Fonts = owned;
         }
 
-        Tween = new ScaledTweenRunner(tween ?? LitMotionRunner.Instance, Config);
+        Tween = new ScaledTweenRunner(tween ?? AutoTweenRunner.Instance, Config);
         Tooltip = new O5Tooltip(this);
     }
 

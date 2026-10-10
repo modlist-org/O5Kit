@@ -412,7 +412,7 @@ public sealed class O5ColorPicker : O5Object {
     /// <param name="channel">Channel index.</param>
     /// <param name="value">Normalized channel value.</param>
     public void SetChannel(int channel, double value) {
-        value = Math.Clamp(value, 0d, 1d);
+        value = MathCompat.Clamp(value, 0d, 1d);
         if (!_hsvMode) {
             Color color = Value;
             color[channel] = (float)value;
