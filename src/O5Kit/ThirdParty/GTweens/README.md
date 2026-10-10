@@ -1,6 +1,7 @@
 # GTweens (embedded third-party)
 
-Source: [GTweens by Guillemsc](https://github.com/Guillemsc/GTweens) (MIT, see `LICENSE`).
+Source: [GTweens by Guillemsc](https://github.com/Guillemsc/GTweens/tree/95debddfe122e5058c9be146083e1cd3397d53a4) (MIT, see `LICENSE`).
+Upstream mirror: submodule under [`lib/GTweens`](../../../../lib/GTweens).
 Recovered from Overlayer history (`Overlayer/GTweens`, removed in `184738a`);
 files under `Source/` are unmodified upstream copies in the `GTweens.*`
 namespaces so future upstream syncs stay trivial.

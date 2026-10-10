@@ -1,3 +1,6 @@
 [submodule "lib/LitMotion"]
 	path = lib/LitMotion
 	url = https://github.com/annulusgames/LitMotion.git
+[submodule "lib/GTweens"]
+	path = lib/GTweens
+	url = https://github.com/Guillemsc/GTweens.git

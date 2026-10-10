@@ -14,6 +14,8 @@ namespace O5Kit.Core;
 public enum TweenBackend {
     /// <summary>Built-in LitMotion path (needs Burst/Collections + netstandard2.1).</summary>
     LitMotion,
+    /// <summary>Game-shipped LitMotion bound via reflection (no compile-time reference).</summary>
+    ShippedLitMotion,
     /// <summary>Embedded GTweens library (no external dependency; the Mono default).</summary>
     GTween,
     /// <summary>Game-shipped DOTween bound via reflection (no compile-time reference).</summary>
@@ -28,8 +30,22 @@ public enum TweenBackend {
 
 /// <summary>Runtime probes. Never throws: every check returns false on any failure.</summary>
 public static class TweenBackendProbe {
-    /// <summary>True when a no-op LitMotion binding can be created on this runtime.</summary>
+    /// <summary>True when a no-op LitMotion binding can be created on this runtime (compiled-in first, game-shipped via reflection otherwise).</summary>
     public static bool TryLitMotion() {
+        try {
+#if LITMOTION
+            if (HasAssembly("Unity.Burst") && HasAssembly("Unity.Collections") && TryLitMotionCore()) {
+                return true;
+            }
+#endif
+            return ShippedLitMotionRunner.Shared.IsAvailable;
+        } catch {
+            return false;
+        }
+    }
+
+    /// <summary>True when the compiled-in LitMotion path can run. Only meaningful in LITMOTION builds; false elsewhere.</summary>
+    internal static bool TryCompiledLitMotion() {
 #if LITMOTION
         try {
             if (!HasAssembly("Unity.Burst") || !HasAssembly("Unity.Collections")) {
@@ -1617,6 +1633,549 @@ public sealed class PrimeTweenRunner : ITweenRunner {
 }
 
 /// <summary>Automatic backend: LitMotion first, then game-shipped DOTween, then PrimeTween, then instant snap. First use wins and is cached.</summary>
+/// <summary>Game-shipped LitMotion bound purely via reflection. Best-effort: any API mismatch marks it unavailable and <see cref="AutoTweenRunner"/> moves on.</summary>
+public sealed class ShippedLitMotionRunner : ITweenRunner {
+    internal static ShippedLitMotionRunner Shared { get; } = new();
+
+    /// <summary>Shared instance. Check <see cref="IsAvailable"/> before direct use; <see cref="AutoTweenRunner"/> does this for you.</summary>
+    public static ShippedLitMotionRunner Instance => Shared;
+
+    private bool _probed;
+    private bool _available;
+    private MotionBinding? _floatBinding;
+    private MotionBinding? _colorBinding;
+    private MotionBinding? _vector2Binding;
+    private MotionBinding? _vector3Binding;
+    private object?[] _easeValues = Array.Empty<object?>();
+    private MethodInfo? _isActive;
+    private MethodInfo? _tryCancel;
+    private MethodInfo? _tryComplete;
+
+    /// <summary>Whether a game-shipped LitMotion was found, bound and verified with a no-op motion. Cached after the first check.</summary>
+    public bool IsAvailable {
+        get {
+            Ensure();
+            return _available;
+        }
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenFloat(Func<float> getter, Action<float> setter, float to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        float from;
+        try {
+            from = getter != null ? getter() : to;
+        } catch {
+            from = to;
+        }
+
+        return Play(_floatBinding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenColor(Func<Color> getter, Action<Color> setter, Color to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Color from;
+        try {
+            from = getter != null ? getter() : to;
+        } catch {
+            from = to;
+        }
+
+        return Play(_colorBinding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenColor(Graphic graphic, Color to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Color from;
+        try {
+            from = graphic ? graphic.color : to;
+        } catch {
+            from = to;
+        }
+
+        Graphic target = graphic;
+        Action<Color> setter = v => {
+            try {
+                if (target) {
+                    target.color = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_colorBinding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAlpha(CanvasGroup canvasGroup, float to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        float from;
+        try {
+            from = canvasGroup ? canvasGroup.alpha : to;
+        } catch {
+            from = to;
+        }
+
+        CanvasGroup target = canvasGroup;
+        Action<float> setter = v => {
+            try {
+                if (target) {
+                    target.alpha = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_floatBinding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAlpha(Graphic graphic, float to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        float from;
+        try {
+            from = graphic ? graphic.color.a : to;
+        } catch {
+            from = to;
+        }
+
+        Graphic target = graphic;
+        Action<float> setter = v => {
+            try {
+                if (target) {
+                    var c = target.color;
+                    c.a = v;
+                    target.color = c;
+                }
+            } catch {
+            }
+        };
+        return Play(_floatBinding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenAnchorPos(RectTransform rectTransform, Vector2 to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Vector2 from;
+        try {
+            from = rectTransform ? rectTransform.anchoredPosition : to;
+        } catch {
+            from = to;
+        }
+
+        RectTransform target = rectTransform;
+        Action<Vector2> setter = v => {
+            try {
+                if (target) {
+                    target.anchoredPosition = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_vector2Binding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenSizeDelta(RectTransform rectTransform, Vector2 to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Vector2 from;
+        try {
+            from = rectTransform ? rectTransform.sizeDelta : to;
+        } catch {
+            from = to;
+        }
+
+        RectTransform target = rectTransform;
+        Action<Vector2> setter = v => {
+            try {
+                if (target) {
+                    target.sizeDelta = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_vector2Binding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenScale(RectTransform rectTransform, Vector3 to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Vector3 from;
+        try {
+            from = rectTransform ? rectTransform.localScale : to;
+        } catch {
+            from = to;
+        }
+
+        RectTransform target = rectTransform;
+        Action<Vector3> setter = v => {
+            try {
+                if (target) {
+                    target.localScale = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_vector3Binding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle TweenOffsetMin(RectTransform rectTransform, Vector2 to, float duration, Action? onComplete = null, O5Ease ease = O5Ease.OutSine) {
+        Ensure();
+        ThrowIfUnavailable();
+        Vector2 from;
+        try {
+            from = rectTransform ? rectTransform.offsetMin : to;
+        } catch {
+            from = to;
+        }
+
+        RectTransform target = rectTransform;
+        Action<Vector2> setter = v => {
+            try {
+                if (target) {
+                    target.offsetMin = v;
+                }
+            } catch {
+            }
+        };
+        return Play(_vector2Binding!, from, to, duration, setter, ease, onComplete);
+    }
+
+    /// <inheritdoc/>
+    public ITweenHandle Delay(float seconds, Action? onComplete = null) {
+        Ensure();
+        ThrowIfUnavailable();
+        return Play(_floatBinding!, 0f, 1f, Math.Max(seconds, 0.0001f), _ => { }, O5Ease.Linear, onComplete);
+    }
+
+    private ITweenHandle Play<T>(MotionBinding binding, T from, T to, float duration, Action<T> setter, O5Ease ease, Action? onComplete) {
+        try {
+            object builder = binding.Create.Invoke(null, new object?[] { from, to, Math.Max(duration, 0.0001f) })!;
+            builder = binding.WithEase.Invoke(builder, new object?[] { EaseValue(ease) })!;
+            if (onComplete != null) {
+                builder = binding.WithOnComplete.Invoke(builder, new object?[] { AdaptDelegate(binding.OnCompleteParam, onComplete) })!;
+            }
+
+            object handle = binding.Bind.Invoke(builder, new object?[] { AdaptDelegate(binding.BindParam, setter) })!;
+            return new Handle(this, handle);
+        } catch {
+            // Bound at probe time but failed now (e.g. LitMotion torn down): snap instead of throwing.
+            try {
+                return InstantTweenRunner.Instance.TweenFloat(() => 0f, _ => { }, 1f, 0.0001f, onComplete);
+            } catch {
+                return InstantTweenRunner.Instance.Delay(0.0001f, onComplete);
+            }
+        }
+    }
+
+    private object EaseValue(O5Ease ease) {
+        try {
+            int i = (int)ease;
+            if (i >= 0 && i < _easeValues.Length && _easeValues[i] != null) {
+                return _easeValues[i]!;
+            }
+        } catch {
+        }
+
+        return _easeValues[0]!;
+    }
+
+    private static object AdaptDelegate(Type targetType, Delegate d) {
+        try {
+            if (targetType.IsInstanceOfType(d)) {
+                return d;
+            }
+
+            return Delegate.CreateDelegate(targetType, d.Target, d.Method);
+        } catch {
+            return d;
+        }
+    }
+
+    private void ThrowIfUnavailable() {
+        if (!_available) {
+            throw new InvalidOperationException("O5Kit: shipped LitMotion is not available in this game.");
+        }
+    }
+
+    private void Ensure() {
+        if (_probed) {
+            return;
+        }
+
+        _probed = true;
+        try {
+            Probe();
+        } catch {
+            _available = false;
+        }
+    }
+
+    private void Probe() {
+        Type? lmotion = FindType("LitMotion.LMotion");
+        Type? ease = FindType("LitMotion.Ease");
+        Type? handle = FindType("LitMotion.MotionHandle");
+        Type? handleExt = FindType("LitMotion.MotionHandleExtensions");
+        if (lmotion == null || ease == null || handle == null || handleExt == null) {
+            _available = false;
+            return;
+        }
+
+        MethodInfo? isActive = FindHandleMethod(handleExt, "IsActive", handle);
+        MethodInfo? tryCancel = FindHandleMethod(handleExt, "TryCancel", handle);
+        MethodInfo? tryComplete = FindHandleMethod(handleExt, "TryComplete", handle);
+        if (isActive == null || tryCancel == null || tryComplete == null) {
+            _available = false;
+            return;
+        }
+
+        MotionBinding? fb = MotionBinding.BindValue(lmotion, typeof(float));
+        MotionBinding? cb = MotionBinding.BindValue(lmotion, typeof(Color));
+        MotionBinding? v2b = MotionBinding.BindValue(lmotion, typeof(Vector2));
+        MotionBinding? v3b = MotionBinding.BindValue(lmotion, typeof(Vector3));
+        if (fb == null || cb == null || v2b == null || v3b == null) {
+            _available = false;
+            return;
+        }
+
+        // Every O5Ease name must resolve on the shipped Ease enum (strict: any mismatch => unavailable).
+        object?[] easeValues = new object?[64];
+        Array o5values;
+        try {
+            o5values = Enum.GetValues(typeof(O5Ease));
+        } catch {
+            _available = false;
+            return;
+        }
+
+        for (int i = 0; i < o5values.Length; i++) {
+            object? v = o5values.GetValue(i);
+            string? name = null;
+            int idx = -1;
+            try {
+                name = Enum.GetName(typeof(O5Ease), v!);
+                idx = (int)v!;
+            } catch {
+            }
+
+            if (string.IsNullOrEmpty(name) || idx < 0 || idx >= easeValues.Length) {
+                _available = false;
+                return;
+            }
+
+            try {
+                easeValues[idx] = Enum.Parse(ease, name!, false);
+            } catch {
+                _available = false;
+                return;
+            }
+        }
+
+        // Functional verification: a no-op motion must create, bind and cancel without throwing.
+        try {
+            object builder = fb.Create.Invoke(null, new object?[] { 0f, 1f, 0.0001f })!;
+            builder = fb.WithEase.Invoke(builder, new object?[] { easeValues[(int)O5Ease.Linear] })!;
+            object h = fb.Bind.Invoke(builder, new object?[] { (Action<float>)(_ => { }) })!;
+            tryCancel.Invoke(null, new object?[] { h });
+        } catch {
+            _available = false;
+            return;
+        }
+
+        _floatBinding = fb;
+        _colorBinding = cb;
+        _vector2Binding = v2b;
+        _vector3Binding = v3b;
+        _easeValues = easeValues;
+        _isActive = isActive;
+        _tryCancel = tryCancel;
+        _tryComplete = tryComplete;
+        _available = true;
+    }
+
+    private static Type? FindType(string fullName) {
+        try {
+            Assembly[] loaded;
+            try {
+                loaded = AppDomain.CurrentDomain.GetAssemblies();
+            } catch {
+                return null;
+            }
+
+            for (int i = 0; i < loaded.Length; i++) {
+                try {
+                    Type? t = loaded[i].GetType(fullName, false);
+                    if (t != null) {
+                        return t;
+                    }
+                } catch {
+                }
+            }
+
+            try {
+                Assembly a = Assembly.Load("LitMotion");
+                try {
+                    return a.GetType(fullName, false);
+                } catch {
+                    return null;
+                }
+            } catch {
+                return null;
+            }
+        } catch {
+            return null;
+        }
+    }
+
+    private static MethodInfo? FindHandleMethod(Type ext, string name, Type handle) {
+        try {
+            MethodInfo[] methods = ext.GetMethods(BindingFlags.Public | BindingFlags.Static);
+            for (int i = 0; i < methods.Length; i++) {
+                MethodInfo m = methods[i];
+                if (m.Name != name || m.ReturnType != typeof(bool)) {
+                    continue;
+                }
+
+                ParameterInfo[] ps = m.GetParameters();
+                if (ps.Length == 1 && ps[0].ParameterType == handle) {
+                    return m;
+                }
+            }
+        } catch {
+        }
+
+        return null;
+    }
+
+    private sealed class MotionBinding {
+        public readonly MethodInfo Create;
+        public readonly MethodInfo WithEase;
+        public readonly MethodInfo WithOnComplete;
+        public readonly Type OnCompleteParam;
+        public readonly MethodInfo Bind;
+        public readonly Type BindParam;
+
+        public MotionBinding(MethodInfo create, MethodInfo withEase, MethodInfo withOnComplete, MethodInfo bind) {
+            Create = create;
+            WithEase = withEase;
+            WithOnComplete = withOnComplete;
+            OnCompleteParam = withOnComplete.GetParameters()[0].ParameterType;
+            Bind = bind;
+            BindParam = bind.GetParameters()[0].ParameterType;
+        }
+
+        public static MotionBinding? BindValue(Type lmotion, Type valueType) {
+            try {
+                MethodInfo? create = null;
+                MethodInfo[] methods = lmotion.GetMethods(BindingFlags.Public | BindingFlags.Static);
+                for (int i = 0; i < methods.Length; i++) {
+                    MethodInfo m = methods[i];
+                    if (m.Name != "Create") {
+                        continue;
+                    }
+
+                    ParameterInfo[] ps = m.GetParameters();
+                    if (ps.Length != 3) {
+                        continue;
+                    }
+
+                    if (ps[0].ParameterType != valueType || ps[1].ParameterType != valueType || ps[2].ParameterType != typeof(float)) {
+                        continue;
+                    }
+
+                    create = m;
+                    break;
+                }
+
+                if (create == null || create.ReturnType == null) {
+                    return null;
+                }
+
+                Type builder = create.ReturnType;
+                MethodInfo? withEase = null;
+                MethodInfo? withOnComplete = null;
+                MethodInfo? bind = null;
+                MethodInfo[] inst = builder.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                for (int i = 0; i < inst.Length; i++) {
+                    MethodInfo m = inst[i];
+                    ParameterInfo[] ps = m.GetParameters();
+                    if (ps.Length != 1 || m.ReturnType != builder) {
+                        // Bind also returns MotionHandle, handled below.
+                        if (m.Name == "Bind" && ps.Length == 1) {
+                            Type pt = ps[0].ParameterType;
+                            if (typeof(Delegate).IsAssignableFrom(pt) && pt.IsGenericType
+                                && pt.GetGenericTypeDefinition() == typeof(Action<>) && pt.GetGenericArguments()[0] == valueType) {
+                                bind = m;
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    if (m.Name == "WithEase" && ps[0].ParameterType.IsEnum) {
+                        withEase = m;
+                    } else if (m.Name == "WithOnComplete" && typeof(Delegate).IsAssignableFrom(ps[0].ParameterType)) {
+                        if (withOnComplete == null) {
+                            withOnComplete = m;
+                        }
+                    }
+                }
+
+                if (withEase == null || withOnComplete == null || bind == null) {
+                    return null;
+                }
+
+                return new MotionBinding(create, withEase, withOnComplete, bind);
+            } catch {
+                return null;
+            }
+        }
+    }
+
+    private sealed class Handle : ITweenHandle {
+        private readonly ShippedLitMotionRunner _owner;
+        private readonly object _handle;
+
+        public Handle(ShippedLitMotionRunner owner, object handle) {
+            _owner = owner;
+            _handle = handle;
+        }
+
+        public bool IsAlive {
+            get {
+                try {
+                    MethodInfo? m = _owner._isActive;
+                    if (m == null) {
+                        return false;
+                    }
+
+                    object? r = m.Invoke(null, new object?[] { _handle });
+                    return r is bool b && b;
+                } catch {
+                    return false;
+                }
+            }
+        }
+
+        public void Kill(bool complete = false) {
+            try {
+                MethodInfo? m = complete ? _owner._tryComplete : _owner._tryCancel;
+                m?.Invoke(null, new object?[] { _handle });
+            } catch {
+            }
+        }
+    }
+}
+
 public sealed class AutoTweenRunner : ITweenRunner {
     /// <summary>Shared instance used as the <see cref="O5Context"/> default unless overridden.</summary>
     public static AutoTweenRunner Instance { get; } = new();
@@ -1678,7 +2237,7 @@ public sealed class AutoTweenRunner : ITweenRunner {
         _pickedDone = true;
 #if LITMOTION
         try {
-            if (TweenBackendProbe.TryLitMotion()) {
+            if (TweenBackendProbe.TryCompiledLitMotion()) {
                 Backend = TweenBackend.LitMotion;
                 _picked = GetLitMotionRunner();
                 return _picked;
@@ -1686,6 +2245,15 @@ public sealed class AutoTweenRunner : ITweenRunner {
         } catch {
         }
 #endif
+
+        try {
+            if (ShippedLitMotionRunner.Shared.IsAvailable) {
+                Backend = TweenBackend.ShippedLitMotion;
+                _picked = ShippedLitMotionRunner.Shared;
+                return _picked;
+            }
+        } catch {
+        }
 
         try {
             Backend = TweenBackend.GTween;

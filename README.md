@@ -37,14 +37,14 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
 
 # ⌨️ Usage
 ### Setup
-* **Configure once:** Call `O5Boot.Configure(...)` at startup with your `O5Config`, `O5Theme`, `ISpriteProvider`, `IFontProvider`. The tween backend defaults to the built-in LitMotion runner.
+* **Configure once:** Call `O5Boot.Configure(...)` at startup with your `O5Config`, `O5Theme`, `ISpriteProvider`, `IFontProvider`. The tween backend defaults to `AutoTweenRunner`: LitMotion first (compiled-in on IL2CPP, game-shipped via reflection otherwise — always probed before use, never throws), then the built-in GTweens backend.
   ```csharp
   O5Kit.Core.O5Boot.Configure(
       config: new O5Kit.Core.O5Config { UIScale = 1f },
       sprites: new MySpriteProvider(),
       fonts: new MyFontProvider());
   ```
-* **Or zero-setup:** `O5Kit.Core.O5Boot.EnsureDefaults()` installs bundled artwork, fonts and the LitMotion backend. No adapters needed to try controls.
+* **Or zero-setup:** `O5Kit.Core.O5Boot.EnsureDefaults()` installs bundled artwork, fonts and the built-in tween backend. No adapters needed to try controls.
 * **Theme:** swap presets or derive your own at runtime:
   ```csharp
   O5Kit.Core.O5Boot.SetTheme(O5Kit.Core.O5Theme.Dark with { PanelBG = new Color(0.1f, 0.1f, 0.15f, 1f) });
@@ -93,6 +93,8 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 ### Third-Party Code
 - **[LitMotion](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514)**: Submodule under [`lib/LitMotion`](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514), compiled from source (Runtime only)
   - License: [MIT](https://github.com/annulusgames/LitMotion/blob/422eb124051c81a9bc3f422ebf190703c5053514/LICENSE)
+- **[GTweens](https://github.com/Guillemsc/GTweens/tree/95debddfe122e5058c9be146083e1cd3397d53a4)**: Submodule under [`lib/GTweens`](https://github.com/Guillemsc/GTweens/tree/95debddfe122e5058c9be146083e1cd3397d53a4), used as the built-in tween backend (`O5Kit.Core.GTweenRunner`, picked by `AutoTweenRunner` when LitMotion is unavailable). Built from a patched snapshot embedded under [`src/O5Kit/ThirdParty/GTweens`](src/O5Kit/ThirdParty/GTweens) (see its `README.md` for the deviations)
+  - License: [MIT](https://github.com/Guillemsc/GTweens/blob/95debddfe122e5058c9be146083e1cd3397d53a4/LICENSE)
 - **[UniverseLib](https://github.com/sinai-dev/UniverseLib/tree/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0)**: Parts of input handling logic in [`src/O5Kit/Input`](src/O5Kit/Input) are referenced and derived from UniverseLib.
   - License: [LGPL-2.1](https://github.com/sinai-dev/UniverseLib/blob/f6a9ed9a4d58bfe13eaae570c53f59a00b575ca0/LICENSE)
 - Unity assemblies (UnityEngine, Unity.Burst/Collections/Mathematics, TextMeshPro) are referenced from the game install and are not redistributed.
