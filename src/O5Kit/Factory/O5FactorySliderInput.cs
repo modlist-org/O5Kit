@@ -192,7 +192,7 @@ public static partial class O5Factory {
                 warpedFrom = null;
                 if (dragBlocker) {
                     dragBlocker.gameObject.SetActive(true);
-                    dragBlocker.SetAsLastSibling();
+                    dragBlocker.SetSiblingIndex(dragBlocker.parent.childCount - 1);
                 }
             }
         ),
@@ -274,12 +274,7 @@ public static partial class O5Factory {
                     return;
                 }
 
-                var ped =
-#if IL2CPP
-                    e.TryCast<PointerEventData>();
-#else
-                    e as PointerEventData;
-#endif
+                var ped = e as PointerEventData;
                 if (ped != null && ped.button != InputButton.Left) {
                     return;
                 }
@@ -479,12 +474,7 @@ public static partial class O5Factory {
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerUp,
                 e => {
-                    PointerEventData? ped =
-#if IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+                    PointerEventData? ped = e as PointerEventData;
                     if (ped == null || ped.button != InputButton.Left) {
                         return;
                     }

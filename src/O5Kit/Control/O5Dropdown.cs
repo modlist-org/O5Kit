@@ -327,12 +327,7 @@ public class O5Dropdown<T> : O5Object {
                 }
             ),
                 (EventTriggerType.PointerClick, (e) => {
-                    PointerEventData? pointerData =
-#if IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+                    PointerEventData? pointerData = e as PointerEventData;
                     if (pointerData == null || pointerData.button != PointerEventData.InputButton.Left) {
                         return;
                     }

@@ -73,8 +73,13 @@ public static partial class O5Factory {
         O5InputField hexInput = Input(
             ctx,
             header,
+#if IL2CPP
+            O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(defaultValue ?? value),
+            O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(value),
+#else
             ColorUtility.ToHtmlStringRGBA(defaultValue ?? value),
             ColorUtility.ToHtmlStringRGBA(value),
+#endif
             text => picker?.ValidateHex(text),
             string.Empty,
             null,
@@ -157,7 +162,7 @@ public static partial class O5Factory {
             int channel = i;
             RectTransform row = Row(ctx, body, 36f);
             sliders[i] = Slider(
-                ctx, row, (double)(defaultValue ?? value)[i], 0d, 1d, (double)value[i], "F2", ClampMode.All, null, null,
+                ctx, row, (double)ChannelOf(defaultValue ?? value, i), 0d, 1d, (double)ChannelOf(value, i), "F2", ClampMode.All, null, null,
                 next => picker?.SetChannel(channel, next),
                 _ => onComplete?.Invoke(picker!.Value),
                 names[i], id + "_" + names[i].ToLowerInvariant()
@@ -256,4 +261,12 @@ public static partial class O5Factory {
         image.raycastTarget = false;
         return rect;
     }
+
+    /// <summary>Reads one RGBA channel (0..3) without the stripped Color indexer.</summary>
+    private static float ChannelOf(Color color, int channel) => channel switch {
+        0 => color.r,
+        1 => color.g,
+        2 => color.b,
+        _ => color.a,
+    };
 }

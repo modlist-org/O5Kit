@@ -58,21 +58,17 @@ public class O5InputCore {
 
         InputField.onValueChanged.AddListener(
 #if IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
-#endif
-                OnValueChanged
-#if IL2CPP
-            ))
+            new Action<string>(OnValueChanged)
+#else
+            OnValueChanged
 #endif
         );
 
         InputField.onEndEdit.AddListener(
 #if IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
-#endif
-                OnValueEndEdit
-#if IL2CPP
-            ))
+            new Action<string>(OnValueEndEdit)
+#else
+            OnValueEndEdit
 #endif
         );
     }

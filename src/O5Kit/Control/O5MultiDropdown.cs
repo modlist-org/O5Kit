@@ -302,12 +302,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
 
             UnityUtils.AddEvents(trigger,
                 (EventTriggerType.PointerClick, (e) => {
-                    PointerEventData? pointerData =
-#if IL2CPP
-                        e.TryCast<PointerEventData>();
-#else
-                        e as PointerEventData;
-#endif
+                    PointerEventData? pointerData = e as PointerEventData;
                     if (pointerData == null || pointerData.button != PointerEventData.InputButton.Left) {
                         return;
                     }

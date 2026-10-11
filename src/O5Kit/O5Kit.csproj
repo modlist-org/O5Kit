@@ -29,7 +29,7 @@
   </ItemDefinitionGroup>
 
   <PropertyGroup Condition="$(Configuration.Contains('IL2CPP'))">
-    <DefineConstants>$(DefineConstants);IL2CPP;LITMOTION;LITMOTION_SUPPORT_UGUI</DefineConstants>
+    <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants><!-- IL2CPP: LITMOTION stays undefined by default (Burst/Collections are often stripped; AutoTweenRunner falls back to GTween/reflection backends) -->
   </PropertyGroup>
 
   <!--
@@ -49,6 +49,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">
+    <Reference Include="Il2Cppmscorlib"><HintPath>$(Il2CppData)/Il2Cppmscorlib.dll</HintPath></Reference>
     <Reference Include="UnityEngine"><HintPath>$(Il2CppData)/UnityEngine.dll</HintPath></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(Il2CppData)/UnityEngine.CoreModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Il2CppData)/UnityEngine.IMGUIModule.dll</HintPath></Reference>
@@ -57,6 +58,8 @@
     <Reference Include="UnityEngine.UI"><HintPath>$(Il2CppData)/UnityEngine.UI.dll</HintPath></Reference>
     <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Il2CppData)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(Il2CppData)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
+    <!-- TMPro proxy: MelonLoader's generator ships it as Unity.TextMeshPro.dll
+         with the Il2CppTMPro namespace (see the global TMPro alias below). -->
     <Reference Include="Unity.TextMeshPro"><HintPath>$(Il2CppData)/Unity.TextMeshPro.dll</HintPath></Reference>
     <Reference Include="Unity.Burst"><HintPath>$(Il2CppData)/Unity.Burst.dll</HintPath></Reference>
     <Reference Include="Unity.Collections"><HintPath>$(Il2CppData)/Unity.Collections.dll</HintPath></Reference>
@@ -73,12 +76,17 @@
 
   <!-- LitMotion v2 (MIT): compiled for IL2CPP where Burst/Collections are available. -->
   <ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">
+    <Using Include="Il2CppTMPro" Alias="TMPro" />
+  </ItemGroup>
+  <ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">
+    <!-- LitMotion sources are opt-in via the LITMOTION define (needs Burst/Collections in metadata).
+         Excluded by default for maximum game compatibility; AutoTweenRunner uses the GTween backend instead.
     <Compile Include="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/**/*.cs"
              Exclude="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/External/**/*.cs;../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/Extensions/**/*.cs" />
-    <Compile Include="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/Extensions/uGUI/**/*.cs" />
+    <Compile Include="../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/Extensions/uGUI/**/*.cs" /> -->
   </ItemGroup>
 
-  <Target Name="CheckLitMotion" BeforeTargets="BeforeBuild" Condition="$(Configuration.Contains('IL2CPP'))">
+  <Target Name="CheckLitMotion" BeforeTargets="BeforeBuild" Condition="$(DefineConstants.Contains('LITMOTION'))">
     <Error Condition="!Exists('../../lib/LitMotion/src/LitMotion/Assets/LitMotion/Runtime/LMotion.Create.cs')"
            Text="LitMotion submodule is missing. Run: git submodule update --init --depth 1" />
   </Target>

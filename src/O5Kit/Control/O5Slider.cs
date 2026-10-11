@@ -237,11 +237,9 @@ public class O5Slider : O5Object {
         );
         valueInputField.onSelect.AddListener(
 #if IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<string>>(new Action<string>(
-#endif
-                (_) => InputCore.SetValue(Value.ToString("R"), false)
-#if IL2CPP
-            ))
+            new Action<string>((_) => InputCore.SetValue(Value.ToString("R"), false))
+#else
+            (_) => InputCore.SetValue(Value.ToString("R"), false)
 #endif
         );
         PreviewLabel = previewLabel;

@@ -113,7 +113,7 @@ public sealed class O5Tooltip : IDisposable {
         _fade?.Kill();
 
         _obj.SetActive(true);
-        _obj.transform.SetAsLastSibling();
+        _obj.transform.SetSiblingIndex(_obj.transform.parent.childCount - 1);
         _text.text = tip;
 
         Vector2 size = _text.GetPreferredValues(tip);

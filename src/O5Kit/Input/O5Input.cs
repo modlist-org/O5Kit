@@ -207,11 +207,13 @@ public static class O5Input {
     public static bool AnyKey {
         get {
             EnsureInitialized();
+#if !IL2CPP
             try {
                 if (UnityEngine.Input.anyKey) {
                     return true;
                 }
             } catch { }
+#endif
             return TryReadAnyKey(out bool held) && held;
         }
     }
@@ -220,11 +222,13 @@ public static class O5Input {
     public static bool AnyKeyDown {
         get {
             EnsureInitialized();
+#if !IL2CPP
             try {
                 if (UnityEngine.Input.anyKeyDown) {
                     return true;
                 }
             } catch { }
+#endif
             return TryReadAnyKeyDown(out bool down) && down;
         }
     }
@@ -233,11 +237,13 @@ public static class O5Input {
     public static bool AnyKeyboardKeyDown {
         get {
             EnsureInitialized();
+#if !IL2CPP
             try {
                 if (UnityEngine.Input.anyKeyDown) {
                     return true;
                 }
             } catch { }
+#endif
             return TryReadAnyKeyboardKeyDown(out bool down) && down;
         }
     }

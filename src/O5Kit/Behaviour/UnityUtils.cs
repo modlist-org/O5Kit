@@ -19,11 +19,9 @@ public static class UnityUtils {
         var entry = new EventTrigger.Entry { eventID = type };
         entry.callback.AddListener(
 #if IL2CPP
-            DelegateSupport.ConvertDelegate<UnityEngine.Events.UnityAction<BaseEventData>>(new Action<BaseEventData>(
-#endif
-                e => cb(e)
-#if IL2CPP
-            ))
+            new Action<BaseEventData>(e => cb(e))
+#else
+            e => cb(e)
 #endif
         );
         trigger.triggers.Add(entry);

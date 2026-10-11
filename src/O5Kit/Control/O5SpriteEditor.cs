@@ -247,8 +247,8 @@ public sealed class O5SpriteEditor : O5Object {
         _blocker.SetActive(true);
         _window.Rect.gameObject.SetActive(true);
         _window.BringToFront();
-        _blocker.transform.SetAsLastSibling();
-        _window.Rect.transform.SetAsLastSibling();
+        _blocker.transform.SetSiblingIndex(_blocker.transform.parent.childCount - 1);
+        _window.Rect.transform.SetSiblingIndex(_window.Rect.transform.parent.childCount - 1);
         _window.SetTitle(title);
         Canvas.ForceUpdateCanvases();
         int width = texture ? texture.width : 0;
@@ -482,7 +482,7 @@ public sealed class O5SpriteEditor : O5Object {
         }
 
         _overlay.sizeDelta = _preview.sizeDelta;
-        _overlay.SetAsLastSibling();
+        _overlay.SetSiblingIndex(_overlay.parent.childCount - 1);
         SetGuideActive(_guideLeft, hasTexture);
         SetGuideActive(_guideRight, hasTexture);
         SetGuideActive(_guideBottom, hasTexture);
@@ -536,12 +536,7 @@ public sealed class O5SpriteEditor : O5Object {
     }
 
     private void DragGuide(O5SpriteGuide guide, BaseEventData data) {
-        PointerEventData? pointer =
-#if IL2CPP
-            data.TryCast<PointerEventData>();
-#else
-            data as PointerEventData;
-#endif
+        PointerEventData? pointer = data as PointerEventData;
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left ||
             _texture == null || _preview == null ||
             !RectTransformUtility.ScreenPointToLocalPointInRectangle(

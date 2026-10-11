@@ -168,6 +168,9 @@ public sealed class GTweenRunner : ITweenRunner {
             var go = new GameObject("O5GTweenPlayer");
             UnityEngine.Object.DontDestroyOnLoad(go);
             go.hideFlags = HideFlags.HideAndDontSave;
+#if IL2CPP
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<GTweenPump>();
+#endif
             _pump = go.AddComponent<GTweenPump>();
             _pump.Owner = this;
         } catch {

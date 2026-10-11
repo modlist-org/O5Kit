@@ -2,10 +2,6 @@
 
 using UnityEngine;
 
-#if IL2CPP
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-#endif
-
 namespace O5Kit.Compat;
 
 /// <summary>Texture helpers with IL2CPP-safe overloads.</summary>
@@ -15,15 +11,9 @@ public static class O5Texture {
     /// <param name="data">Encoded image bytes.</param>
     /// <param name="markNonReadable">Free CPU memory after upload.</param>
     public static bool LoadImage(Texture2D tex, byte[] data, bool markNonReadable = false) {
-#if IL2CPP
-        Il2CppStructArray<byte> il2cppData = new(data.Length);
-        for (int i = 0; i < data.Length; i++) {
-            il2cppData[i] = data[i];
-        }
-
-        return tex.LoadImage(il2cppData, markNonReadable);
-#else
-        return tex.LoadImage(data, markNonReadable);
-#endif
+        // Instance-style extension binding is unavailable on stripped dummies;
+        // the static form is identical (verified against Unity API surface).
+        // Il2CppInterop marshals managed byte[] automatically.
+        return UnityEngine.ImageConversion.LoadImage(tex, data, markNonReadable);
     }
 }

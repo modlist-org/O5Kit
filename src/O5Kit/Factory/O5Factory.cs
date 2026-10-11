@@ -120,12 +120,7 @@ public static partial class O5Factory {
     }
 
     private static bool IsLeftPress(BaseEventData e) {
-        PointerEventData? ped =
-#if IL2CPP
-            e.TryCast<PointerEventData>();
-#else
-            e as PointerEventData;
-#endif
+        PointerEventData? ped = e as PointerEventData;
         return ped != null && ped.button == PointerEventData.InputButton.Left;
     }
 
@@ -142,9 +137,9 @@ public static partial class O5Factory {
         var rect = ControlBackground(ctx, parent, height);
         rect.gameObject.name = "O5IconButton";
 
-        var iconObj = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-        var iconRect = iconObj.GetComponent<RectTransform>();
-        var iconImage = iconObj.GetComponent<Image>();
+        var iconObj = new GameObject("Icon");
+        var iconRect = iconObj.AddComponent<RectTransform>();
+        var iconImage = iconObj.AddComponent<Image>();
 
         iconRect.SetParent(rect, false);
         iconImage.sprite = iconSprite;

@@ -130,6 +130,11 @@ public sealed class O5Resources : IDisposable {
             return cached as TMPro.TMP_FontAsset;
         }
 
+#if IL2CPP
+        // Stripped runtimes expose neither Font(path) nor OS-font creation:
+        // custom TTF bytes cannot be turned into a Font here.
+        return null;
+#else
         try {
             string dir = Path.Combine(Application.temporaryCachePath, "O5Kit", "Fonts");
             Directory.CreateDirectory(dir);
@@ -145,6 +150,7 @@ public sealed class O5Resources : IDisposable {
         } catch {
             return null;
         }
+#endif
     }
 
     /// <summary>Loads (and caches) a texture by artwork key.</summary>

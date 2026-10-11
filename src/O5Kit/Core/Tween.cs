@@ -415,9 +415,9 @@ public sealed class SimpleTweenRunner : ITweenRunner {
 
     private static float ApplyEase(O5Ease ease, float t) => ease switch {
         O5Ease.Linear => t,
-        O5Ease.InSine => 1f - Mathf.Cos(t * Mathf.PI * 0.5f),
-        O5Ease.OutSine => Mathf.Sin(t * Mathf.PI * 0.5f),
-        O5Ease.InOutSine => -(Mathf.Cos(Mathf.PI * t) - 1f) * 0.5f,
+        O5Ease.InSine => 1f - Mathf.Cos(t * (float)Math.PI * 0.5f),
+        O5Ease.OutSine => Mathf.Sin(t * (float)Math.PI * 0.5f),
+        O5Ease.InOutSine => -(Mathf.Cos((float)Math.PI * t) - 1f) * 0.5f,
         O5Ease.InQuad => t * t,
         O5Ease.OutQuad => 1f - (1f - t) * (1f - t),
         O5Ease.InOutQuad => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f,
@@ -484,6 +484,9 @@ public sealed class SimpleTweenRunner : ITweenRunner {
         var go = new GameObject("O5TweenPlayer");
         UnityEngine.Object.DontDestroyOnLoad(go);
         go.hideFlags = HideFlags.HideAndDontSave;
+#if IL2CPP
+        Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<SimplePump>();
+#endif
         _pump = go.AddComponent<SimplePump>();
         _pump.Owner = this;
     }

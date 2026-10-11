@@ -131,7 +131,7 @@ public sealed class O5Window : O5Object {
         if (options.ShowOutline) {
             var outline = new GameObject("Outline").AddComponent<Image>();
             outline.transform.SetParent(panel, false);
-            outline.transform.SetAsLastSibling();
+            outline.transform.SetSiblingIndex(outline.transform.parent.childCount - 1);
             outline.color = theme.Outline;
             outline.sprite = sprites.RoundedOutline;
             outline.type = Image.Type.Sliced;
@@ -171,11 +171,13 @@ public sealed class O5Window : O5Object {
 
         var btn = close.gameObject.AddComponent<Button>();
         btn.transition = Selectable.Transition.None;
+        btn.onClick.AddListener(
 #if IL2CPP
-        btn.onClick.AddListener(new Action(() => window.CloseRequested?.Invoke(window)));
+            new Action(() => window.CloseRequested?.Invoke(window))
 #else
-        btn.onClick.AddListener(() => window.CloseRequested?.Invoke(window));
+            () => window.CloseRequested?.Invoke(window)
 #endif
+        );
 
         var bgObj = new GameObject("Bg");
         bgObj.transform.SetParent(close, false);
@@ -238,7 +240,7 @@ public sealed class O5Window : O5Object {
             return;
         }
 
-        Rect.transform.SetAsLastSibling();
+        Rect.transform.SetSiblingIndex(Rect.transform.parent.childCount - 1);
     }
 
     /// <summary>Replaces the header title.</summary>

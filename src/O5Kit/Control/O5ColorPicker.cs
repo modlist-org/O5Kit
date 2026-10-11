@@ -212,8 +212,8 @@ public sealed class O5ColorPicker : O5Object {
             PositionPopup();
             _popup.SetActive(true);
             _popupBlocker.SetActive(true);
-            _popupBlocker.transform.SetAsLastSibling();
-            _popup.transform.SetAsLastSibling();
+            _popupBlocker.transform.SetSiblingIndex(_popupBlocker.transform.parent.childCount - 1);
+            _popup.transform.SetSiblingIndex(_popup.transform.parent.childCount - 1);
             _popupRect.localScale = new Vector3(PopupScale * 0.96f, PopupScale * 0.96f, 1f);
             _popupCanvas.alpha = 0f;
             _popupCanvas.interactable = true;
@@ -415,7 +415,20 @@ public sealed class O5ColorPicker : O5Object {
         value = MathCompat.Clamp(value, 0d, 1d);
         if (!_hsvMode) {
             Color color = Value;
-            color[channel] = (float)value;
+            switch (channel) {
+                case 0:
+                    color.r = (float)value;
+                    break;
+                case 1:
+                    color.g = (float)value;
+                    break;
+                case 2:
+                    color.b = (float)value;
+                    break;
+                default:
+                    color.a = (float)value;
+                    break;
+            }
             Set(color);
             return;
         }
@@ -482,12 +495,7 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private bool TryGetPointerPosition(BaseEventData data, out Vector2 normalized) {
-        PointerEventData? pointer =
-#if IL2CPP
-            data.TryCast<PointerEventData>();
-#else
-            data as PointerEventData;
-#endif
+        PointerEventData? pointer = data as PointerEventData;
         normalized = default;
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left) {
             return false;
@@ -510,7 +518,7 @@ public sealed class O5ColorPicker : O5Object {
 
     private void ApplyPointer(Vector2 normalized) {
         if (_dragTarget == DragTarget.Hue) {
-            _hue = Mathf.Repeat(Mathf.Atan2(normalized.y, normalized.x) / (Mathf.PI * 2f), 1f);
+            _hue = Mathf.Repeat(Mathf.Atan2(normalized.y, normalized.x) / ((float)Math.PI * 2f), 1f);
             Color rgb = Color.HSVToRGB(_hue, _saturation, _brightness);
             rgb.a = Value.a;
             Value = rgb;
@@ -547,7 +555,12 @@ public sealed class O5ColorPicker : O5Object {
         string candidate = text.StartsWith("#") ? text : "#" + text;
         bool validLength = candidate.Length is 7 or 9;
         Color parsed = default;
-        bool valid = validLength && ColorUtility.TryParseHtmlString(candidate, out parsed);
+        bool valid = validLength &&
+#if IL2CPP
+            O5Kit.Compat.O5ColorCompat.TryParseHtmlString(candidate, out parsed);
+#else
+            ColorUtility.TryParseHtmlString(candidate, out parsed);
+#endif
         _pendingHexColor = valid ? parsed : null;
         _preview.color = valid ? parsed : Value;
         UpdateLabelColor(_preview.color);
@@ -620,7 +633,11 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private void SetHexText() {
+#if IL2CPP
+        string value = O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(Value);
+#else
         string value = ColorUtility.ToHtmlStringRGBA(Value);
+#endif
         _suppressHex = true;
         _hexInput.Set(value, false);
         _suppressHex = false;
@@ -707,7 +724,7 @@ public sealed class O5ColorPicker : O5Object {
                 float distance = point.magnitude;
                 Color color = Color.clear;
                 if (distance is >= RingInner and <= RingOuter) {
-                    float angle = Mathf.Repeat(Mathf.Atan2(point.y, point.x) / (Mathf.PI * 2f), 1f);
+                    float angle = Mathf.Repeat(Mathf.Atan2(point.y, point.x) / ((float)Math.PI * 2f), 1f);
                     color = Color.HSVToRGB(angle, 1f, 1f);
                 } else if (Barycentric(point, huePoint, whitePoint, blackPoint, out Vector3 weights)) {
                     color = (hueColor * weights.x) + (Color.white * weights.y) + (Color.black * weights.z);
@@ -723,7 +740,7 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private static Vector2 Direction(float turns) {
-        float radians = turns * Mathf.PI * 2f;
+        float radians = turns * (float)Math.PI * 2f;
         return new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
     }
 
