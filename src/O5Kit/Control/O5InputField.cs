@@ -34,6 +34,7 @@ public sealed class O5InputField : O5Object {
     public Image ChangedImage { get; }
 
     private ITweenHandle? _changeTween, _iconTween;
+    private bool? _iconFocused;
 
     /// <summary>Creates a text field over factory-built visuals.</summary>
     /// <param name="ctx">Owning kit context.</param>
@@ -131,6 +132,10 @@ public sealed class O5InputField : O5Object {
         if (IsDisposed || IconImage == null || !IconImage.enabled || IconImage.sprite == null) {
             return;
         }
+        if (_iconFocused == focused) {
+            return;
+        }
+        _iconFocused = focused;
 
         _iconTween?.Kill();
         var icon = IconImage;
