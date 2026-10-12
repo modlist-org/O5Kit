@@ -98,9 +98,12 @@ public sealed class O5Tooltip : IDisposable {
         target.x = Mathf.Clamp(target.x, 0f, Screen.width - size.x);
         target.y = Mathf.Clamp(target.y, 0f, Screen.height - size.y);
 
-        _rect.position = Vector2.SmoothDamp(
+        Vector2 next = Vector2.SmoothDamp(
             _rect.position, target, ref _velocity, 0.02f,
             float.PositiveInfinity, Time.unscaledDeltaTime);
+        if (next != (Vector2)_rect.position) {
+            _rect.position = next;
+        }
     }
 
     /// <summary>Shows a tooltip near the cursor after a short delay.</summary>
