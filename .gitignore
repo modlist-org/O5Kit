@@ -1,5 +1,7 @@
 bin/
 obj/
+zig-out/
+.zig-cache/
 .game/
 Directory.Build.props
 .vs/

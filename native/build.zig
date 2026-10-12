@@ -1,0 +1,46 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
+    const mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const lib = b.addLibrary(.{
+        .name = "o5native",
+        .root_module = mod,
+        .linkage = .dynamic,
+    });
+    b.installArtifact(lib);
+
+    const test_step = b.step("test", "Run unit tests");
+
+    const expr_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/expr_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const expr_tests = b.addTest(.{
+        .name = "expr-test",
+        .root_module = expr_test_mod,
+    });
+    const run_expr_tests = b.addRunArtifact(expr_tests);
+    test_step.dependOn(&run_expr_tests.step);
+
+    const ring_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/ring_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const ring_tests = b.addTest(.{
+        .name = "ring-test",
+        .root_module = ring_test_mod,
+    });
+    const run_ring_tests = b.addRunArtifact(ring_tests);
+    test_step.dependOn(&run_ring_tests.step);
+}

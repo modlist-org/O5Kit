@@ -34,6 +34,7 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
    dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
    dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
    ```
+4. Native math lib (needs `zig` 0.17+): `./native/build.sh` (`./native/build.sh x86_64-windows` to cross). Output lands in `native/zig-out/lib` as `O5KitNative.<os>.<ext>`.
 
 # ⌨️ Usage
 ### Setup

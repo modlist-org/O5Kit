@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Dual-target like Overlayer: netstandard2.0 = Mono, net6.0 = IL2CPP -->
+    <!-- Dual-target like Overlayer: netstandard2.1 = Mono, net6.0 = IL2CPP -->
     <TargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</TargetFramework>
-    <TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</TargetFramework>
+    <TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- NOTE: ImplicitUsings stays OFF: global `using System;` makes LitMotion's
