@@ -1,6 +1,27 @@
 const expr = @import("expr.zig");
+const fmt = @import("fmt.zig");
 const ring = @import("ring.zig");
 const tag = @import("tag.zig");
+
+export fn o5_fmt_f64(
+    val: f64,
+    fmt_ptr: [*]const u16,
+    fmt_len: usize,
+    out_ptr: [*]u16,
+    max_out: usize,
+) usize {
+    return fmt.o5_fmt_f64(val, fmt_ptr, fmt_len, out_ptr, max_out);
+}
+
+export fn o5_fmt_f64_utf8(
+    val: f64,
+    fmt_ptr: [*]const u8,
+    fmt_len: usize,
+    out_ptr: [*]u8,
+    max_out: usize,
+) usize {
+    return fmt.o5_fmt_f64_utf8(val, fmt_ptr, fmt_len, out_ptr, max_out);
+}
 
 export fn o5_tag_scan(
     src: [*]const u16,

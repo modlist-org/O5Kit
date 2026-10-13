@@ -56,4 +56,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_tag_tests = b.addRunArtifact(tag_tests);
     test_step.dependOn(&run_tag_tests.step);
+
+    const fmt_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/fmt_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const fmt_tests = b.addTest(.{
+        .name = "fmt-test",
+        .root_module = fmt_test_mod,
+    });
+    const run_fmt_tests = b.addRunArtifact(fmt_tests);
+    test_step.dependOn(&run_fmt_tests.step);
 }

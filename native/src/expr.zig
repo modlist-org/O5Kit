@@ -1019,8 +1019,20 @@ pub fn exprCompile(src: []const u8) i64 {
     if (par.pos != src.len or src.len == 0) return 0;
     var dummy_vars: [32]f64 = @splat(0.0);
     const trial = run(buf[0..par.count], 0.0, &dummy_vars) catch return 0;
-    _ = trial;
-    const ops = std.heap.c_allocator.dupe(Op, buf[0..par.count]) catch return 0;
+
+    var has_dynamic = false;
+    for (buf[0..par.count]) |op| {
+        if (op.tag == .push_t or op.tag == .push_v) {
+            has_dynamic = true;
+            break;
+        }
+    }
+    const final_ops = if (!has_dynamic and !math.isNan(trial)) blk: {
+        buf[0] = Op{ .tag = .push_f, .arg = @bitCast(trial) };
+        break :blk buf[0..1];
+    } else buf[0..par.count];
+
+    const ops = std.heap.c_allocator.dupe(Op, final_ops) catch return 0;
     const prog = std.heap.c_allocator.create(Prog) catch {
         std.heap.c_allocator.free(ops);
         return 0;
