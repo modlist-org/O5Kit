@@ -43,4 +43,17 @@ pub fn build(b: *std.Build) void {
     });
     const run_ring_tests = b.addRunArtifact(ring_tests);
     test_step.dependOn(&run_ring_tests.step);
+
+    const tag_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/tag_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const tag_tests = b.addTest(.{
+        .name = "tag-test",
+        .root_module = tag_test_mod,
+    });
+    const run_tag_tests = b.addRunArtifact(tag_tests);
+    test_step.dependOn(&run_tag_tests.step);
 }

@@ -20,5 +20,9 @@ case "$OS" in
     *) echo "unknown os in $TRIPLE" >&2; exit 1 ;;
 esac
 
-mv -f "$HERE/zig-out/lib/$SRC" "$HERE/zig-out/lib/O5KitNative.$OS.$EXT"
+if [[ -f "$HERE/zig-out/lib/$SRC" ]]; then
+    mv -f "$HERE/zig-out/lib/$SRC" "$HERE/zig-out/lib/O5KitNative.$OS.$EXT"
+elif [[ -f "$HERE/zig-out/bin/$SRC" ]]; then
+    mv -f "$HERE/zig-out/bin/$SRC" "$HERE/zig-out/lib/O5KitNative.$OS.$EXT"
+fi
 ls "$HERE/zig-out/lib"

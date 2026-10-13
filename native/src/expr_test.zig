@@ -324,3 +324,37 @@ test "declines" {
     try fail("1e");
     try fail("()");
 }
+
+test "variable t and Math prefix" {
+    const h = expr.exprCompile("50 + 40 * Math.sin(t * 2)");
+    try std.testing.expect(h != 0);
+    defer expr.exprFree(h);
+    const r0 = expr.exprEvalT(h, 0.0);
+    try std.testing.expectEqual(50.0, r0);
+    const r_pi4 = expr.exprEvalT(h, std.math.pi / 4.0);
+    try std.testing.expectApproxEqAbs(@as(f64, 90.0), r_pi4, 1e-9);
+
+    try eq("Math.PI", std.math.pi);
+    try eq("Math.E", std.math.e);
+    try eq("Math.cos(0)", 1.0);
+    try eq("Math.abs(-42)", 42.0);
+    try eq("Math.round(1.5, 0)", 2.0);
+    try eq("Math.round(2.5, 0)", 2.0);
+    try eq("Math.round(1.234, 2)", 1.23);
+}
+
+test "variables v0..v31" {
+    const h = expr.exprCompile("v0 * 2 + v1 - v2 / 2");
+    try std.testing.expect(h != 0);
+    defer expr.exprFree(h);
+    const vars = [_]f64{ 10.0, 5.0, 6.0 };
+    const r = expr.exprEvalVars(h, 0.0, &vars);
+    try std.testing.expectEqual(22.0, r);
+
+    const h2 = expr.exprCompile("Math.sin(t) * v0 + 10");
+    try std.testing.expect(h2 != 0);
+    defer expr.exprFree(h2);
+    const vars2 = [_]f64{50.0};
+    const r2 = expr.exprEvalVars(h2, std.math.pi / 2.0, &vars2);
+    try std.testing.expectApproxEqAbs(@as(f64, 60.0), r2, 1e-9);
+}

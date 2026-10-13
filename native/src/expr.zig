@@ -26,6 +26,8 @@ const Tag = enum(u8) {
     push_i,
     push_f,
     push_b,
+    push_t,
+    push_v,
     add,
     sub,
     mul,
@@ -161,7 +163,7 @@ fn toInt(v: *const Value) EvalError!i64 {
     };
 }
 
-fn run(ops: []const Op) EvalError!f64 {
+fn run(ops: []const Op, t_val: f64, vars: []const f64) EvalError!f64 {
     var st: [max_stack]Value = undefined;
     var sp: usize = 0;
     var i: usize = 0;
@@ -181,6 +183,18 @@ fn run(ops: []const Op) EvalError!f64 {
             .push_b => {
                 if (sp >= max_stack) return EvalError.StackOverflow;
                 st[sp] = .{ .b = op.arg != 0 };
+                sp += 1;
+            },
+            .push_t => {
+                if (sp >= max_stack) return EvalError.StackOverflow;
+                st[sp] = .{ .f = t_val };
+                sp += 1;
+            },
+            .push_v => {
+                if (sp >= max_stack) return EvalError.StackOverflow;
+                const idx: usize = if (op.arg >= 0) @intCast(op.arg) else return EvalError.BadOp;
+                const val = if (idx < vars.len) vars[idx] else 0.0;
+                st[sp] = .{ .f = val };
                 sp += 1;
             },
             .neg => {
@@ -889,7 +903,11 @@ const Parser = struct {
         }
         if (std.ascii.isAlphabetic(c) or c == '_') {
             const save = p.pos;
-            const name = p.scanIdent() orelse return ParseError.Syntax;
+            var name = p.scanIdent() orelse return ParseError.Syntax;
+            if (std.ascii.eqlIgnoreCase(name, "Math") and p.peek() == '.') {
+                p.pos += 1;
+                name = p.scanIdent() orelse return ParseError.Syntax;
+            }
             if (std.ascii.eqlIgnoreCase(name, "PI")) {
                 try p.emit(.push_f, @bitCast(@as(f64, math.pi)));
                 return;
@@ -907,7 +925,21 @@ const Parser = struct {
                 return;
             }
             p.skipWs();
-            if (p.peek() != '(') return ParseError.UnknownName;
+            if (p.peek() != '(') {
+                if (std.ascii.eqlIgnoreCase(name, "t")) {
+                    try p.emit(.push_t, 0);
+                    return;
+                }
+                if ((name[0] == 'v' or name[0] == 'V') and name.len > 1 and name.len <= 4) {
+                    if (std.fmt.parseInt(i64, name[1..], 10)) |vidx| {
+                        if (vidx >= 0 and vidx < 32) {
+                            try p.emit(.push_v, vidx);
+                            return;
+                        }
+                    } else |_| {}
+                }
+                return ParseError.UnknownName;
+            }
             const b = findBuiltin(name) orelse return ParseError.UnknownName;
             p.pos += 1;
             var nargs: u8 = 0;
@@ -985,7 +1017,8 @@ pub fn exprCompile(src: []const u8) i64 {
     par.parseTernary() catch return 0;
     par.skipWs();
     if (par.pos != src.len or src.len == 0) return 0;
-    const trial = run(buf[0..par.count]) catch return 0;
+    var dummy_vars: [32]f64 = @splat(0.0);
+    const trial = run(buf[0..par.count], 0.0, &dummy_vars) catch return 0;
     _ = trial;
     const ops = std.heap.c_allocator.dupe(Op, buf[0..par.count]) catch return 0;
     const prog = std.heap.c_allocator.create(Prog) catch {
@@ -1002,8 +1035,16 @@ pub fn exprCompile(src: []const u8) i64 {
 }
 
 pub fn exprEval(h: i64) f64 {
+    return exprEvalT(h, 0.0);
+}
+
+pub fn exprEvalT(h: i64, t: f64) f64 {
+    return exprEvalVars(h, t, &[_]f64{});
+}
+
+pub fn exprEvalVars(h: i64, t: f64, vars: []const f64) f64 {
     const prog = exprGet(h) orelse return math.nan(f64);
-    return run(prog.ops) catch math.nan(f64);
+    return run(prog.ops, t, vars) catch math.nan(f64);
 }
 
 pub fn exprFree(h: i64) void {

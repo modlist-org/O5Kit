@@ -1,5 +1,15 @@
 const expr = @import("expr.zig");
 const ring = @import("ring.zig");
+const tag = @import("tag.zig");
+
+export fn o5_tag_scan(
+    src: [*]const u16,
+    len: usize,
+    out_tags: [*]tag.TagSpan,
+    max_tags: usize,
+) usize {
+    return tag.scan(src[0..len], out_tags[0..max_tags]);
+}
 
 export fn o5_expr_compile(src: [*]const u8, len: usize) i64 {
     return expr.exprCompile(src[0..len]);
@@ -7,6 +17,15 @@ export fn o5_expr_compile(src: [*]const u8, len: usize) i64 {
 
 export fn o5_expr_eval(h: i64) f64 {
     return expr.exprEval(h);
+}
+
+export fn o5_expr_eval_t(h: i64, t: f64) f64 {
+    return expr.exprEvalT(h, t);
+}
+
+export fn o5_expr_eval_vars(h: i64, t: f64, vars: ?[*]const f64, var_count: usize) f64 {
+    const v_slice = if (vars) |ptr| ptr[0..var_count] else &[_]f64{};
+    return expr.exprEvalVars(h, t, v_slice);
 }
 
 export fn o5_expr_free(h: i64) void {
