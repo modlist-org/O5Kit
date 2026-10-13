@@ -69,10 +69,6 @@
     <Reference Include="MelonLoader"><HintPath>$(GamePath)/MelonLoader/net6/MelonLoader.dll</HintPath></Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- NCalc: math expression evaluation for numeric input fields (O5Kit.Math). MIT. -->
-    <PackageReference Include="ncalc" Version="7.0.2" />
-  </ItemGroup>
 
   <!-- LitMotion v2 (MIT): compiled for IL2CPP where Burst/Collections are available. -->
   <ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">

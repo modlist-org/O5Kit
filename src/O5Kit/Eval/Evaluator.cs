@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using NCalc;
+using O5Kit.Native;
 
 namespace O5Kit.Eval;
 
@@ -52,22 +52,85 @@ public static class Evaluator<T> where T : struct, IComparable<T>, IConvertible 
             return ValidateAndReturn(directResult, currentVal, min, max);
         }
 
-        try {
-            var e = new Expression(exprStr, ExpressionOptions.IgnoreCaseAtBuiltInFunctions);
-
-            foreach (var constant in EvaluatorConstants.Constants) {
-                e.Parameters[constant.Key] = constant.Value;
+        if (O5Expr.IsSupported) {
+            long handle = O5Expr.Compile(exprStr);
+            if (handle != 0) {
+                try {
+                    if (O5Expr.TryEval(handle, out double nativeVal) && !double.IsNaN(nativeVal) && !double.IsInfinity(nativeVal)) {
+                        T result = (T)Convert.ChangeType(nativeVal, typeof(T), EvaluatorConstants.Culture);
+                        return ValidateAndReturn(result, currentVal, min, max);
+                    }
+                } finally {
+                    O5Expr.Free(handle);
+                }
             }
+        }
 
-            object? evalResult = e.Evaluate();
-            if (evalResult == null) {
-                return (currentVal, EvalState.Error);
-            }
-
-            T result = (T)((IConvertible)evalResult).ToType(typeof(T), EvaluatorConstants.Culture);
+        if (TryEvalFallback(exprStr, out double fallbackVal)) {
+            T result = (T)Convert.ChangeType(fallbackVal, typeof(T), EvaluatorConstants.Culture);
             return ValidateAndReturn(result, currentVal, min, max);
+        }
+
+        return (currentVal, EvalState.Error);
+    }
+
+    private static bool TryEvalFallback(string s, out double result) {
+        result = 0;
+        int pos = 0;
+        try {
+            double ParseExpr() {
+                double val = ParseTerm();
+                while (pos < s.Length) {
+                    char c = s[pos];
+                    if (c == '+') { pos++; val += ParseTerm(); }
+                    else if (c == '-') { pos++; val -= ParseTerm(); }
+                    else break;
+                }
+                return val;
+            }
+            double ParseTerm() {
+                double val = ParseFactor();
+                while (pos < s.Length) {
+                    char c = s[pos];
+                    if (c == '*') { pos++; val *= ParseFactor(); }
+                    else if (c == '/') { pos++; val /= ParseFactor(); }
+                    else if (c == '%') { pos++; val %= ParseFactor(); }
+                    else break;
+                }
+                return val;
+            }
+            double ParseFactor() {
+                SkipWs();
+                if (pos >= s.Length) throw new InvalidOperationException();
+                if (s[pos] == '+') { pos++; return ParseFactor(); }
+                if (s[pos] == '-') { pos++; return -ParseFactor(); }
+                if (s[pos] == '(') {
+                    pos++;
+                    double val = ParseExpr();
+                    SkipWs();
+                    if (pos < s.Length && s[pos] == ')') pos++;
+                    return val;
+                }
+                int start = pos;
+                if (char.IsLetter(s[pos])) {
+                    while (pos < s.Length && char.IsLetterOrDigit(s[pos])) pos++;
+                    string id = s.Substring(start, pos - start);
+                    if (id.Equals("PI", StringComparison.OrdinalIgnoreCase)) return Math.PI;
+                    if (id.Equals("E", StringComparison.OrdinalIgnoreCase)) return Math.E;
+                    throw new InvalidOperationException();
+                }
+                while (pos < s.Length && (char.IsDigit(s[pos]) || s[pos] == '.')) pos++;
+                if (double.TryParse(s.Substring(start, pos - start), NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
+                    return num;
+                throw new InvalidOperationException();
+            }
+            void SkipWs() { while (pos < s.Length && char.IsWhiteSpace(s[pos])) pos++; }
+            s = s.Trim();
+            result = ParseExpr();
+            SkipWs();
+            return pos == s.Length && !double.IsNaN(result) && !double.IsInfinity(result);
         } catch {
-            return (currentVal, EvalState.Error);
+            return false;
         }
     }
 
