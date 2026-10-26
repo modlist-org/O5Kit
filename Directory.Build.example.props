@@ -6,9 +6,9 @@
     <!-- For IL2CPP builds: -->
     <!-- <Il2CppPath>/path/to/il2cpp/game/root</Il2CppPath> -->
     <!-- <Il2CppData>GameName_Data</Il2CppData> -->
-    <!-- Per-mod copy: give your bundled O5Kit a unique assembly name so multiple
-         mods never clash (UMM / MelonLoader / BepInEx all load by simple name).
-         Namespaces stay O5Kit, so no source changes are needed. -->
+    <!-- Side-by-side is by VERSION (O5Kit.{major}.{minor}, auto-derived):
+         mods on the same version share one loaded copy, so normally you set
+         nothing. Only override for special cases (private fork, version pin): -->
     <!-- <O5KitAssemblyName>MyMod.O5Kit</O5KitAssemblyName> -->
   </PropertyGroup>
 </Project>

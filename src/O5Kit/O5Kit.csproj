@@ -10,15 +10,18 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <RootNamespace>O5Kit</RootNamespace>
-    <!-- Per-mod rename for side-by-side use: each mod builds its own copy with a
-         unique assembly name (namespaces stay O5Kit, so sources are compatible).
-         Override from the command line or your mod's build:
-           dotnet build -p:O5KitAssemblyName=Overlayer.O5Kit
-         Distinct simple names load as distinct assemblies on every loader
-         (UMM / MelonLoader / BepInEx), so copies never clash regardless of version. -->
-    <AssemblyName Condition="'$(O5KitAssemblyName)' == ''">O5Kit.v0</AssemblyName>
+    <!-- Side-by-side by VERSION (major.minor; patch excluded, patches are
+         drop-in): every mod built against the same O5Kit generation shares one
+         loaded copy (same simple name = same identity on UMM / MelonLoader /
+         BepInEx), so runtime copies scale with versions, not with mod count.
+         The name derives from <Version> automatically: bump major/minor and
+         the name follows (1.0 -> O5Kit.1.0, 1.1 -> O5Kit.1.1, 2.0 -> ...).
+         Escape hatch for special cases:
+           dotnet build -p:O5KitAssemblyName=MyMod.O5Kit -->
+    <Version>1.0.0</Version>
+    <O5KitVersionPrefix>$([System.Version]::Parse('$(Version)').ToString(2))</O5KitVersionPrefix>
+    <AssemblyName Condition="'$(O5KitAssemblyName)' == ''">O5Kit.$(O5KitVersionPrefix)</AssemblyName>
     <AssemblyName Condition="'$(O5KitAssemblyName)' != ''">$(O5KitAssemblyName)</AssemblyName>
-    <Version>0.1.0</Version>
     <Authors>modlist-org</Authors>
     <Description>O5 UI toolkit for Unity mods: pretty uGUI controls + input (UniverseLib-style). LGPL-3.0-or-later.</Description>
     <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>

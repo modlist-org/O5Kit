@@ -77,16 +77,16 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
 
 The game (Mono) loads **a single assembly per simple name**. Unsigned DLLs ignore versions too, so two `O5Kit.dll` files with different contents mean only the first-loaded one wins and the other mod dies with `MissingMethodException`/`TypeLoadException`. Same on UMM / MelonLoader / BepInEx.
 
-Rule: **put the version in the assembly name; mods on the same version share one copy.** Renaming by version, not by mod, so 100 mods still mean only as many runtime copies as versions.
+Rule: **put the version in the assembly name; mods on the same version share one copy.** Renaming by version, not by mod, so 100 mods still mean only as many runtime copies as versions. The name is `O5Kit.{major}.{minor}` — patch excluded, drop-in replacement.
 
 ```bash
 dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
-# output: O5Kit.v0.dll (default, namespaces stay O5Kit so sources are compatible)
+# output: O5Kit.1.0.dll (name auto-derived from <Version>, namespaces stay O5Kit)
 ```
 
-- Mods referencing the same `O5Kit.v0` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
-- Different versions (`O5Kit.v0` vs `O5Kit.v1`) load side by side. Old mods are untouched; only new mods use the new version.
-- Version policy: **`v0` is preview, breaking allowed. Rename to `O5Kit.v1` at 1.0, then `v2`, `v3`... on breaking changes only.** semver major = assembly name bump.
+- Mods referencing the same `O5Kit.1.0` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
+- Different versions (`O5Kit.1.0` vs `O5Kit.1.1`) load side by side. Old mods are untouched; only new mods use the new version.
+- Version policy: **major/minor bumps move the assembly name along. Patch (1.0.0 -> 1.0.1) keeps the name, drop-in.** Any minor-or-above change gets a new name.
 - Special cases (private fork, version pin): per-mod rename via `-p:O5KitAssemblyName=MyMod.O5Kit`.
 - Mono API caution: netstandard references are not the game Mono. Only use APIs that actually exist in the game's `Managed` folder. (Example: `IReadOnlyList<T>.Contains` without `System.Linq` binds to netstandard's `MemoryExtensions` Span overload and blows up at runtime.)
 - Native (`O5KitNative.*`) is process-wide first-win shared + frozen ABI + `o5_abi_version` gate, so its file names stay as-is (no rename needed).
