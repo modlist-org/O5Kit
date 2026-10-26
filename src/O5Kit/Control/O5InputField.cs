@@ -2,6 +2,7 @@
 
 using System;
 using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,7 +14,7 @@ public sealed class O5InputField : O5Object {
     public O5InputCore Core { get; }
 
     /// <summary>Value to reset to on middle-click. Null disables reset.</summary>
-    public string? DefaultValue { get; }
+    public string? DefaultValue { get; set; }
 
     /// <summary>Current text.</summary>
     public string Value => Core.Value;
@@ -44,11 +45,7 @@ public sealed class O5InputField : O5Object {
     /// <param name="placeholder">Placeholder text.</param>
     /// <param name="iconImage">Trailing icon.</param>
     /// <param name="changedImage">Changed-dot image.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial text.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="onEndEdit">End-edit callback.</param>
-    /// <param name="multiline">Multi-line mode.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5InputField(
         O5Context ctx,
         string id,
@@ -57,35 +54,51 @@ public sealed class O5InputField : O5Object {
         TMPro.TextMeshProUGUI placeholder,
         Image iconImage,
         Image changedImage,
-        string? defaultValue,
-        string? value,
-        Action<string>? onChanged,
-        Action<string>? onEndEdit = null,
-        bool multiline = false
+        O5InputOptions? options = null
     ) : base(ctx, id, rect) {
-        DefaultValue = defaultValue;
+        options ??= new O5InputOptions();
+        DefaultValue = options.DefaultValue;
         ChangedImage = changedImage;
         IconImage = iconImage;
 
-        Core = new O5InputCore(ctx, inputField, placeholder, value ?? string.Empty, val => {
+        Core = new O5InputCore(ctx, inputField, placeholder, options.Value ?? string.Empty, val => {
             UpdateVisual();
-            onChanged?.Invoke(val);
-        }, onEndEdit, multiline);
+            options.OnChanged?.Invoke(val);
+        }, options.OnEndEdit, options.Multiline);
 
         RegisterTick();
         UpdateVisual(true);
     }
 
-    /// <summary>Replaces the text, optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Builds a text field under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5InputField Create(O5Context ctx, Transform parent, string id, O5InputOptions? options = null)
+        => O5Factory.Input(ctx, parent, id, options);
+
+    /// <summary>Builds a text field under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5InputOptions"/>.</param>
+    public static O5InputField Create(O5Context ctx, Transform parent, string id, Action<O5InputOptions> configure) {
+        var options = new O5InputOptions();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
+    }
+
+    /// <summary>Replaces the text.</summary>
     /// <param name="value">New text.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void Set(string value, bool invoke = true) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(string value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
 
         Core.SetValue(value, false);
-        if (invoke) {
+        if (notify) {
             Core.OnChanged?.Invoke(value);
         }
 
@@ -93,9 +106,10 @@ public sealed class O5InputField : O5Object {
     }
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
-    public void Reset() {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
         if (DefaultValue != null) {
-            Set(DefaultValue);
+            Set(DefaultValue, notify);
         }
     }
 

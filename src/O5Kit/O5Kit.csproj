@@ -10,7 +10,14 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <RootNamespace>O5Kit</RootNamespace>
-    <AssemblyName>O5Kit</AssemblyName>
+    <!-- Per-mod rename for side-by-side use: each mod builds its own copy with a
+         unique assembly name (namespaces stay O5Kit, so sources are compatible).
+         Override from the command line or your mod's build:
+           dotnet build -p:O5KitAssemblyName=Overlayer.O5Kit
+         Distinct simple names load as distinct assemblies on every loader
+         (UMM / MelonLoader / BepInEx), so copies never clash regardless of version. -->
+    <AssemblyName Condition="'$(O5KitAssemblyName)' == ''">O5Kit.v0</AssemblyName>
+    <AssemblyName Condition="'$(O5KitAssemblyName)' != ''">$(O5KitAssemblyName)</AssemblyName>
     <Version>0.1.0</Version>
     <Authors>modlist-org</Authors>
     <Description>O5 UI toolkit for Unity mods: pretty uGUI controls + input (UniverseLib-style). LGPL-3.0-or-later.</Description>

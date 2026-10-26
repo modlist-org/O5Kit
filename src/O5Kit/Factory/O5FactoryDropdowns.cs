@@ -16,22 +16,15 @@ public static partial class O5Factory {
     /// <summary>Builds a single-select dropdown with an animated list.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="values">Available options.</param>
-    /// <param name="display">Option renderer.</param>
-    /// <param name="onChanged">Change callback.</param>
     /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public static O5Dropdown<T> DropDown<T>(
         O5Context ctx,
         Transform parent,
-        T? defaultValue,
-        T? value,
-        IReadOnlyList<T> values,
-        Func<T, string> display,
-        Action<T?>? onChanged,
-        string id
+        string id,
+        O5DropdownOptions<T>? options = null
     ) {
+        options ??= new O5DropdownOptions<T>();
         GameObject root = new("Dropdown");
         root.transform.SetParent(parent, false);
 
@@ -52,7 +45,7 @@ public static partial class O5Factory {
         rect.anchoredPosition = Vector2.zero;
 
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
-        tmp.text = value != null ? display(value) : "";
+        tmp.text = options.Value != null ? options.Display(options.Value) : "";
         tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
         tmp.enableWordWrapping = false;
         tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
@@ -114,11 +107,7 @@ public static partial class O5Factory {
             list,
             listRect,
             listCg,
-            values,
-            display,
-            defaultValue,
-            value,
-            onChanged
+            options
         );
 
         LayoutElement? parentLayout = parent.GetComponent<LayoutElement>();
@@ -205,27 +194,34 @@ public static partial class O5Factory {
         return dropdown;
     }
 
+    /// <summary>Builds a single-select dropdown with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5DropdownOptions{T}"/>.</param>
+    public static O5Dropdown<T> DropDown<T>(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5DropdownOptions<T>> configure
+    ) {
+        var options = new O5DropdownOptions<T>();
+        configure?.Invoke(options);
+        return DropDown(ctx, parent, id, options);
+    }
+
     /// <summary>Builds a flag-style multi-select dropdown with checkmark rows.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial flags value.</param>
-    /// <param name="values">Available flags.</param>
-    /// <param name="display">Flag renderer.</param>
-    /// <param name="summary">Combined-value renderer for the header.</param>
-    /// <param name="onChanged">Change callback.</param>
     /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public static O5MultiDropdown<T> MultiDropDown<T>(
         O5Context ctx,
         Transform parent,
-        T? defaultValue,
-        T value,
-        IReadOnlyList<T> values,
-        Func<T, string> display,
-        Func<T, string> summary,
-        Action<T>? onChanged,
-        string id
+        string id,
+        O5MultiDropdownOptions<T>? options = null
     ) where T : struct, Enum {
+        options ??= new O5MultiDropdownOptions<T>();
         GameObject root = new("MultiDropdown");
         root.transform.SetParent(parent, false);
 
@@ -246,7 +242,7 @@ public static partial class O5Factory {
         rect.anchoredPosition = Vector2.zero;
 
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
-        tmp.text = summary(value);
+        tmp.text = options.Summary(options.Value);
         tmp.rectTransform.offsetMax = new Vector2(-48f, 0f);
         tmp.enableWordWrapping = false;
         tmp.overflowMode = TMPro.TextOverflowModes.Ellipsis;
@@ -307,12 +303,7 @@ public static partial class O5Factory {
             list,
             listRect,
             listCg,
-            values,
-            display,
-            summary,
-            defaultValue,
-            value,
-            onChanged
+            options
         );
 
         LayoutElement? parentLayout = parent.GetComponent<LayoutElement>();
@@ -396,5 +387,21 @@ public static partial class O5Factory {
         dropdown.RebuildList();
         UpdateHeight();
         return dropdown;
+    }
+
+    /// <summary>Builds a flag-style multi-select dropdown with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5MultiDropdownOptions{T}"/>.</param>
+    public static O5MultiDropdown<T> MultiDropDown<T>(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5MultiDropdownOptions<T>> configure
+    ) where T : struct, Enum {
+        var options = new O5MultiDropdownOptions<T>();
+        configure?.Invoke(options);
+        return MultiDropDown(ctx, parent, id, options);
     }
 }

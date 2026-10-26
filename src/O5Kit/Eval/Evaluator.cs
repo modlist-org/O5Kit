@@ -80,7 +80,11 @@ public static class Evaluator<T> where T : struct, IComparable<T>, IConvertible 
         try {
             double ParseExpr() {
                 double val = ParseTerm();
-                while (pos < s.Length) {
+                while (true) {
+                    SkipWs();
+                    if (pos >= s.Length) {
+                        break;
+                    }
                     char c = s[pos];
                     if (c == '+') { pos++; val += ParseTerm(); }
                     else if (c == '-') { pos++; val -= ParseTerm(); }
@@ -90,7 +94,11 @@ public static class Evaluator<T> where T : struct, IComparable<T>, IConvertible 
             }
             double ParseTerm() {
                 double val = ParseFactor();
-                while (pos < s.Length) {
+                while (true) {
+                    SkipWs();
+                    if (pos >= s.Length) {
+                        break;
+                    }
                     char c = s[pos];
                     if (c == '*') { pos++; val *= ParseFactor(); }
                     else if (c == '/') { pos++; val /= ParseFactor(); }
@@ -108,7 +116,10 @@ public static class Evaluator<T> where T : struct, IComparable<T>, IConvertible 
                     pos++;
                     double val = ParseExpr();
                     SkipWs();
-                    if (pos < s.Length && s[pos] == ')') pos++;
+                    if (pos >= s.Length || s[pos] != ')') {
+                        throw new InvalidOperationException();
+                    }
+                    pos++;
                     return val;
                 }
                 int start = pos;

@@ -54,25 +54,20 @@ public static partial class O5Factory {
     /// <summary>Builds a labeled toggle. Middle-click resets to default when enabled in config.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="text">Label text.</param>
     /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public static O5Toggle Toggle(
         O5Context ctx,
         Transform parent,
-        bool? defaultValue,
-        bool value,
-        Action<bool>? onChanged,
-        string text,
-        string id
+        string id,
+        O5ToggleOptions? options = null
     ) {
+        options ??= new O5ToggleOptions();
         RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
         TMPro.TextMeshProUGUI tmp = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
-        tmp.text = text;
+        tmp.text = options.Text;
 
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
@@ -97,9 +92,7 @@ public static partial class O5Factory {
             circleImage,
             circleRect,
             changeImg,
-            defaultValue,
-            value,
-            onChanged
+            options
         );
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
@@ -123,6 +116,22 @@ public static partial class O5Factory {
         };
 
         return toggle;
+    }
+
+    /// <summary>Builds a labeled toggle with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5ToggleOptions"/>.</param>
+    public static O5Toggle Toggle(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5ToggleOptions> configure
+    ) {
+        var options = new O5ToggleOptions();
+        configure?.Invoke(options);
+        return Toggle(ctx, parent, id, options);
     }
 
     /// <summary>Attaches a static hover tooltip.</summary>

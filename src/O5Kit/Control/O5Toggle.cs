@@ -2,6 +2,7 @@
 
 using System;
 using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,16 +11,26 @@ namespace O5Kit.Control;
 /// <summary>On/off toggle with a sliding circle, tint and a changed-dot.</summary>
 public class O5Toggle : O5Object {
     /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
-    public bool? DefaultValue { get; }
+    public bool? DefaultValue { get; set; }
 
     /// <summary>Current value.</summary>
     public bool Value { get; private set; }
 
     /// <summary>Fired when the value changes via <see cref="Set"/>.</summary>
-    public Action<bool>? OnChanged;
+    public Action<bool>? OnChanged { get; set; }
 
     /// <summary>Label text.</summary>
     public TMPro.TextMeshProUGUI Label { get; }
+
+    /// <summary>Label string. Get/set proxy for <see cref="Label"/> text.</summary>
+    public string Text {
+        get => Label != null && Label ? Label.text : string.Empty;
+        set {
+            if (Label != null && Label) {
+                Label.text = value;
+            }
+        }
+    }
 
     /// <summary>Sliding circle image.</summary>
     public Image CircleImage { get; }
@@ -40,9 +51,7 @@ public class O5Toggle : O5Object {
     /// <param name="circleImage">Sliding circle image.</param>
     /// <param name="circleRect">Circle layout rect.</param>
     /// <param name="changedImage">Changed-dot image.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="onChanged">Change callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5Toggle(
         O5Context ctx,
         string id,
@@ -51,33 +60,51 @@ public class O5Toggle : O5Object {
         Image circleImage,
         RectTransform circleRect,
         Image changedImage,
-        bool? defaultValue,
-        bool value,
-        Action<bool>? onChanged
+        O5ToggleOptions? options = null
     ) : base(ctx, id, rect) {
+        options ??= new O5ToggleOptions();
         Label = label;
 
         CircleImage = circleImage;
         CircleRect = circleRect;
         ChangedImage = changedImage;
-        DefaultValue = defaultValue;
-        Value = value;
-        OnChanged = onChanged;
+        DefaultValue = options.DefaultValue;
+        Value = options.Value;
+        OnChanged = options.OnChanged;
 
         UpdateVisual(true);
     }
 
-    /// <summary>Sets the value, optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Builds a toggle under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5Toggle Create(O5Context ctx, Transform parent, string id, O5ToggleOptions? options = null)
+        => O5Factory.Toggle(ctx, parent, id, options);
+
+    /// <summary>Builds a toggle under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5ToggleOptions"/>.</param>
+    public static O5Toggle Create(O5Context ctx, Transform parent, string id, Action<O5ToggleOptions> configure) {
+        var options = new O5ToggleOptions();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
+    }
+
+    /// <summary>Sets the value.</summary>
     /// <param name="value">New value.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void Set(bool value, bool invoke = true) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(bool value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
 
         Value = value;
 
-        if (invoke) {
+        if (notify) {
             OnChanged?.Invoke(value);
         }
 
@@ -85,12 +112,14 @@ public class O5Toggle : O5Object {
     }
 
     /// <summary>Flips the current value.</summary>
-    public void Toggle() => Set(!Value);
+    /// <param name="notify">Fire the change callback.</param>
+    public void Toggle(bool notify = true) => Set(!Value, notify);
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
-    public void Reset() {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
         if (DefaultValue.HasValue) {
-            Set(DefaultValue.Value);
+            Set(DefaultValue.Value, notify);
         }
     }
 
