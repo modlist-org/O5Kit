@@ -201,14 +201,14 @@ public sealed class O5SpriteEditor : O5Object {
         hint.rectTransform.offsetMax = new Vector2(-22f, 82f);
         hint.color = ctx.Theme.TextDim;
 
-        var cancel = O5Factory.Button(ctx, content, null, options.CancelLabel, "sprite_editor_cancel");
+        var cancel = O5Factory.Button(ctx, content, "sprite_editor_cancel", new O5ButtonOptions { Text = options.CancelLabel });
         cancel.Rect.anchorMin = new Vector2(1f, 0f);
         cancel.Rect.anchorMax = new Vector2(1f, 0f);
         cancel.Rect.pivot = new Vector2(1f, 0f);
         cancel.Rect.anchoredPosition = new Vector2(-152f, 12f);
         cancel.Rect.sizeDelta = new Vector2(130f, 42f);
 
-        var apply = O5Factory.Button(ctx, content, null, options.ApplyLabel, "sprite_editor_apply");
+        var apply = O5Factory.Button(ctx, content, "sprite_editor_apply", new O5ButtonOptions { Text = options.ApplyLabel });
         apply.Rect.anchorMin = new Vector2(1f, 0f);
         apply.Rect.anchorMax = new Vector2(1f, 0f);
         apply.Rect.pivot = new Vector2(1f, 0f);
@@ -298,18 +298,17 @@ public sealed class O5SpriteEditor : O5Object {
         O5Slider input = O5Factory.Slider(
             Ctx,
             parent,
-            0d,
-            0d,
-            max,
-            0d,
-            "F0",
-            ClampMode.All,
-            value => FilterSlider(guide, value),
-            value => FilterSlider(guide, value),
-            value => SetBorderFromSlider(guide, value),
-            null,
-            label,
-            id
+            id,
+            new O5SliderOptions {
+                Min = 0d,
+                Max = max,
+                Value = 0d,
+                Format = "F0",
+                DragFilter = value => FilterSlider(guide, value),
+                InputFilter = value => FilterSlider(guide, value),
+                OnChanged = value => SetBorderFromSlider(guide, value),
+                Label = label,
+            }
         );
         input.Rect.anchorMin = new Vector2(right ? 0.5f : 0f, top ? 0.5f : 0f);
         input.Rect.anchorMax = new Vector2(right ? 1f : 0.5f, top ? 1f : 0.5f);

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using O5Kit.Behaviour;
 using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -14,7 +15,7 @@ namespace O5Kit.Control;
 /// <summary>Single-select dropdown with an animated expanding list.</summary>
 public class O5Dropdown<T> : O5Object {
     /// <summary>Value to reset to on middle-click.</summary>
-    public T? DefaultValue { get; }
+    public T? DefaultValue { get; set; }
 
     /// <summary>Current value.</summary>
     public T? Value { get; private set; }
@@ -23,7 +24,7 @@ public class O5Dropdown<T> : O5Object {
     public IReadOnlyList<T> Values { get; private set; }
 
     /// <summary>Renders an option as text.</summary>
-    public Func<T, string> Display { get; }
+    public Func<T, string> Display { get; set; }
 
     /// <summary>Fired when the value changes.</summary>
     public Action<T?>? OnChanged { get; set; }
@@ -72,11 +73,7 @@ public class O5Dropdown<T> : O5Object {
     /// <param name="listObject">List container.</param>
     /// <param name="listRect">List layout rect.</param>
     /// <param name="listCanvasGroup">List fade group.</param>
-    /// <param name="values">Available options.</param>
-    /// <param name="display">Option renderer.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="onChanged">Change callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5Dropdown(
         O5Context ctx,
         string id,
@@ -88,12 +85,9 @@ public class O5Dropdown<T> : O5Object {
         GameObject listObject,
         RectTransform listRect,
         CanvasGroup listCanvasGroup,
-        IReadOnlyList<T> values,
-        Func<T, string> display,
-        T? defaultValue,
-        T? value,
-        Action<T?>? onChanged
+        O5DropdownOptions<T>? options = null
     ) : base(ctx, id, rect) {
+        options ??= new O5DropdownOptions<T>();
         Label = label;
 
         TriangleImage = triangleImage;
@@ -105,14 +99,14 @@ public class O5Dropdown<T> : O5Object {
         ListRect = listRect;
         ListCanvasGroup = listCanvasGroup;
 
-        Values = values;
+        Values = options.Values;
 
-        Display = display;
-        DefaultValue = defaultValue;
+        Display = options.Display;
+        DefaultValue = options.DefaultValue;
 
-        Value = value;
+        Value = options.Value;
 
-        OnChanged = onChanged;
+        OnChanged = options.OnChanged;
 
         Label.text = Value != null ? Display(Value) : "";
 
@@ -120,10 +114,10 @@ public class O5Dropdown<T> : O5Object {
         UpdateVisual(true);
     }
 
-    /// <summary>Selects a value, optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Selects a value.</summary>
     /// <param name="value">New value.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void Set(T? value, bool invoke = true) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(T? value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
@@ -134,7 +128,7 @@ public class O5Dropdown<T> : O5Object {
             Label.text = Value != null ? Display(Value) : "";
         }
 
-        if (invoke) {
+        if (notify) {
             OnChanged?.Invoke(value);
         }
 
@@ -143,9 +137,29 @@ public class O5Dropdown<T> : O5Object {
         OnLayoutChanged?.Invoke();
     }
 
+    /// <summary>Builds a dropdown under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5Dropdown<T> Create(O5Context ctx, Transform parent, string id, O5DropdownOptions<T>? options = null)
+        => O5Factory.DropDown(ctx, parent, id, options);
+
+    /// <summary>Builds a dropdown under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5DropdownOptions{T}"/>.</param>
+    public static O5Dropdown<T> Create(O5Context ctx, Transform parent, string id, Action<O5DropdownOptions<T>> configure) {
+        var options = new O5DropdownOptions<T>();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
+    }
+
     /// <summary>Replaces the option list. Falls back to the first option when the current value is gone.</summary>
     /// <param name="values">New options.</param>
-    public void SetValues(IReadOnlyList<T> values) {
+    /// <param name="notify">Fire the change callback if the value falls back.</param>
+    public void SetValues(IReadOnlyList<T> values, bool notify = false) {
         if (IsDisposed) {
             return;
         }
@@ -156,15 +170,16 @@ public class O5Dropdown<T> : O5Object {
 
         if (Value == null || !Values.Contains(Value)) {
             if (Values.Count > 0) {
-                Set(Values[0], false);
+                Set(Values[0], notify);
             }
         }
     }
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
-    public void Reset() {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
         if (DefaultValue != null) {
-            Set(DefaultValue);
+            Set(DefaultValue, notify);
         }
     }
 

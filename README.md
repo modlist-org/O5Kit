@@ -34,7 +34,7 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
    dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
    dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
    ```
-4. Native math lib (needs `zig` 0.17+): `./native/build.sh` (`./native/build.sh x86_64-windows` to cross). Output lands in `native/zig-out/lib` as `O5KitNative.<os>.<ext>`.
+4. Native math lib (needs `zig` 0.17+): `./native/build.sh` (`./native/build.sh x86_64-windows` to cross). Output lands in `native/zig-out/lib` as `O5KitNative.<os>.<ext>`. The native C ABI (`o5_*`) is frozen — additive only, gated by `o5_abi_version` — because all mods share one loaded copy (first-win). Managed binding resolves symbols explicitly from the loaded handle and falls back to C# when unavailable.
 
 # ⌨️ Usage
 ### Setup
@@ -72,6 +72,25 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
   Pump with `O5ShortcutManager.HandleUpdate()` each frame; gate with `IsSuspended`. Combos stay rebindable via `Get(id).Combo`.
 > [!NOTE]
 > O5Kit targets `netstandard2.1` (Mono) and `net6.0` (IL2CPP). `*_IL2CPP` configurations define the `IL2CPP` symbol automatically, which enables the MelonLoader/Il2CppInterop code paths (`RegisterTypeInIl2Cpp`, `DelegateSupport`, `TryCast` — same pattern as Overlayer's `ML && IL2CPP` blocks). IL2CPP builds reference the `MelonLoader/net6` assemblies via `GamePath`. IL2CPP support is implemented for the future; it has not been verified against an IL2CPP game yet.
+
+# 🔀 Multi-mod coexistence (versioned side-by-side)
+
+The game (Mono) loads **a single assembly per simple name**. Unsigned DLLs ignore versions too, so two `O5Kit.dll` files with different contents mean only the first-loaded one wins and the other mod dies with `MissingMethodException`/`TypeLoadException`. Same on UMM / MelonLoader / BepInEx.
+
+Rule: **put the version in the assembly name; mods on the same version share one copy.** Renaming by version, not by mod, so 100 mods still mean only as many runtime copies as versions. The name is `O5Kit.{major}.{minor}` — patch excluded, drop-in replacement.
+
+```bash
+dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
+# output: O5Kit.1.0.dll (name auto-derived from <Version>, namespaces stay O5Kit)
+```
+
+- Mods referencing the same `O5Kit.1.0` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
+- Different versions (`O5Kit.1.0` vs `O5Kit.1.1`) load side by side. Old mods are untouched; only new mods use the new version.
+- Version policy: **major/minor bumps move the assembly name along. Patch (1.0.0 -> 1.0.1) keeps the name, drop-in.** Any minor-or-above change gets a new name.
+- Special cases (private fork, version pin): per-mod rename via `-p:O5KitAssemblyName=MyMod.O5Kit`.
+- Mono API caution: netstandard references are not the game Mono. Only use APIs that actually exist in the game's `Managed` folder. (Example: `IReadOnlyList<T>.Contains` without `System.Linq` binds to netstandard's `MemoryExtensions` Span overload and blows up at runtime.)
+- Native (`O5KitNative.*`) is process-wide first-win shared + frozen ABI + `o5_abi_version` gate, so its file names stay as-is (no rename needed).
+- LGPL: ship `LICENCE.md` + an O5Kit source link alongside the DLL.
 
 # 🧩 [Overlayer](https://github.com/modlist-org/Overlayer)
 O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library and keeps all game-specific logic (FxValue, tags, modules) on its own side.

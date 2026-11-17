@@ -20,15 +20,20 @@ public sealed class O5ColorPicker : O5Object {
     private const float RingOuter = 0.49f;
     private const float TriangleRadius = 0.32f;
 
-    /// <summary>Value to reset to on middle-click.</summary>
-    /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
-    public Color? DefaultValue { get; }
+    /// <summary>Value to reset to on middle-click. Null disables reset.</summary>
+    public Color? DefaultValue { get; set; }
 
     /// <summary>Current color.</summary>
     public Color Value { get; private set; }
 
     /// <summary>Whether the popup is open.</summary>
     public bool Expanded { get; private set; }
+
+    /// <summary>Fired on every change.</summary>
+    public Action<Color>? OnChanged { get; set; }
+
+    /// <summary>Fired on commit.</summary>
+    public Action<Color>? OnComplete { get; set; }
 
     private readonly RectTransform _canvasRect;
     private readonly Camera? _canvasCamera;
@@ -51,8 +56,6 @@ public sealed class O5ColorPicker : O5Object {
     private readonly Image _hsvModeBackground;
     private readonly TMPro.TextMeshProUGUI _rgbModeLabel;
     private readonly TMPro.TextMeshProUGUI _hsvModeLabel;
-    private readonly Action<Color>? _onChanged;
-    private readonly Action<Color>? _onComplete;
     private readonly Texture2D _texture;
     private readonly Sprite _textureSprite;
 
@@ -88,10 +91,7 @@ public sealed class O5ColorPicker : O5Object {
     /// <param name="rgbModeLabel">RGB tab label.</param>
     /// <param name="hsvModeBackground">HSV tab background.</param>
     /// <param name="hsvModeLabel">HSV tab label.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial color.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="onComplete">Commit callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5ColorPicker(
         O5Context ctx,
         string id,
@@ -112,11 +112,9 @@ public sealed class O5ColorPicker : O5Object {
         TMPro.TextMeshProUGUI rgbModeLabel,
         Image hsvModeBackground,
         TMPro.TextMeshProUGUI hsvModeLabel,
-        Color? defaultValue,
-        Color value,
-        Action<Color>? onChanged,
-        Action<Color>? onComplete
+        O5ColorPickerOptions? options = null
     ) : base(ctx, id, rect) {
+        options ??= new O5ColorPickerOptions();
         _canvasRect = canvasRect;
         _canvasCamera = canvasCamera;
         _body = body;
@@ -133,9 +131,9 @@ public sealed class O5ColorPicker : O5Object {
         _hsvModeLabel = hsvModeLabel;
         _hexInput = hexInput;
         _hexOutline = sharedOutline;
-        _onChanged = onChanged;
-        _onComplete = onComplete;
-        DefaultValue = defaultValue;
+        OnChanged = options.OnChanged;
+        OnComplete = options.OnComplete;
+        DefaultValue = options.DefaultValue;
 
         _popup = new GameObject("ColorPickerPopup");
         _popup.transform.SetParent(canvasRect, false);
@@ -172,7 +170,7 @@ public sealed class O5ColorPicker : O5Object {
         _textureSprite = Sprite.Create(_texture, new Rect(0f, 0f, TextureSize, TextureSize), new Vector2(0.5f, 0.5f), 100f);
         wheelRect.GetComponent<Image>().sprite = _textureSprite;
 
-        Set(value, false);
+        Set(options.Value, false);
         SetMode(false);
         SetExpanded(false, true);
         RegisterTick();
@@ -190,6 +188,25 @@ public sealed class O5ColorPicker : O5Object {
 
     /// <summary>Flips the popup open state.</summary>
     public void ToggleExpanded() => SetExpanded(!Expanded);
+
+    /// <summary>Builds a color picker under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. <see cref="O5ColorPickerOptions.CanvasRect"/> is required.</param>
+    public static O5ColorPicker Create(O5Context ctx, Transform parent, string id, O5ColorPickerOptions? options = null)
+        => Factory.O5Factory.ColorPicker(ctx, parent, id, options);
+
+    /// <summary>Builds a color picker under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5ColorPickerOptions"/>.</param>
+    public static O5ColorPicker Create(O5Context ctx, Transform parent, string id, Action<O5ColorPickerOptions> configure) {
+        var options = new O5ColorPickerOptions();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
+    }
 
     /// <inheritdoc/>
     public override void Tick() {
@@ -338,18 +355,21 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     /// <summary>Restores <see cref="DefaultValue"/> and commits. No-op when null.</summary>
-    public void Reset() {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
         if (!DefaultValue.HasValue) {
             return;
         }
-        Set(DefaultValue.Value);
-        _onComplete?.Invoke(Value);
+        Set(DefaultValue.Value, notify);
+        if (notify) {
+            OnComplete?.Invoke(Value);
+        }
     }
 
-    /// <summary>Sets the color (clamped to 0..1), optionally invoking the change callback.</summary>
+    /// <summary>Sets the color (clamped to 0..1).</summary>
     /// <param name="value">New color.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void Set(Color value, bool invoke = true) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(Color value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
@@ -361,8 +381,8 @@ public sealed class O5ColorPicker : O5Object {
         Value = value;
         Color.RGBToHSV(value, out _hue, out _saturation, out _brightness);
         UpdateVisuals();
-        if (invoke) {
-            _onChanged?.Invoke(Value);
+        if (notify) {
+            OnChanged?.Invoke(Value);
         }
     }
 
@@ -446,7 +466,7 @@ public sealed class O5ColorPicker : O5Object {
             case 3:
                 Value = new Color(Value.r, Value.g, Value.b, (float)value);
                 UpdateVisuals();
-                _onChanged?.Invoke(Value);
+                OnChanged?.Invoke(Value);
                 return;
         }
 
@@ -454,7 +474,7 @@ public sealed class O5ColorPicker : O5Object {
         rgb.a = Value.a;
         Value = rgb;
         UpdateVisuals();
-        _onChanged?.Invoke(Value);
+        OnChanged?.Invoke(Value);
     }
 
     /// <summary>Starts a wheel drag. Picks the hue ring or the triangle by hit position.</summary>
@@ -491,7 +511,7 @@ public sealed class O5ColorPicker : O5Object {
         }
 
         _dragTarget = DragTarget.None;
-        _onComplete?.Invoke(Value);
+        OnComplete?.Invoke(Value);
     }
 
     private bool TryGetPointerPosition(BaseEventData data, out Vector2 normalized) {
@@ -523,7 +543,7 @@ public sealed class O5ColorPicker : O5Object {
             rgb.a = Value.a;
             Value = rgb;
             UpdateVisuals();
-            _onChanged?.Invoke(Value);
+            OnChanged?.Invoke(Value);
             return;
         }
 
@@ -541,7 +561,7 @@ public sealed class O5ColorPicker : O5Object {
         picked.a = Value.a;
         Value = picked;
         UpdateVisuals();
-        _onChanged?.Invoke(Value);
+        OnChanged?.Invoke(Value);
     }
 
     /// <summary>Live-validates hex text, tinting the preview and outline by state.</summary>
@@ -579,7 +599,7 @@ public sealed class O5ColorPicker : O5Object {
         ValidateHex(text);
         if (_pendingHexColor.HasValue) {
             Set(_pendingHexColor.Value);
-            _onComplete?.Invoke(Value);
+            OnComplete?.Invoke(Value);
         } else {
             SetHexText();
         }

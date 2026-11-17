@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using O5Kit.Behaviour;
 using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,23 +15,23 @@ namespace O5Kit.Control;
 /// <summary>Flag-style multi-select dropdown with checkmark rows and a summary label.</summary>
 public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <summary>Value to reset to on middle-click.</summary>
-    public T? DefaultValue { get; }
+    public T? DefaultValue { get; set; }
     internal bool HasDefault => DefaultValue != null;
 
     /// <summary>Current combined flags value.</summary>
     public T Value { get; private set; }
 
-    /// <summary>Available flags. Replace via <see cref="Set"/> + <see cref="RebuildList"/>.</summary>
+    /// <summary>Available flags. Replace via <see cref="SetValues"/>.</summary>
     public IReadOnlyList<T> Values { get; private set; }
 
     /// <summary>Renders a flag as row text.</summary>
-    public Func<T, string> Display { get; }
+    public Func<T, string> Display { get; set; }
 
     /// <summary>Renders the combined value as header text.</summary>
-    public Func<T, string> Summary { get; }
+    public Func<T, string> Summary { get; set; }
 
     /// <summary>Fired when the value changes.</summary>
-    public Action<T>? OnChanged { get; }
+    public Action<T>? OnChanged { get; set; }
 
     /// <summary>Header label.</summary>
     public TMPro.TextMeshProUGUI Label { get; }
@@ -74,12 +76,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <param name="listObject">List container.</param>
     /// <param name="listRect">List layout rect.</param>
     /// <param name="listCanvasGroup">List fade group.</param>
-    /// <param name="values">Available flags.</param>
-    /// <param name="display">Flag renderer.</param>
-    /// <param name="summary">Combined-value renderer.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="onChanged">Change callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5MultiDropdown(
         O5Context ctx,
         string id,
@@ -91,13 +88,9 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         GameObject listObject,
         RectTransform listRect,
         CanvasGroup listCanvasGroup,
-        IReadOnlyList<T> values,
-        Func<T, string> display,
-        Func<T, string> summary,
-        T? defaultValue,
-        T value,
-        Action<T>? onChanged
+        O5MultiDropdownOptions<T>? options = null
     ) : base(ctx, id, rect) {
+        options ??= new O5MultiDropdownOptions<T>();
         Label = label;
         TriangleImage = triangleImage;
         TriangleRect = triangleRect;
@@ -105,22 +98,22 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         ListObject = listObject;
         ListRect = listRect;
         ListCanvasGroup = listCanvasGroup;
-        Values = values;
-        Display = display;
-        Summary = summary;
-        DefaultValue = defaultValue;
-        Value = value;
-        OnChanged = onChanged;
+        Values = options.Values;
+        Display = options.Display;
+        Summary = options.Summary;
+        DefaultValue = options.DefaultValue;
+        Value = options.Value;
+        OnChanged = options.OnChanged;
 
         Label.text = Summary(Value);
         RebuildList();
         UpdateVisual(true);
     }
 
-    /// <summary>Sets the combined value, optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Sets the combined value.</summary>
     /// <param name="value">New flags value.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void Set(T value, bool invoke = true) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(T value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
@@ -131,7 +124,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         }
         UpdateSelectionVisuals();
 
-        if (invoke) {
+        if (notify) {
             OnChanged?.Invoke(value);
         }
 
@@ -140,16 +133,53 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
 
     /// <summary>XORs a flag into the current value.</summary>
     /// <param name="value">Flag to flip.</param>
-    public void Toggle(T value) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Toggle(T value, bool notify = true) {
         ulong current = Convert.ToUInt64(Value);
         ulong flag = Convert.ToUInt64(value);
-        Set((T)Enum.ToObject(typeof(T), current ^ flag));
+        Set((T)Enum.ToObject(typeof(T), current ^ flag), notify);
+    }
+
+    /// <summary>Builds a multi dropdown under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform. Needs a <see cref="UnityEngine.UI.LayoutElement"/> for height animation.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5MultiDropdown<T> Create(O5Context ctx, Transform parent, string id, O5MultiDropdownOptions<T>? options = null)
+        => O5Factory.MultiDropDown(ctx, parent, id, options);
+
+    /// <summary>Builds a multi dropdown under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5MultiDropdownOptions{T}"/>.</param>
+    public static O5MultiDropdown<T> Create(O5Context ctx, Transform parent, string id, Action<O5MultiDropdownOptions<T>> configure) {
+        var options = new O5MultiDropdownOptions<T>();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
+    }
+
+    /// <summary>Replaces the flag list. Falls back to the first flag when the current value is gone.</summary>
+    /// <param name="values">New flags.</param>
+    /// <param name="notify">Fire the change callback if the value falls back.</param>
+    public void SetValues(IReadOnlyList<T> values, bool notify = false) {
+        if (IsDisposed) {
+            return;
+        }
+
+        Values = values;
+        RebuildList();
+
+        if (Values.Count > 0 && !Values.Contains(Value)) {
+            Set(Values[0], notify);
+        }
     }
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
-    public void Reset() {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
         if (DefaultValue is T d) {
-            Set(d);
+            Set(d, notify);
         }
     }
 

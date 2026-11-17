@@ -15,26 +15,22 @@ public static partial class O5Factory {
     /// <summary>Builds a color picker: header preview, hex field, wheel popup and channel sliders.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="canvasRect">Popup coordinate space (usually the canvas rect).</param>
-    /// <param name="canvasCamera">Camera for hover checks. Null for overlay canvases.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="value">Initial color.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="onComplete">Commit callback.</param>
     /// <param name="id">Stable identifier.</param>
-    /// <param name="label">Preview label. Empty hides it.</param>
+    /// <param name="options">Behaviour. <see cref="O5ColorPickerOptions.CanvasRect"/> is required.</param>
     public static O5ColorPicker ColorPicker(
         O5Context ctx,
         Transform parent,
-        RectTransform canvasRect,
-        Camera? canvasCamera,
-        Color? defaultValue,
-        Color value,
-        Action<Color>? onChanged,
-        Action<Color>? onComplete,
         string id,
-        string? label = null
+        O5ColorPickerOptions? options = null
     ) {
+        options ??= new O5ColorPickerOptions();
+        if (options.CanvasRect == null) {
+            throw new ArgumentNullException(nameof(options), "O5ColorPickerOptions.CanvasRect is required.");
+        }
+        RectTransform canvasRect = options.CanvasRect;
+        Camera? canvasCamera = options.CanvasCamera;
+        Color defaultValue = options.DefaultValue ?? options.Value;
+        Color value = options.Value;
         GameObject rootObject = new("ColorPicker");
         rootObject.transform.SetParent(parent, false);
         RectTransform root = rootObject.AddComponent<RectTransform>();
@@ -64,7 +60,7 @@ public static partial class O5Factory {
         preview.type = Image.Type.Sliced;
         TMPro.TextMeshProUGUI previewLabel = ControlText(ctx, previewRect, 16f);
         previewLabel.name = "ColorLabel";
-        previewLabel.text = label ?? string.Empty;
+        previewLabel.text = options.Label ?? string.Empty;
         previewLabel.alignment = TMPro.TextAlignmentOptions.Center;
         previewLabel.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         previewLabel.raycastTarget = false;
@@ -73,19 +69,25 @@ public static partial class O5Factory {
         O5InputField hexInput = Input(
             ctx,
             header,
-#if IL2CPP
-            O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(defaultValue ?? value),
-            O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(value),
-#else
-            ColorUtility.ToHtmlStringRGBA(defaultValue ?? value),
-            ColorUtility.ToHtmlStringRGBA(value),
-#endif
-            text => picker?.ValidateHex(text),
-            string.Empty,
-            null,
             id + "_hex",
-            text => picker?.CompleteHex(text),
-            monospace: true
+            new O5InputOptions {
+                DefaultValue =
+#if IL2CPP
+                    O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(defaultValue),
+#else
+                    ColorUtility.ToHtmlStringRGBA(defaultValue),
+#endif
+                Value =
+#if IL2CPP
+                    O5Kit.Compat.O5ColorCompat.ToHtmlStringRGBA(value),
+#else
+                    ColorUtility.ToHtmlStringRGBA(value),
+#endif
+                OnChanged = text => picker?.ValidateHex(text),
+                Placeholder = string.Empty,
+                OnEndEdit = text => picker?.CompleteHex(text),
+                Monospace = true,
+            }
         );
         RectTransform hexRect = hexInput.Rect;
         hexRect.name = "HexInput";
@@ -162,10 +164,17 @@ public static partial class O5Factory {
             int channel = i;
             RectTransform row = Row(ctx, body, 36f);
             sliders[i] = Slider(
-                ctx, row, (double)ChannelOf(defaultValue ?? value, i), 0d, 1d, (double)ChannelOf(value, i), "F2", ClampMode.All, null, null,
-                next => picker?.SetChannel(channel, next),
-                _ => onComplete?.Invoke(picker!.Value),
-                names[i], id + "_" + names[i].ToLowerInvariant()
+                ctx, row, id + "_" + names[i].ToLowerInvariant(),
+                new O5SliderOptions {
+                    DefaultValue = (double)ChannelOf(defaultValue, i),
+                    Min = 0d,
+                    Max = 1d,
+                    Value = (double)ChannelOf(value, i),
+                    Format = "F2",
+                    OnChanged = next => picker?.SetChannel(channel, next),
+                    OnComplete = _ => options.OnComplete?.Invoke(picker!.Value),
+                    Label = names[i],
+                }
             );
             sliders[i].Rect.offsetMax = Vector2.zero;
             sliders[i].FillImage.color = colors[i];
@@ -177,7 +186,7 @@ public static partial class O5Factory {
             ctx, id, root, canvasRect, canvasCamera, bodyObject, bodyCanvas, preview, previewLabel,
             wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
             rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel,
-            defaultValue, value, onChanged, onComplete
+            options
         );
 
         EventTrigger wheelTrigger = wheelObject.AddComponent<EventTrigger>();
@@ -215,6 +224,22 @@ public static partial class O5Factory {
         };
 
         return picker;
+    }
+
+    /// <summary>Builds a color picker with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5ColorPickerOptions"/>.</param>
+    public static O5ColorPicker ColorPicker(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5ColorPickerOptions> configure
+    ) {
+        var options = new O5ColorPickerOptions();
+        configure?.Invoke(options);
+        return ColorPicker(ctx, parent, id, options);
     }
 
     /// <param name="ctx">Owning kit context.</param>

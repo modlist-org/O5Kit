@@ -73,28 +73,31 @@ public static partial class O5Factory {
         tmp.font = ctx.Fonts.Medium;
         return tmp;
     }
-    /// <summary>Builds a centered text button.</summary>
+    /// <summary>Builds a button. Set <see cref="O5ButtonOptions.Text"/> for a text button or <see cref="O5ButtonOptions.Icon"/> for an icon button.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="onClick">Click callback.</param>
-    /// <param name="text">Label text.</param>
     /// <param name="id">Stable identifier.</param>
-    /// <param name="height">Explicit height. Null uses the theme control height.</param>
-    public static O5Button Button(O5Context ctx, Transform parent, Action? onClick, string text, string id, float? height = null) {
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5Button Button(O5Context ctx, Transform parent, string id, O5ButtonOptions? options = null) {
+        options ??= new O5ButtonOptions();
         var theme = ctx.Theme;
-        var rect = ControlBackground(ctx, parent, height);
+        if (options.Icon != null) {
+            return BuildIconButton(ctx, parent, id, options);
+        }
+
+        var rect = ControlBackground(ctx, parent, options.Height);
         rect.gameObject.name = "O5Button";
 
         var bg = rect.GetComponent<Image>();
         bg.color = theme.ObjectButton;
 
         var tmp = ControlText(ctx, rect, theme.FontSizeBody);
-        tmp.text = text;
+        tmp.text = options.Text ?? string.Empty;
         tmp.alignment = TMPro.TextAlignmentOptions.Center;
         tmp.rectTransform.offsetMin = Vector2.zero;
         tmp.rectTransform.offsetMax = Vector2.zero;
 
-        var button = new O5Button(ctx, id, rect, tmp, bg, onClick);
+        var button = new O5Button(ctx, id, rect, tmp, bg, options);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
         O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
@@ -119,22 +122,20 @@ public static partial class O5Factory {
         return button;
     }
 
-    private static bool IsLeftPress(BaseEventData e) {
-        PointerEventData? ped = e as PointerEventData;
-        return ped != null && ped.button == PointerEventData.InputButton.Left;
-    }
-
-    /// <summary>Builds an icon button.</summary>
+    /// <summary>Builds a button under <paramref name="parent"/> with inline configuration.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="onClick">Click callback.</param>
-    /// <param name="iconSprite">Icon sprite.</param>
     /// <param name="id">Stable identifier.</param>
-    /// <param name="iconPadding">Icon inset.</param>
-    /// <param name="height">Explicit height. Null uses the theme control height.</param>
-    public static O5Button Button(O5Context ctx, Transform parent, Action? onClick, Sprite? iconSprite, string id, float iconPadding = 5f, float? height = null) {
+    /// <param name="configure">Mutates a fresh <see cref="O5ButtonOptions"/>.</param>
+    public static O5Button Button(O5Context ctx, Transform parent, string id, Action<O5ButtonOptions> configure) {
+        var options = new O5ButtonOptions();
+        configure?.Invoke(options);
+        return Button(ctx, parent, id, options);
+    }
+
+    private static O5Button BuildIconButton(O5Context ctx, Transform parent, string id, O5ButtonOptions options) {
         var theme = ctx.Theme;
-        var rect = ControlBackground(ctx, parent, height);
+        var rect = ControlBackground(ctx, parent, options.Height);
         rect.gameObject.name = "O5IconButton";
 
         var iconObj = new GameObject("Icon");
@@ -142,19 +143,19 @@ public static partial class O5Factory {
         var iconImage = iconObj.AddComponent<Image>();
 
         iconRect.SetParent(rect, false);
-        iconImage.sprite = iconSprite;
+        iconImage.sprite = options.Icon;
         iconImage.raycastTarget = false;
         iconImage.preserveAspect = true;
 
         iconRect.anchorMin = Vector2.zero;
         iconRect.anchorMax = Vector2.one;
-        iconRect.offsetMin = new Vector2(iconPadding, iconPadding);
-        iconRect.offsetMax = new Vector2(-iconPadding, -iconPadding);
+        iconRect.offsetMin = new Vector2(options.IconPadding, options.IconPadding);
+        iconRect.offsetMax = new Vector2(-options.IconPadding, -options.IconPadding);
 
         var bg = rect.GetComponent<Image>();
         bg.color = theme.ObjectButton;
 
-        var button = new O5Button(ctx, id, rect, iconImage, bg, onClick);
+        var button = new O5Button(ctx, id, rect, iconImage, bg, options);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
         O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
@@ -178,5 +179,10 @@ public static partial class O5Factory {
         );
 
         return button;
+    }
+
+    private static bool IsLeftPress(BaseEventData e) {
+        PointerEventData? ped = e as PointerEventData;
+        return ped != null && ped.button == PointerEventData.InputButton.Left;
     }
 }

@@ -16,48 +16,17 @@ public static partial class O5Factory {
     /// <summary>Builds a slider with fill bar, formula box and infinite horizontal drag.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="min">Drag range lower bound.</param>
-    /// <param name="max">Drag range upper bound.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="format">Display format, e.g. <c>"F2"</c>.</param>
-    /// <param name="clampMode">Where clamping applies.</param>
-    /// <param name="sliderFilter">Value transform for drag/set.</param>
-    /// <param name="inputFilter">Value transform for text input. Null = free.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="onComplete">Drag/edit commit callback.</param>
-    /// <param name="text">Label text.</param>
     /// <param name="id">Stable identifier.</param>
-    /// <param name="showFill">Show the fill bar.</param>
-    /// <param name="inputMin">Text-input lower bound. Null falls back to min.</param>
-    /// <param name="inputMax">Text-input upper bound. Null falls back to max.</param>
-    /// <param name="dragStep">Value per pixel. Null scales by control width.</param>
-    /// <param name="blockHoverWhileDragging">Cover the canvas with a drag blocker.</param>
-    /// <param name="normalizeFunc">(min, value, max) to 0..1 mapping. Null means linear.</param>
-    /// <param name="denormalizeFunc">Inverse mapping for <see cref="O5Slider.SetNormalized"/>. Null means linear.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public static O5Slider Slider(
         O5Context ctx,
         Transform parent,
-        double? defaultValue,
-        double min,
-        double max,
-        double value,
-        string format,
-        ClampMode clampMode,
-        Func<double, double>? sliderFilter,
-        Func<double, double>? inputFilter,
-        Action<double>? onChanged,
-        Action<double>? onComplete,
-        string text,
         string id,
-        bool showFill = true,
-        double? inputMin = null,
-        double? inputMax = null,
-        double? dragStep = null,
-        bool blockHoverWhileDragging = false,
-        Func<double, double, double, double>? normalizeFunc = null,
-        Func<double, double, double, double>? denormalizeFunc = null
+        O5SliderOptions? options = null
     ) {
+        options ??= new O5SliderOptions();
+        double min = options.Min;
+        double max = options.Max;
         RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
@@ -75,7 +44,7 @@ public static partial class O5Factory {
         fillRect.sizeDelta = Vector2.zero;
 
         TMPro.TextMeshProUGUI label = ControlText(ctx, rect, ctx.Theme.FontSizeBody);
-        label.text = text;
+        label.text = options.Label;
         label.alignment = TMPro.TextAlignmentOptions.Left;
 
         GameObject inputObj = new("ValueInput");
@@ -128,17 +97,13 @@ public static partial class O5Factory {
 
         O5Slider slider = new(
             ctx, id, rect, fillRect, fillImg, label, inputField, previewLabel,
-            changeImg, changeUpImg, O5Effects.HoverOutline(ctx, rect.gameObject, trigger), defaultValue, min, max,
-            value, format, clampMode, sliderFilter, inputFilter, onChanged, onComplete, inputMin, inputMax,
-            normalizeFunc, denormalizeFunc
-        ) {
-            ShowFill = showFill
+            changeImg, changeUpImg, O5Effects.HoverOutline(ctx, rect.gameObject, trigger), options) {
+            ShowFill = options.ShowFill
         };
-        fill.SetActive(showFill);
         inputObj.SetActive(true);
 
         Transform? canvasRoot = parent.GetComponentInParent<Canvas>()?.transform;
-        RectTransform? dragBlocker = blockHoverWhileDragging && canvasRoot != null
+        RectTransform? dragBlocker = options.BlockHoverWhileDragging && canvasRoot != null
             ? CreateSliderDragBlocker(canvasRoot)
             : null;
         if (dragBlocker) {
@@ -153,17 +118,14 @@ public static partial class O5Factory {
                         break;
                     }
 
-                    if (slider.DefaultValue.HasValue) {
-                        slider.Set(slider.DefaultValue.Value);
-                        slider.OnComplete?.Invoke(slider.Value);
-                    }
+                    slider.Reset();
                     break;
             }
         };
 
         double Apply(double v) {
-            v = sliderFilter != null ? sliderFilter(v) : v;
-            return slider.ClampMode is ClampMode.Slider or ClampMode.All ? MathCompat.Clamp(v, min, max) : v;
+            v = options.DragFilter != null ? options.DragFilter(v) : v;
+            return slider.ClampDrag ? MathCompat.Clamp(v, min, max) : v;
         }
 
         bool isDragging = false;
@@ -210,14 +172,14 @@ public static partial class O5Factory {
                     Vector2 mousePixelDelta = currentMousePos - previousMousePos;
                     previousMousePos = currentMousePos;
 
-                    if (dragStep.HasValue) {
-                        cachedValue += mousePixelDelta.x * dragStep.Value * ctx.Config.SliderSensitivity;
+                    if (options.DragStep.HasValue) {
+                        cachedValue += mousePixelDelta.x * options.DragStep.Value * ctx.Config.SliderSensitivity;
                     } else {
                         float finalPixelWidth = inputRect.rect.width * (canvasRoot?.GetComponent<Canvas>()?.scaleFactor ?? 1f);
                         cachedValue += mousePixelDelta.x * (slider.Max - slider.Min) * ctx.Config.SliderSensitivity / finalPixelWidth;
                     }
 
-                    if (slider.ClampMode is ClampMode.Slider or ClampMode.All) {
+                    if (slider.ClampDrag) {
                         cachedValue = MathCompat.Clamp(cachedValue, min, max);
                     }
 
@@ -301,9 +263,25 @@ public static partial class O5Factory {
             }
         };
 
-        slider.Set(value, false);
+        slider.Set(options.Value, false);
 
         return slider;
+    }
+
+    /// <summary>Builds a slider with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5SliderOptions"/>.</param>
+    public static O5Slider Slider(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5SliderOptions> configure
+    ) {
+        var options = new O5SliderOptions();
+        configure?.Invoke(options);
+        return Slider(ctx, parent, id, options);
     }
 
     private static RectTransform CreateSliderDragBlocker(Transform parent) {
@@ -322,30 +300,15 @@ public static partial class O5Factory {
     /// <summary>Builds a text field with icon, placeholder and middle-click reset.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="parent">Parent transform.</param>
-    /// <param name="defaultValue">Reset target. Null disables reset.</param>
-    /// <param name="value">Initial text.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="placeholder">Placeholder text.</param>
-    /// <param name="icon">Trailing icon. Null hides it.</param>
     /// <param name="id">Stable identifier.</param>
-    /// <param name="onEndEdit">End-edit callback.</param>
-    /// <param name="multiline">Multi-line mode.</param>
-    /// <param name="monospace">Monospace font.</param>
-    /// <param name="fieldFactory">Custom field builder (e.g. a code editor field). Null uses <see cref="TMPro.TMP_InputField"/>.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public static O5InputField Input(
         O5Context ctx,
         Transform parent,
-        string? defaultValue,
-        string? value,
-        Action<string>? onChanged,
-        string placeholder,
-        Sprite? icon,
         string id,
-        Action<string>? onEndEdit = null,
-        bool multiline = false,
-        bool monospace = false,
-        Func<GameObject, TMPro.TMP_InputField>? fieldFactory = null
+        O5InputOptions? options = null
     ) {
+        options ??= new O5InputOptions();
         RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
@@ -363,8 +326,8 @@ public static partial class O5Factory {
         circleRect.sizeDelta = new Vector2(26f, 26f);
 
         Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = icon;
-        if (icon == null) {
+        iconImage.sprite = options.Icon;
+        if (options.Icon == null) {
             iconImage.enabled = false;
         } else {
             iconImage.color = ctx.Theme.TextFaint;
@@ -384,7 +347,7 @@ public static partial class O5Factory {
         inputTarget.color = Color.clear;
         inputTarget.raycastTarget = true;
 
-        TMPro.TMP_InputField inputField = fieldFactory?.Invoke(inputObj) ?? inputObj.AddComponent<TMPro.TMP_InputField>();
+        TMPro.TMP_InputField inputField = options.FieldFactory?.Invoke(inputObj) ?? inputObj.AddComponent<TMPro.TMP_InputField>();
         inputField.targetGraphic = inputTarget;
 
         GameObject viewportObj = new("TextViewport");
@@ -392,15 +355,15 @@ public static partial class O5Factory {
         RectTransform viewportRect = viewportObj.AddComponent<RectTransform>();
         viewportRect.anchorMin = Vector2.zero;
         viewportRect.anchorMax = Vector2.one;
-        viewportRect.offsetMin = multiline ? new Vector2(16f, 12f) : new Vector2(16f, 4f);
-        viewportRect.offsetMax = multiline ? new Vector2(-12f, -12f) : new Vector2(-12f, -4f);
+        viewportRect.offsetMin = options.Multiline ? new Vector2(16f, 12f) : new Vector2(16f, 4f);
+        viewportRect.offsetMax = options.Multiline ? new Vector2(-12f, -12f) : new Vector2(-12f, -4f);
         viewportObj.AddComponent<RectMask2D>();
 
         var text = ControlText(ctx, viewportObj.transform, ctx.Theme.FontSizeBody);
-        text.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
-        text.text = value ?? string.Empty;
-        text.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
-        text.enableWordWrapping = multiline;
+        text.font = options.Monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
+        text.text = options.Value ?? string.Empty;
+        text.alignment = options.Multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
+        text.enableWordWrapping = options.Multiline;
         text.extraPadding = true;
         text.raycastTarget = false;
 
@@ -411,10 +374,10 @@ public static partial class O5Factory {
         textRect.offsetMax = Vector2.zero;
 
         var placeholderText = ControlText(ctx, viewportObj.transform, ctx.Theme.FontSizeBody);
-        placeholderText.font = monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
-        placeholderText.text = placeholder;
-        placeholderText.alignment = multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
-        placeholderText.enableWordWrapping = multiline;
+        placeholderText.font = options.Monospace ? ctx.Fonts.Monospace : ctx.Fonts.Medium;
+        placeholderText.text = options.Placeholder;
+        placeholderText.alignment = options.Multiline ? TMPro.TextAlignmentOptions.TopLeft : TMPro.TextAlignmentOptions.Left;
+        placeholderText.enableWordWrapping = options.Multiline;
         placeholderText.color = ctx.Theme.TextFaint;
         placeholderText.extraPadding = true;
         placeholderText.raycastTarget = false;
@@ -430,7 +393,7 @@ public static partial class O5Factory {
         inputField.placeholder = placeholderText;
         inputField.fontAsset = text.font;
 
-        inputField.lineType = multiline
+        inputField.lineType = options.Multiline
             ? TMPro.TMP_InputField.LineType.MultiLineNewline
             : TMPro.TMP_InputField.LineType.SingleLine;
         inputField.characterValidation = TMPro.TMP_InputField.CharacterValidation.None;
@@ -444,11 +407,7 @@ public static partial class O5Factory {
             placeholderText,
             iconImage,
             changeImg,
-            defaultValue,
-            value,
-            onChanged,
-            onEndEdit,
-            multiline
+            options
         );
         inputObj.SetActive(true);
 
@@ -464,7 +423,7 @@ public static partial class O5Factory {
                         input.Value != input.DefaultValue
                     ) {
                         input.Reset();
-                        onEndEdit?.Invoke(input.Value);
+                        options.OnEndEdit?.Invoke(input.Value);
                     }
 
                     break;
@@ -490,5 +449,21 @@ public static partial class O5Factory {
         );
 
         return input;
+    }
+
+    /// <summary>Builds a text field with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5InputOptions"/>.</param>
+    public static O5InputField Input(
+        O5Context ctx,
+        Transform parent,
+        string id,
+        Action<O5InputOptions> configure
+    ) {
+        var options = new O5InputOptions();
+        configure?.Invoke(options);
+        return Input(ctx, parent, id, options);
     }
 }

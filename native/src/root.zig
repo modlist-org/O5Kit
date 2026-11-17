@@ -3,6 +3,16 @@ const fmt = @import("fmt.zig");
 const ring = @import("ring.zig");
 const tag = @import("tag.zig");
 
+// Native ABI surface. FROZEN: never change an existing export's signature.
+// Only add new `o5_*` exports and bump `o5_abi_version_current`.
+// Managed copies of any age share one loaded library (first-win), so the
+// version gate in O5Native (managed) is the only compatibility check.
+pub const o5_abi_version_current: u32 = 1;
+
+export fn o5_abi_version() u32 {
+    return o5_abi_version_current;
+}
+
 export fn o5_fmt_f64(
     val: f64,
     fmt_ptr: [*]const u16,

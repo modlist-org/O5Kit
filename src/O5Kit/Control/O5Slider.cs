@@ -3,6 +3,7 @@
 using System;
 using O5Kit.Core;
 using O5Kit.Eval;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,22 +13,10 @@ using MelonLoader;
 
 namespace O5Kit.Control;
 
-/// <summary>Where value clamping applies.</summary>
-public enum ClampMode {
-    /// <summary>No clamping anywhere.</summary>
-    None,
-    /// <summary>Clamp drags, free text entry.</summary>
-    Slider,
-    /// <summary>Clamp text entry, free drags.</summary>
-    Input,
-    /// <summary>Clamp everywhere.</summary>
-    All,
-}
-
 /// <summary>Numeric slider with fill bar, formula input box and live preview.</summary>
 public class O5Slider : O5Object {
     /// <summary>Value to reset to on middle-click. Null disables reset and hides the dot.</summary>
-    public double? DefaultValue { get; private set; }
+    public double? DefaultValue { get; set; }
 
     /// <summary>Drag range lower bound.</summary>
     public double Min { get; set; }
@@ -53,11 +42,22 @@ public class O5Slider : O5Object {
     /// <summary>Display format, e.g. <c>"F2"</c>.</summary>
     public string Format { get; set; }
 
-    /// <summary>Where clamping applies.</summary>
-    public ClampMode ClampMode { get; set; }
+    /// <summary>Clamp drags/code-sets into <c>[Min, Max]</c>.</summary>
+    public bool ClampDrag { get; set; }
+
+    /// <summary>Clamp text input into the text-input range.</summary>
+    public bool ClampInput { get; set; }
 
     /// <summary>Whether the fill bar is shown.</summary>
-    public bool ShowFill { get; set; } = true;
+    public bool ShowFill {
+        get;
+        set {
+            field = value;
+            if (FillRect != null && FillRect) {
+                FillRect.gameObject.SetActive(value);
+            }
+        }
+    } = true;
 
     /// <summary>Fired on every value change.</summary>
     public Action<double>? OnChanged { get; set; }
@@ -65,17 +65,14 @@ public class O5Slider : O5Object {
     /// <summary>Fired when a drag or text edit commits.</summary>
     public Action<double>? OnComplete { get; set; }
 
-    /// <summary>Value transform applied on drag/set.</summary>
-    public Func<double, double>? SliderFilter { get; set; }
+    /// <summary>Value transform applied on drag/code-set. Null means identity.</summary>
+    public Func<double, double>? DragFilter { get; set; }
 
-    /// <summary>Value transform applied on text input. Null means no transform (free input).</summary>
+    /// <summary>Value transform applied on text input. Null means identity (free input).</summary>
     public Func<double, double>? InputFilter { get; set; }
 
-    /// <summary>Maps (min, value, max) to 0..1 for the fill bar and previews. Null means linear.</summary>
-    public Func<double, double, double, double>? NormalizeFunc { get; set; }
-
-    /// <summary>Inverse of <see cref="NormalizeFunc"/>: maps (min, t, max) back to a value. Null means linear. Used by <see cref="SetNormalized"/>.</summary>
-    public Func<double, double, double, double>? DenormalizeFunc { get; set; }
+    /// <summary>Fill/preview mapping. Null means linear.</summary>
+    public IValueScale? Scale { get; set; }
 
     /// <summary>Fill bar rect (anchor-x driven).</summary>
     public RectTransform FillRect { get; }
@@ -85,6 +82,16 @@ public class O5Slider : O5Object {
 
     /// <summary>Label text.</summary>
     public TMPro.TextMeshProUGUI Label { get; }
+
+    /// <summary>Label string. Get/set proxy for <see cref="Label"/> text.</summary>
+    public string LabelText {
+        get => Label != null && Label ? Label.text : string.Empty;
+        set {
+            if (Label != null && Label) {
+                Label.text = value;
+            }
+        }
+    }
 
     /// <summary>Value box editing logic.</summary>
     public O5InputCore InputCore { get; }
@@ -119,20 +126,7 @@ public class O5Slider : O5Object {
     /// <param name="changedImage">Changed-dot image.</param>
     /// <param name="changedUpImage">Fill-bar changed-dot image.</param>
     /// <param name="outlineImage">Hover outline image.</param>
-    /// <param name="defaultValue">Reset target.</param>
-    /// <param name="min">Drag range lower bound.</param>
-    /// <param name="max">Drag range upper bound.</param>
-    /// <param name="value">Initial value.</param>
-    /// <param name="format">Display format.</param>
-    /// <param name="clampMode">Where clamping applies.</param>
-    /// <param name="sliderFilter">Value transform for drag/set.</param>
-    /// <param name="inputFilter">Value transform for text input. Null = free.</param>
-    /// <param name="onChanged">Change callback.</param>
-    /// <param name="onComplete">Commit callback.</param>
-    /// <param name="inputMin">Text-input lower bound. Null falls back to min.</param>
-    /// <param name="inputMax">Text-input upper bound. Null falls back to max.</param>
-    /// <param name="normalizeFunc">(min, value, max) to 0..1 mapping. Null means linear.</param>
-    /// <param name="denormalizeFunc">Inverse mapping for <see cref="SetNormalized"/>. Null means linear.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5Slider(
         O5Context ctx,
         string id,
@@ -145,40 +139,27 @@ public class O5Slider : O5Object {
         Image changedImage,
         Image changedUpImage,
         Image outlineImage,
-        double? defaultValue,
-        double min,
-        double max,
-        double value,
-        string format,
-        ClampMode clampMode,
-        Func<double, double>? sliderFilter,
-        Func<double, double>? inputFilter,
-        Action<double>? onChanged,
-        Action<double>? onComplete,
-        double? inputMin = null,
-        double? inputMax = null,
-        Func<double, double, double, double>? normalizeFunc = null,
-        Func<double, double, double, double>? denormalizeFunc = null
+        O5SliderOptions? options = null
     ) : base(ctx, id, rect) {
+        options ??= new O5SliderOptions();
         FillRect = fillRect;
         FillImage = fillImage;
         FillImage.color = Ctx.Theme.ObjectActive;
         Label = label;
-        InputCore = new O5InputCore(ctx, valueInputField, null, value.ToString(format),
+        InputCore = new O5InputCore(ctx, valueInputField, null, options.Value.ToString(options.Format),
             (val) => {
                 if (_isUpdatingFromCode) {
                     return;
                 }
 
                 var (rawResult, rawState) = Evaluator<double>.Evaluate(val, Value);
-                bool clampsInput = ClampMode is ClampMode.Input or ClampMode.All;
                 LastValidValue = rawState != EvalState.Error
-                    ? ApplyInputFilter(ClampSafe(rawResult, EffectiveInputMin, EffectiveInputMax, clampsInput))
+                    ? ApplyInputFilter(ClampSafe(rawResult, EffectiveInputMin, EffectiveInputMax, ClampInput))
                     : null;
 
                 double previewResult = rawResult;
                 EvalState previewState = rawState;
-                if (rawState != EvalState.Error && clampsInput) {
+                if (rawState != EvalState.Error && ClampInput) {
                     // The text range determines what can be committed; the visible
                     // preview is bounded by the slider track as well. This keeps
                     // < and > useful when text input intentionally has a wider range.
@@ -247,24 +228,44 @@ public class O5Slider : O5Object {
         ChangedUpImage = changedUpImage;
         ChangedUpImage.color = Ctx.Theme.ObjectBG;
         OutlineImage = outlineImage;
-        DefaultValue = defaultValue;
-        Min = min;
-        Max = max;
-        InputMin = inputMin;
-        InputMax = inputMax;
-        OnChanged = onChanged;
-        OnComplete = onComplete;
-        Format = format;
-        ClampMode = clampMode;
-        SliderFilter = sliderFilter;
-        InputFilter = inputFilter;
-        NormalizeFunc = normalizeFunc;
-        DenormalizeFunc = denormalizeFunc;
-        Value = ApplySliderFilter(value);
-        Value = ClampSafe(Value, Min, Max, ClampMode is ClampMode.All);
+        DefaultValue = options.DefaultValue;
+        Min = options.Min;
+        Max = options.Max;
+        InputMin = options.InputMin;
+        InputMax = options.InputMax;
+        OnChanged = options.OnChanged;
+        OnComplete = options.OnComplete;
+        Format = options.Format;
+        ClampDrag = options.ClampDrag;
+        ClampInput = options.ClampInput;
+        DragFilter = options.DragFilter;
+        InputFilter = options.InputFilter;
+        Scale = options.Scale;
+        ShowFill = options.ShowFill;
+        Value = ApplyDragFilter(options.Value);
+        Value = ClampSafe(Value, Min, Max, ClampDrag);
 
         RegisterTick();
         UpdateVisual(true);
+    }
+
+    /// <summary>Builds a slider under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5Slider Create(O5Context ctx, Transform parent, string id, O5SliderOptions? options = null)
+        => O5Factory.Slider(ctx, parent, id, options);
+
+    /// <summary>Builds a slider under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5SliderOptions"/>.</param>
+    public static O5Slider Create(O5Context ctx, Transform parent, string id, Action<O5SliderOptions> configure) {
+        var options = new O5SliderOptions();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
     }
 
     /// <inheritdoc/>
@@ -276,11 +277,10 @@ public class O5Slider : O5Object {
         InputCore.OnTick();
     }
 
-    /// <summary>Sets the value (drag/code path), optionally invoking <see cref="OnChanged"/>.</summary>
+    /// <summary>Sets the value (drag/code path).</summary>
     /// <param name="value">New value. NaN is ignored.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    /// <param name="noFilter">Skip <see cref="SliderFilter"/>.</param>
-    public void Set(double value, bool invoke = true, bool noFilter = false) {
+    /// <param name="notify">Fire the change callback.</param>
+    public void Set(double value, bool notify = true) {
         if (IsDisposed) {
             return;
         }
@@ -289,13 +289,10 @@ public class O5Slider : O5Object {
             return;
         }
 
-        if (!noFilter) {
-            value = ApplySliderFilter(value);
-        }
+        value = ApplyDragFilter(value);
+        Value = ClampSafe(value, Min, Max, ClampDrag);
 
-        Value = ClampSafe(value, Min, Max, ClampMode is ClampMode.All);
-
-        if (invoke) {
+        if (notify) {
             OnChanged?.Invoke(Value);
         }
 
@@ -315,7 +312,7 @@ public class O5Slider : O5Object {
             value,
             EffectiveInputMin,
             EffectiveInputMax,
-            ClampMode is ClampMode.Input or ClampMode.All
+            ClampInput
         );
 
         OnChanged?.Invoke(Value);
@@ -325,6 +322,17 @@ public class O5Slider : O5Object {
         _isUpdatingFromCode = false;
 
         UpdateVisual();
+    }
+
+    /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
+    /// <param name="notify">Fire the change callback.</param>
+    public void Reset(bool notify = true) {
+        if (DefaultValue.HasValue) {
+            Set(DefaultValue.Value, notify);
+            if (notify) {
+                OnComplete?.Invoke(Value);
+            }
+        }
     }
 
     /// <summary>Moves the reset target and refreshes visuals.</summary>
@@ -341,7 +349,7 @@ public class O5Slider : O5Object {
             return;
         }
 
-        DefaultValue = ClampSafe(ApplySliderFilter(value.Value), Min, Max, ClampMode is ClampMode.Slider or ClampMode.All);
+        DefaultValue = ClampSafe(ApplyDragFilter(value.Value), Min, Max, ClampDrag);
         UpdateVisual(noAnimate);
     }
 
@@ -370,45 +378,14 @@ public class O5Slider : O5Object {
 
     /// <summary>Arbitrary value as 0..1 across the drag range.</summary>
     /// <param name="value">Value to normalize.</param>
-    public double Normalize(double value) => (NormalizeFunc ?? LinearNormalize)(Min, value, Max);
+    public double Normalize(double value) => (Scale ?? O5ValueScale.Linear).Normalize(Min, value, Max);
 
     /// <summary>Sets the value from a 0..1 position.</summary>
     /// <param name="t">Normalized position.</param>
-    /// <param name="invoke">Fire the change callback.</param>
-    public void SetNormalized(double t, bool invoke = true) => Set((DenormalizeFunc ?? LinearDenormalize)(Min, t, Max), invoke);
+    /// <param name="notify">Fire the change callback.</param>
+    public void SetNormalized(double t, bool notify = true) => Set((Scale ?? O5ValueScale.Linear).Denormalize(Min, t, Max), notify);
 
-    /// <summary>Default linear (min, value, max) to 0..1 mapping.</summary>
-    public static double LinearNormalize(double min, double value, double max) {
-        double span = max - min;
-        if (span == 0d) {
-            return 0d;
-        }
-
-        return (value - min) / span;
-    }
-
-    /// <summary>Default linear (min, t, max) to value mapping.</summary>
-    public static double LinearDenormalize(double min, double t, double max) => min + ((max - min) * t);
-
-    /// <summary>Logarithmic (min, value, max) to 0..1 mapping. Requires min &gt; 0; falls back to linear otherwise.</summary>
-    public static double LogNormalize(double min, double value, double max) {
-        if (min <= 0d || max <= 0d || value <= 0d || max == min) {
-            return LinearNormalize(min, value, max);
-        }
-
-        return Math.Log(value / min) / Math.Log(max / min);
-    }
-
-    /// <summary>Inverse of <see cref="LogNormalize"/>. Requires min &gt; 0; falls back to linear otherwise.</summary>
-    public static double LogDenormalize(double min, double t, double max) {
-        if (min <= 0d || max <= 0d || max == min) {
-            return LinearDenormalize(min, t, max);
-        }
-
-        return min * Math.Pow(max / min, t);
-    }
-
-    private double ApplySliderFilter(double v) => SliderFilter?.Invoke(v) ?? v;
+    private double ApplyDragFilter(double v) => DragFilter?.Invoke(v) ?? v;
 
     private double ApplyInputFilter(double v) => InputFilter?.Invoke(v) ?? v;
 

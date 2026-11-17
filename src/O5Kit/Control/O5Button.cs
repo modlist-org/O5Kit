@@ -2,6 +2,7 @@
 
 using System;
 using O5Kit.Core;
+using O5Kit.Factory;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,6 +15,16 @@ public class O5Button : O5Object {
 
     /// <summary>Text label. Null for icon buttons.</summary>
     public TMPro.TextMeshProUGUI? Label { get; }
+
+    /// <summary>Label string. Get/set proxy for <see cref="Label"/> text. No-op for icon buttons.</summary>
+    public string Text {
+        get => Label != null && Label ? Label.text : string.Empty;
+        set {
+            if (Label != null && Label) {
+                Label.text = value;
+            }
+        }
+    }
 
     /// <summary>Icon image. Null for text buttons.</summary>
     public Image? Icon { get; }
@@ -34,18 +45,18 @@ public class O5Button : O5Object {
     /// <param name="rect">Root rect, usually from <see cref="Factory.O5Factory"/>.</param>
     /// <param name="label">Text label.</param>
     /// <param name="background">Background image.</param>
-    /// <param name="onClick">Click callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5Button(
         O5Context ctx,
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
         Image background,
-        Action? onClick
+        O5ButtonOptions? options = null
     ) : base(ctx, id, rect) {
         Label = label;
         Background = background;
-        OnClick = onClick;
+        OnClick = options?.OnClick;
         NormalColor = Ctx.Theme.ObjectButton;
 
         UpdateVisual(true);
@@ -57,18 +68,18 @@ public class O5Button : O5Object {
     /// <param name="rect">Root rect, usually from <see cref="Factory.O5Factory"/>.</param>
     /// <param name="icon">Icon image.</param>
     /// <param name="background">Background image.</param>
-    /// <param name="onClick">Click callback.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5Button(
         O5Context ctx,
         string id,
         RectTransform rect,
         Image icon,
         Image background,
-        Action? onClick
+        O5ButtonOptions? options = null
     ) : base(ctx, id, rect) {
         Icon = icon;
         Background = background;
-        OnClick = onClick;
+        OnClick = options?.OnClick;
         NormalColor = Ctx.Theme.ObjectButton;
 
         UpdateVisual(true);
@@ -139,17 +150,36 @@ public class O5Button : O5Object {
     }
 
     /// <summary>Invokes <see cref="OnClick"/> and flashes the pressed tint (for programmatic clicks).</summary>
-    /// <param name="invoke">False to play only the visual.</param>
-    public void Click(bool invoke = true) {
+    /// <param name="notify">False to play only the visual.</param>
+    public void Click(bool notify = true) {
         if (IsDisposed) {
             return;
         }
 
-        if (invoke) {
+        if (notify) {
             OnClick?.Invoke();
         }
 
         Flash();
+    }
+
+    /// <summary>Builds a button under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="options">Behaviour. Null uses defaults.</param>
+    public static O5Button Create(O5Context ctx, Transform parent, string id, O5ButtonOptions? options = null)
+        => O5Factory.Button(ctx, parent, id, options);
+
+    /// <summary>Builds a button under <paramref name="parent"/> with inline configuration.</summary>
+    /// <param name="ctx">Owning kit context.</param>
+    /// <param name="parent">Parent transform.</param>
+    /// <param name="id">Stable identifier.</param>
+    /// <param name="configure">Mutates a fresh <see cref="O5ButtonOptions"/>.</param>
+    public static O5Button Create(O5Context ctx, Transform parent, string id, Action<O5ButtonOptions> configure) {
+        var options = new O5ButtonOptions();
+        configure?.Invoke(options);
+        return Create(ctx, parent, id, options);
     }
 
     /// <summary>Snaps or fades the background back to <see cref="NormalColor"/>.</summary>

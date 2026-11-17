@@ -6,5 +6,9 @@
     <!-- For IL2CPP builds: -->
     <!-- <Il2CppPath>/path/to/il2cpp/game/root</Il2CppPath> -->
     <!-- <Il2CppData>GameName_Data</Il2CppData> -->
+    <!-- Side-by-side is by VERSION (O5Kit.{major}.{minor}, auto-derived):
+         mods on the same version share one loaded copy, so normally you set
+         nothing. Only override for special cases (private fork, version pin): -->
+    <!-- <O5KitAssemblyName>MyMod.O5Kit</O5KitAssemblyName> -->
   </PropertyGroup>
 </Project>

@@ -8,26 +8,76 @@ using System.Runtime.InteropServices;
 namespace O5Kit.Native;
 
 internal static class O5Native {
-    private static readonly bool available = TryLoad();
+    /// <summary>Must match o5_abi_version_current in native/src/root.zig. The native ABI is frozen: additive only.</summary>
+    public const int AbiVersion = 1;
 
-    public static bool IsAvailable => available;
+    private static readonly IntPtr handle = TryLoad();
 
-    private static bool TryLoad() {
+    public static bool IsAvailable => handle != IntPtr.Zero;
+
+    internal static IntPtr Handle => handle;
+
+    private static IntPtr TryLoad() {
         try {
             foreach (string path in CandidatePaths()) {
                 try {
                     if (string.IsNullOrEmpty(path) || !File.Exists(path)) {
                         continue;
                     }
-                    if (Preload(path)) {
-                        return true;
+                    IntPtr h = Open(path);
+                    if (h == IntPtr.Zero) {
+                        continue;
+                    }
+                    // Version gate: managed copies of any age share one loaded
+                    // library (first-win), so a mismatched native must be skipped
+                    // instead of bound. A compatible copy may exist at another path.
+                    if (CheckAbiVersion(h)) {
+                        return h;
                     }
                 } catch {
                 }
             }
         } catch {
         }
-        return false;
+        return IntPtr.Zero;
+    }
+
+    private static bool CheckAbiVersion(IntPtr h) {
+        try {
+            IntPtr sym = GetSymbol(h, "o5_abi_version");
+            if (sym == IntPtr.Zero) {
+                return false;
+            }
+            var fn = Marshal.GetDelegateForFunctionPointer(sym, typeof(O5AbiVersionFn)) as O5AbiVersionFn;
+            if (fn == null) {
+                return false;
+            }
+            return fn() == AbiVersion;
+        } catch {
+            return false;
+        }
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int O5AbiVersionFn();
+
+    /// <summary>Resolves an exported symbol from a library opened via <see cref="Open"/>.</summary>
+    internal static IntPtr GetSymbol(IntPtr h, string name) {
+        if (h == IntPtr.Zero || string.IsNullOrEmpty(name)) {
+            return IntPtr.Zero;
+        }
+        try {
+            if (Path.DirectorySeparatorChar == '\\') {
+                return GetProcAddress(h, name);
+            }
+            IntPtr p = DlsymLibDl2(h, name);
+            if (p != IntPtr.Zero) {
+                return p;
+            }
+            return DlsymLibDl(h, name);
+        } catch {
+            return IntPtr.Zero;
+        }
     }
 
     private static IEnumerable<string> CandidatePaths() {
@@ -119,28 +169,28 @@ internal static class O5Native {
         return "O5KitNative.linux.so";
     }
 
-    internal static bool Preload(string fullPath) {
+    /// <summary>Opens a native library by full path and keeps the handle (never unloaded; process lifetime).</summary>
+    internal static IntPtr Open(string fullPath) {
         try {
             if (Path.DirectorySeparatorChar == '\\') {
-                return LoadLibraryW(fullPath) != IntPtr.Zero;
+                return LoadLibraryW(fullPath);
             }
             const int RTLD_NOW = 2;
             const int RTLD_GLOBAL = 0x100;
             try {
-                if (DlopenLibDl2(fullPath, RTLD_NOW | RTLD_GLOBAL) != IntPtr.Zero) {
-                    return true;
+                IntPtr h = DlopenLibDl2(fullPath, RTLD_NOW | RTLD_GLOBAL);
+                if (h != IntPtr.Zero) {
+                    return h;
                 }
             } catch {
             }
             try {
-                if (DlopenLibDl(fullPath, RTLD_NOW | RTLD_GLOBAL) != IntPtr.Zero) {
-                    return true;
-                }
+                return DlopenLibDl(fullPath, RTLD_NOW | RTLD_GLOBAL);
             } catch {
             }
         } catch {
         }
-        return false;
+        return IntPtr.Zero;
     }
 
     [DllImport("libdl.so.2", EntryPoint = "dlopen", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -149,6 +199,15 @@ internal static class O5Native {
     [DllImport("libdl", EntryPoint = "dlopen", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern IntPtr DlopenLibDl(string fileName, int flags);
 
+    [DllImport("libdl.so.2", EntryPoint = "dlsym", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    private static extern IntPtr DlsymLibDl2(IntPtr handle, string symbol);
+
+    [DllImport("libdl", EntryPoint = "dlsym", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    private static extern IntPtr DlsymLibDl(IntPtr handle, string symbol);
+
     [DllImport("kernel32", EntryPoint = "LoadLibraryW", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr LoadLibraryW(string lpFileName);
+
+    [DllImport("kernel32", EntryPoint = "GetProcAddress", SetLastError = true, CharSet = CharSet.Ansi)]
+    private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 }

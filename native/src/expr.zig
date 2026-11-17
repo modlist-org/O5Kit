@@ -704,6 +704,8 @@ const Parser = struct {
             } else if (p.eat(">=")) {
                 tag = .ge;
             } else if (p.peek() == '<') {
+                // "<>" belongs to parseEq; don't swallow its '<' here.
+                if (p.pos + 1 < p.src.len and p.src[p.pos + 1] == '>') break;
                 p.pos += 1;
                 tag = .lt;
             } else if (p.peek() == '>') {
