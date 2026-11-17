@@ -136,6 +136,8 @@ public static partial class O5Factory {
         Vector2? warpedFrom = null;
 
         UnityUtils.AddEvents(trigger,
+            (EventTriggerType.PointerEnter, _ => slider.SetHovered(true)),
+            (EventTriggerType.PointerExit, _ => slider.SetHovered(false)),
             (EventTriggerType.BeginDrag, (e) => {
                 Debug.Log($"[O5DBG] BeginDrag btn={O5Input.GetMouseButton(0)} os={O5Input.OSMousePosition} unity={O5Input.MousePosition} screen={Screen.width}x{Screen.height}");
                 if (!O5Input.GetMouseButton(0)) {
@@ -252,6 +254,7 @@ public static partial class O5Factory {
         );
 
         slider.OnDisposed += () => {
+            slider.SetHovered(false);
             if (isDragging) {
                 isDragging = false;
                 O5Input.OSMousePosition = resetPos;

@@ -150,6 +150,7 @@ public static partial class O5Factory {
                 }
 
                 onActiveChanged?.Invoke(isCurrentActive);
+                Control.O5UiEvents.OnToggleChanged?.Invoke(isCurrentActive);
             }
         };
 

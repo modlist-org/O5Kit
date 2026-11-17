@@ -103,12 +103,14 @@ public static partial class O5Factory {
             switch (btn) {
                 case InputButton.Left:
                     toggle.Toggle();
+                    O5UiEvents.OnToggleChanged?.Invoke(toggle.Value);
                     break;
 
                 case InputButton.Middle:
                     if (ctx.Config.MiddleClickToDefault && toggle.DefaultValue.HasValue &&
                         toggle.Value != toggle.DefaultValue.Value) {
                         toggle.Reset();
+                        O5UiEvents.OnToggleChanged?.Invoke(toggle.Value);
                     }
 
                     break;

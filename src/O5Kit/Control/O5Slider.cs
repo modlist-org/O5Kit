@@ -4,6 +4,7 @@ using System;
 using O5Kit.Core;
 using O5Kit.Eval;
 using O5Kit.Factory;
+using O5Kit.Input;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -111,6 +112,24 @@ public class O5Slider : O5Object {
     /// <summary>Last valid formula result, if any.</summary>
     public double? LastValidValue { get; private set; }
     private bool _isUpdatingFromCode;
+    private static O5Slider? _hovered;
+
+    /// <summary>True when any slider is currently hovered by the pointer.</summary>
+    public static bool AnyHovered => _hovered != null && !_hovered.IsDisposed;
+
+    /// <summary>Optional gate enabling mouse-wheel adjustment on hovered sliders.</summary>
+    public static Func<bool>? EnableWheelAdjust { get; set; }
+
+    /// <summary>Fired whenever a slider value changes via mouse wheel.</summary>
+    public static Action<O5Slider>? OnAnyWheelChanged { get; set; }
+
+    internal void SetHovered(bool hovered) {
+        if (hovered) {
+            _hovered = this;
+        } else if (ReferenceEquals(_hovered, this)) {
+            _hovered = null;
+        }
+    }
 
     private ITweenHandle? _fillTween, _changeTween, _stateTween;
 
@@ -275,6 +294,28 @@ public class O5Slider : O5Object {
         }
 
         InputCore.OnTick();
+
+        if (ReferenceEquals(_hovered, this)
+            && EnableWheelAdjust?.Invoke() == true
+            && !O5Input.GetMouseButton(0)
+            && CanvasGroup.interactable) {
+            float wheel = O5Input.MouseScrollDelta.y;
+            if (Mathf.Abs(wheel) > 0.0001f) {
+                double step = Math.Max(0.01d, Math.Abs(Max - Min) * 0.01d);
+                if (UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)) {
+                    step *= 0.1d;
+                }
+                double next = ApplyDragFilter(Value + wheel * step);
+                if (ClampDrag) {
+                    next = ClampSafe(next, Min, Max, true);
+                }
+                if (Math.Abs(next - Value) > 1e-9d) {
+                    Set(next, true);
+                    OnComplete?.Invoke(Value);
+                    OnAnyWheelChanged?.Invoke(this);
+                }
+            }
+        }
     }
 
     /// <summary>Sets the value (drag/code path).</summary>

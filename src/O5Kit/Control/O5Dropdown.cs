@@ -12,6 +12,18 @@ using UnityEngine.UI;
 
 namespace O5Kit.Control;
 
+/// <summary>Global UI event hooks invoked by O5Kit controls (e.g. for UI audio).</summary>
+public static class O5UiEvents {
+    /// <summary>Fired when any dropdown opens (true) or closes (false).</summary>
+    public static Action<bool>? OnDropdownToggled { get; set; }
+
+    /// <summary>Fired when a dropdown item row is clicked by the user.</summary>
+    public static Action? OnDropdownPicked { get; set; }
+
+    /// <summary>Fired when a bool toggle changes via user click (true = on, false = off).</summary>
+    public static Action<bool>? OnToggleChanged { get; set; }
+}
+
 /// <summary>Single-select dropdown with an animated expanding list.</summary>
 public class O5Dropdown<T> : O5Object {
     /// <summary>Value to reset to on middle-click.</summary>
@@ -185,8 +197,9 @@ public class O5Dropdown<T> : O5Object {
 
     /// <summary>Opens or closes the list.</summary>
     /// <param name="expanded">True to open.</param>
-    public void SetExpanded(bool expanded) {
-        if (IsDisposed) {
+    /// <param name="notifyAudio">True to fire <see cref="O5UiEvents.OnDropdownToggled"/>.</param>
+    public void SetExpanded(bool expanded, bool notifyAudio = true) {
+        if (IsDisposed || Expanded == expanded) {
             return;
         }
 
@@ -200,6 +213,9 @@ public class O5Dropdown<T> : O5Object {
 
         UpdateVisual();
         OnLayoutChanged?.Invoke();
+        if (notifyAudio) {
+            O5UiEvents.OnDropdownToggled?.Invoke(expanded);
+        }
     }
 
     /// <summary>Flips the open state.</summary>
@@ -347,9 +363,10 @@ public class O5Dropdown<T> : O5Object {
                         return;
                     }
 
+                    O5UiEvents.OnDropdownPicked?.Invoke();
                     Set(item);
                     rowImage.color = Color.clear;
-                    SetExpanded(false);
+                    SetExpanded(false, notifyAudio: false);
                 }
             )
             );

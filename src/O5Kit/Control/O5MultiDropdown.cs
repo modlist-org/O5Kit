@@ -186,7 +186,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <summary>Opens or closes the list.</summary>
     /// <param name="expanded">True to open.</param>
     public void SetExpanded(bool expanded) {
-        if (IsDisposed) {
+        if (IsDisposed || Expanded == expanded) {
             return;
         }
 
@@ -200,6 +200,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
 
         UpdateVisual();
         OnLayoutChanged?.Invoke();
+        O5UiEvents.OnDropdownToggled?.Invoke(expanded);
     }
 
     /// <summary>Flips the open state.</summary>
@@ -337,6 +338,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
                         return;
                     }
 
+                    O5UiEvents.OnDropdownPicked?.Invoke();
                     Toggle(item);
                 }
             )
