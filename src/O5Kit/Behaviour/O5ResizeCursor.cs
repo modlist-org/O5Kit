@@ -12,6 +12,16 @@ public static class O5ResizeCursor {
     private static readonly Dictionary<int, Texture2D> TextureCache = new();
     private static readonly Dictionary<int, Sprite> SpriteCache = new();
 
+    public static Texture2D GetCursorTexture(ResizeHandleType type) {
+        int angle = type switch {
+            ResizeHandleType.Left or ResizeHandleType.Right => 0,
+            ResizeHandleType.Top or ResizeHandleType.Bottom => 90,
+            ResizeHandleType.TopLeft or ResizeHandleType.BottomRight => 45,
+            _ => 135,
+        };
+        return GetTexture(angle);
+    }
+
     public static Sprite GetSprite(ResizeHandleType type) {
         int angle = type switch {
             ResizeHandleType.Left or ResizeHandleType.Right => 0,
@@ -28,7 +38,7 @@ public static class O5ResizeCursor {
     }
 
     private static Texture2D GetTexture(int angle) {
-        if(!TextureCache.TryGetValue(angle, out var tex)) {
+        if(!TextureCache.TryGetValue(angle, out var tex) || tex == null) {
             tex = Build(angle);
             TextureCache[angle] = tex;
         }
@@ -37,8 +47,9 @@ public static class O5ResizeCursor {
 
     private static Texture2D Build(int angleDegrees) {
         var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false) {
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+            hideFlags = HideFlags.HideAndDontSave,
         };
         bool[] shape = new bool[Size * Size];
         float rad = angleDegrees * (float)Math.PI / 180f;

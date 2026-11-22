@@ -92,30 +92,25 @@ public class ResizeHandle
 
     private void OnDisable() {
         _dragging = false;
-        if(_indicator != null) {
-            _indicator.gameObject.SetActive(false);
-        }
+        ShowIndicator(false);
     }
 
-    private Image _indicator;
+    private static ResizeHandle? _cursorOwner;
+    private static readonly Vector2 CursorHotspot = new(16f, 16f);
 
     private void ShowIndicator(bool visible) {
-        if(visible && _indicator == null) {
-            var go = new GameObject("ResizeCursor");
-            go.transform.SetParent(transform, false);
-            var rect = go.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(44f, 44f);
-            var image = go.AddComponent<Image>();
-            image.sprite = O5ResizeCursor.GetSprite(Type);
-            image.raycastTarget = false;
-            _indicator = image;
-        }
-        if(_indicator != null) {
-            _indicator.gameObject.SetActive(visible);
+        if(visible) {
+            _cursorOwner = this;
+            try {
+                Cursor.SetCursor(O5ResizeCursor.GetCursorTexture(Type), CursorHotspot, CursorMode.Auto);
+            } catch {
+            }
+        } else if(_cursorOwner == this) {
+            _cursorOwner = null;
+            try {
+                Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+            } catch {
+            }
         }
     }
 
