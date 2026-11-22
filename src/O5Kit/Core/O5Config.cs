@@ -21,6 +21,9 @@ public sealed class O5Config {
     /// tween decorator, so it covers the built-in runners and custom <see cref="ITweenRunner"/> implementations alike. Completions still fire asynchronously.</summary>
     public float AnimationSpeed { get; set; } = 1f;
 
+    /// <summary>Whether wheel and right-click drag scrolling glide with easing (affected by <see cref="AnimationSpeed"/>).</summary>
+    public bool ScrollEasing { get; set; } = true;
+
     /// <summary>Toggle hotkey. Default matches Overlayer: Alt+BackQuote (Ctrl on Linux).</summary>
     public UnityEngine.KeyCode ToggleKey { get; set; } = UnityEngine.KeyCode.BackQuote;
 

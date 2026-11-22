@@ -47,10 +47,16 @@ public class UIScrollController
     /// <summary>When set and true, wheel events are left for a nested consumer.</summary>
     public static Func<bool>? ShouldConsumeParentScroll { get; set; }
 
+    /// <summary>Fired when right-drag scrolling moves a scroll view's content vertically, passing controller and delta pixels.</summary>
+    public static event Action<UIScrollController, float>? OnRightDragScrolled;
+
     private bool _rightDragging;
 
     private float _targetY;
+    private float _lastDragY;
     private ITweenHandle? _scrollTween;
+
+    private bool UseScrollEasing => Ctx != null && Ctx.Config.ScrollEasing;
 
     private void Awake() {
         if (content != null) {
@@ -81,6 +87,9 @@ public class UIScrollController
         // held-state is truth, so a stuck drag can't pin the scroll forever.
         if (_rightDragging && !O5Input.GetMouseButton(1)) {
             _rightDragging = false;
+            if (UseScrollEasing) {
+                ApplyTween();
+            }
         }
 
         float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
@@ -88,12 +97,14 @@ public class UIScrollController
         if (_targetY < 0f || _targetY > maxOffset) {
             _targetY = MathCompat.Clamp(_targetY, 0f, maxOffset);
             if (_scrollTween?.IsAlive == true) {
-                // Retarget the in-flight glide instead of freezing mid-way:
-                // killing it here is what made the scroll feel dead near the bottom.
-                _scrollTween?.Kill();
-                _scrollTween = null;
-                if (Ctx != null) {
+                if (UseScrollEasing) {
+                    // Retarget the in-flight glide instead of freezing mid-way:
+                    // killing it here is what made the scroll feel dead near the bottom.
+                    _scrollTween?.Kill();
+                    _scrollTween = null;
                     ApplyTween();
+                } else {
+                    SnapToTarget();
                 }
             }
         }
@@ -143,7 +154,11 @@ public class UIScrollController
         }
 
         AddDelta(-wheel * wheelStrength);
-        ApplyTween();
+        if (UseScrollEasing) {
+            ApplyTween();
+        } else {
+            SnapToTarget();
+        }
     }
 
     private void HandleRightDrag() {
@@ -153,13 +168,22 @@ public class UIScrollController
 
         if (O5Input.GetMouseButtonDown(1)) {
             _rightDragging = IsPointerOverViewport();
+            if (_rightDragging) {
+                _lastDragY = content.anchoredPosition.y;
+            }
         }
 
         // Held-state heals a missed mouse-up edge (same as in ClampScrollPosition).
         if (_rightDragging && !O5Input.GetMouseButton(1)) {
             _rightDragging = false;
+            if (UseScrollEasing) {
+                ApplyTween();
+            }
         } else if (O5Input.GetMouseButtonUp(1) && _rightDragging) {
             _rightDragging = false;
+            if (UseScrollEasing) {
+                ApplyTween();
+            }
         }
 
         if (!_rightDragging) {
@@ -191,11 +215,25 @@ public class UIScrollController
 
         _targetY = normalized * maxOffset;
 
-        // Absolute mapping: drive the position directly. Restarting a 0.2s tween
-        // every frame here only lags behind the cursor and churns handles.
+        float moved = Math.Abs(_targetY - _lastDragY);
+        if (moved > 0.5f) {
+            _lastDragY = _targetY;
+            OnRightDragScrolled?.Invoke(this, moved);
+        }
+
+        if (UseScrollEasing) {
+            ApplyTween();
+        } else {
+            SnapToTarget();
+        }
+    }
+
+    private void SnapToTarget() {
         _scrollTween?.Kill();
         _scrollTween = null;
-        content.anchoredPosition = new Vector2(content.anchoredPosition.x, _targetY);
+        if (content != null) {
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, _targetY);
+        }
     }
 
     private void AddDelta(float deltaPixels) {
@@ -276,8 +314,8 @@ public class UIScrollController
         _scrollTween?.Kill();
         _scrollTween = null;
 
-        if (instant || Ctx == null) {
-            content.anchoredPosition = new Vector2(content.anchoredPosition.x, _targetY);
+        if (instant || !UseScrollEasing) {
+            SnapToTarget();
         } else {
             ApplyTween();
         }
