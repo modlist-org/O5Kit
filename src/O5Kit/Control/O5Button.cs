@@ -35,9 +35,16 @@ public class O5Button : O5Object {
     /// <summary>Resting background color. Hover returns to this.</summary>
     public Color NormalColor { get; set; }
 
+    private const float PressedScale = 0.968f;
+    private const float ScaleDuration = 0.3f;
+
     private ITweenHandle? _hoverTween;
+    private ITweenHandle? _scaleTween;
+    private float _currentScale = 1f;
+    private Vector2 _scalePosOffset;
     private bool _hovered;
     private bool _pressed;
+    private bool _holding;
 
     /// <summary>Creates a text button.</summary>
     /// <param name="ctx">Owning kit context.</param>
@@ -92,11 +99,7 @@ public class O5Button : O5Object {
         }
 
         _hovered = true;
-        if (_pressed) {
-            return;
-        }
-
-        Tint(Ctx.Theme.ButtonHover, 0.12f);
+        Tint(_pressed ? Ctx.Theme.ButtonPressed : Ctx.Theme.ButtonHover, _pressed ? 0.08f : 0.12f);
     }
 
     /// <summary>Plays the hover-out tint. Wired to pointer-exit by the factory.</summary>
@@ -106,31 +109,49 @@ public class O5Button : O5Object {
         }
 
         _hovered = false;
-        if (_pressed) {
-            return;
-        }
-
         Tint(NormalColor, 0.12f);
     }
 
-    /// <summary>Plays the pressed tint. Wired to left pointer-down by the factory.</summary>
+    /// <summary>Plays the pressed tint and shrinks slightly while held. Wired to left pointer-down by the factory.</summary>
     public void OnPressEnter() {
         if (IsDisposed) {
             return;
         }
 
+        _hovered = true;
         _pressed = true;
+        _holding = true;
         Tint(Ctx.Theme.ButtonPressed, 0.08f);
+        if (Rect) {
+            _scaleTween?.Kill();
+            _scaleTween = Ctx.Tween.TweenFloat(() => _currentScale, ApplyScale, PressedScale, ScaleDuration, null, O5Ease.OutQuad);
+        }
     }
 
-    /// <summary>Settles back to the hover tint (still over the button) or the normal tint. Wired to pointer-up by the factory.</summary>
-    public void OnPressExit() {
-        if (IsDisposed || !_pressed) {
+    /// <summary>Settles back to the hover/normal tint and springs scale back to normal. Wired to pointer-up by the factory.</summary>
+    public void OnPressExit() => OnPressExit(false);
+
+    /// <summary>Settles back to the hover/normal tint, springs scale back to normal, and optionally invokes click if released while still hovered.</summary>
+    public void OnPressExit(bool invokeClick) {
+        if (IsDisposed || (!_pressed && !_holding)) {
             return;
         }
 
+        bool shouldClick = invokeClick && _holding && _hovered;
         _pressed = false;
         Tint(_hovered ? Ctx.Theme.ButtonHover : NormalColor, 0.12f);
+
+        if (_holding) {
+            _holding = false;
+            _scaleTween?.Kill();
+            _scaleTween = Rect
+                ? Ctx.Tween.TweenFloat(() => _currentScale, ApplyScale, 1f, ScaleDuration, null, O5Ease.OutBack)
+                : null;
+        }
+
+        if (shouldClick) {
+            OnClick?.Invoke();
+        }
     }
 
     /// <summary>Physical press: plays the pressed tint and invokes <see cref="OnClick"/> on press-down.</summary>
@@ -139,7 +160,8 @@ public class O5Button : O5Object {
             return;
         }
 
-        OnPressEnter();
+        _pressed = true;
+        Tint(Ctx.Theme.ButtonPressed, 0.08f);
         OnClick?.Invoke();
         if (IsDisposed) {
             return;
@@ -147,6 +169,43 @@ public class O5Button : O5Object {
 
         _pressed = false;
         Tint(_hovered ? Ctx.Theme.ButtonHover : NormalColor, 0.12f);
+    }
+
+    /// <summary>Snaps the button scale back to normal (e.g. when hidden or disabled mid-press).</summary>
+    public void ResetScale() {
+        _holding = false;
+        _pressed = false;
+        _scaleTween?.Kill();
+        _scaleTween = null;
+        ApplyScale(1f);
+    }
+
+    private void ApplyScale(float scale) {
+        _currentScale = scale;
+        if (!Rect) {
+            return;
+        }
+
+        Vector2 center = Rect.rect.center;
+        bool needsOffset = _scalePosOffset.sqrMagnitude > 1e-8f || center.sqrMagnitude > 1e-6f;
+        if (needsOffset) {
+            Vector2 basePos = Rect.anchoredPosition - _scalePosOffset;
+            Vector3 rotated = Rect.localRotation * new Vector3((1f - scale) * center.x, (1f - scale) * center.y, 0f);
+            Vector2 newOffset = new(rotated.x, rotated.y);
+            Rect.localScale = new Vector3(scale, scale, 1f);
+            Rect.anchoredPosition = basePos + newOffset;
+            _scalePosOffset = newOffset;
+        } else {
+            Rect.localScale = new Vector3(scale, scale, 1f);
+        }
+    }
+
+    /// <inheritdoc/>
+    public override void SetBlocked(bool blocked, bool noAnimate = false) {
+        base.SetBlocked(blocked, noAnimate);
+        if (blocked && _holding) {
+            OnPressExit();
+        }
     }
 
     /// <summary>Invokes <see cref="OnClick"/> and flashes the pressed tint (for programmatic clicks).</summary>
@@ -224,6 +283,19 @@ public class O5Button : O5Object {
     }
 
     /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (O5Palette.ApproxEquals(NormalColor, prev.ObjectButton)) {
+            NormalColor = next.ObjectButton;
+        } else if (O5Palette.ApproxEquals(NormalColor, prev.ObjectActive)) {
+            NormalColor = next.ObjectActive;
+        }
+        _hoverTween?.Kill();
+        if (Background) {
+            Background.color = _pressed ? next.ButtonPressed : (_hovered ? next.ButtonHover : NormalColor);
+        }
+    }
+
+    /// <inheritdoc/>
     public override void Dispose() {
         if (IsDisposed) {
             return;
@@ -231,6 +303,13 @@ public class O5Button : O5Object {
 
         _hoverTween?.Kill();
         _hoverTween = null;
+        _scaleTween?.Kill();
+        _scaleTween = null;
+        _holding = false;
+        _pressed = false;
+        if (Rect) {
+            ApplyScale(1f);
+        }
         OnClick = null;
         base.Dispose();
     }

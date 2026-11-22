@@ -109,15 +109,15 @@ public static partial class O5Factory {
                     button.OnPressEnter();
                 }
             }),
-            (EventTriggerType.PointerUp, _ => button.OnPressExit())
+            (EventTriggerType.PointerUp, e => {
+                if (IsLeftPress(e)) {
+                    button.OnPressExit(true);
+                }
+            })
         );
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
-        ovent.OnClick += btn => {
-            if (btn == PointerEventData.InputButton.Left) {
-                button.Press();
-            }
-        };
+        ovent.OnDisabled += button.ResetScale;
 
         return button;
     }
@@ -161,11 +161,7 @@ public static partial class O5Factory {
         O5Effects.HoverOutline(ctx, rect.gameObject, trigger);
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
-        ovent.OnClick += btn => {
-            if (btn == PointerEventData.InputButton.Left) {
-                button.Press();
-            }
-        };
+        ovent.OnDisabled += button.ResetScale;
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => button.OnHoverEnter()),
@@ -175,14 +171,18 @@ public static partial class O5Factory {
                     button.OnPressEnter();
                 }
             }),
-            (EventTriggerType.PointerUp, _ => button.OnPressExit())
+            (EventTriggerType.PointerUp, e => {
+                if (IsLeftPress(e)) {
+                    button.OnPressExit(true);
+                }
+            })
         );
 
         return button;
     }
 
     private static bool IsLeftPress(BaseEventData e) {
-        PointerEventData? ped = e as PointerEventData;
+        PointerEventData? ped = UnityUtils.AsPointerEventData(e);
         return ped != null && ped.button == PointerEventData.InputButton.Left;
     }
 }
