@@ -552,6 +552,23 @@ public class O5Slider : O5Object {
     }
 
     /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (FillImage && O5Palette.ApproxEquals(FillImage.color, prev.ObjectActive)) {
+            FillImage.color = next.ObjectActive;
+        }
+        if (ChangedUpImage) {
+            ChangedUpImage.color = next.ObjectBG;
+        }
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        if (PreviewLabel) {
+            PreviewLabel.color = next.TextDim;
+        }
+        InputCore.RefreshTheme();
+    }
+
+    /// <inheritdoc/>
     public override void Dispose() {
         if (IsDisposed) {
             return;

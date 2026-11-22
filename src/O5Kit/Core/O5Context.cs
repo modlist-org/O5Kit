@@ -31,6 +31,9 @@ public sealed class O5Context : IDisposable {
     /// <summary>Fired after <see cref="SetTheme"/>.</summary>
     public event Action<O5Theme>? ThemeChanged;
 
+    /// <summary>Fired after <see cref="SetTheme"/> with both the previous and new themes.</summary>
+    public event Action<O5Theme, O5Theme>? ThemeTransitioned;
+
     /// <summary>Fired by <see cref="NotifyEnabledChanged"/>; drives <see cref="O5Object.EnabledWhen"/> gates.</summary>
     public event Action<bool>? EnabledChanged;
 
@@ -75,10 +78,12 @@ public sealed class O5Context : IDisposable {
         Tooltip = new O5Tooltip(this);
     }
 
-    /// <summary>Swaps the active theme. Applies to subsequently created controls; rebuild UI to restyle existing ones.</summary>
+    /// <summary>Swaps the active theme. Live controls update via <see cref="ThemeTransitioned"/> and <see cref="ThemeChanged"/>.</summary>
     /// <param name="theme">New theme.</param>
     public void SetTheme(O5Theme theme) {
+        var previous = Theme;
         Theme = theme;
+        ThemeTransitioned?.Invoke(previous, theme);
         ThemeChanged?.Invoke(theme);
     }
 

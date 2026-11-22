@@ -31,31 +31,31 @@ public static class O5Effects {
         hoverImage.sprite = ctx.Sprites.RoundedOutline;
         hoverImage.type = Image.Type.Sliced;
 
-        Color idleColor = ctx.Theme.ControlOutlineIdle;
-        Color hoverColor = ctx.Theme.ControlOutlineHover;
-        hoverImage.color = idleColor;
+        hoverImage.color = ctx.Theme.ControlOutlineIdle;
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, () => {
                 hoverTween?.Kill();
                 var img = hoverImage;
-                hoverTween = ctx.Tween.TweenColor(() => img ? img.color : idleColor,
+                Color target = ctx.Theme.ControlOutlineHover;
+                hoverTween = ctx.Tween.TweenColor(() => img ? img.color : ctx.Theme.ControlOutlineIdle,
                     v => {
                         if (img) {
                             img.color = v;
                         }
-                    }, hoverColor, 0.1f);
+                    }, target, 0.1f);
             }
         ),
             (EventTriggerType.PointerExit, () => {
                 hoverTween?.Kill();
                 var img = hoverImage;
-                hoverTween = ctx.Tween.TweenColor(() => img ? img.color : idleColor,
+                Color target = ctx.Theme.ControlOutlineIdle;
+                hoverTween = ctx.Tween.TweenColor(() => img ? img.color : target,
                     v => {
                         if (img) {
                             img.color = v;
                         }
-                    }, idleColor, 0.1f);
+                    }, target, 0.1f);
             }
         )
         );

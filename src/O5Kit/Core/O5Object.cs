@@ -66,6 +66,18 @@ public abstract class O5Object {
         Ctx = ctx ?? throw new ArgumentNullException(nameof(ctx));
         Id = id;
         Rect = rect;
+        Ctx.ThemeTransitioned += HandleThemeTransitioned;
+    }
+
+    private void HandleThemeTransitioned(O5Theme prev, O5Theme next) {
+        if (IsDisposed || Rect == null || !Rect) {
+            return;
+        }
+        OnThemeChanged(prev, next);
+    }
+
+    /// <summary>Called when the owning context's theme changes via <see cref="O5Context.SetTheme"/>.</summary>
+    protected virtual void OnThemeChanged(O5Theme prev, O5Theme next) {
     }
 
     private void ApplyEnabled(bool enabled) {
@@ -118,6 +130,7 @@ public abstract class O5Object {
         if (EnabledWhen != null) {
             Ctx.EnabledChanged -= ApplyEnabled;
         }
+        Ctx.ThemeTransitioned -= HandleThemeTransitioned;
 
         UnregisterTick();
         OnDisposed?.Invoke();

@@ -17,6 +17,7 @@ public sealed class O5Tooltip : IDisposable {
     private GameObject? _obj;
     private RectTransform? _rect;
     private CanvasGroup? _canvas;
+    private Image? _bgImage;
     private TMPro.TextMeshProUGUI? _text;
 
     private Vector2 _velocity;
@@ -58,6 +59,8 @@ public sealed class O5Tooltip : IDisposable {
         img.color = _ctx.Theme.TooltipBG;
         img.sprite = _ctx.Sprites.RoundedControl;
         img.type = Image.Type.Sliced;
+        _bgImage = img;
+        _ctx.ThemeChanged += OnThemeChanged;
 
         _text = new GameObject("Text").AddComponent<TMPro.TextMeshProUGUI>();
         _text.transform.SetParent(_obj.transform, false);
@@ -157,6 +160,7 @@ public sealed class O5Tooltip : IDisposable {
         _fade?.Kill();
         _fade = null;
 
+        _ctx.ThemeChanged -= OnThemeChanged;
         if (_obj != null) {
             UnityEngine.Object.Destroy(_obj);
         }
@@ -164,6 +168,16 @@ public sealed class O5Tooltip : IDisposable {
         _obj = null;
         _rect = null;
         _canvas = null;
+        _bgImage = null;
         _text = null;
+    }
+
+    private void OnThemeChanged(O5Theme theme) {
+        if (_bgImage) {
+            _bgImage.color = theme.TooltipBG;
+        }
+        if (_text) {
+            _text.color = theme.Text;
+        }
     }
 }

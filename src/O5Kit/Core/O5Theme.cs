@@ -7,25 +7,25 @@ namespace O5Kit.Core;
 /// <summary>Swappable visual theme. Derive variants with <c>with</c> expressions, apply via <see cref="O5Context.SetTheme"/>.</summary>
 public sealed record O5Theme {
     /// <summary>Main window background.</summary>
-    public Color PanelBG { get; init; } = new(0.145f, 0.141f, 0.180f, 1f);
+    public Color PanelBG { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.17f, 0.112f);
 
     /// <summary>Window top bar background.</summary>
-    public Color TopBar { get; init; } = new(0.255f, 0.259f, 0.333f, 1f);
+    public Color TopBar { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.21f, 0.168f);
 
     /// <summary>Side menu background.</summary>
-    public Color MenuBG { get; init; } = new(0.42f, 0.431f, 0.545f, 1f);
+    public Color MenuBG { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.19f, 0.150f);
 
     /// <summary>Default control background.</summary>
-    public Color ObjectBG { get; init; } = new(0.235f, 0.227f, 0.294f, 1f);
+    public Color ObjectBG { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.21f, 0.190f);
 
     /// <summary>Button background.</summary>
-    public Color ObjectButton { get; init; } = new(0.478f, 0.514f, 0.875f, 1f);
+    public Color ObjectButton { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.51f, 0.785f, 1f, adaptLuminance: true);
 
     /// <summary>Accent for on/hover/selected states.</summary>
-    public Color ObjectActive { get; init; } = new(0.569f, 0.604f, 1f, 1f);
+    public Color ObjectActive { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.51f, 0.785f, 1f, adaptLuminance: true);
 
     /// <summary>Brighter accent for button hover.</summary>
-    public Color ObjectActiveBright { get; init; } = new(0.812f, 0.827f, 1f, 1f);
+    public Color ObjectActiveBright { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.34f, 0.945f, 1f, adaptLuminance: true);
 
     /// <summary>Dimmed accent for off states. Derived from <see cref="ObjectActive"/>.</summary>
     public Color ObjectInactive => O5Palette.Inactive(ObjectActive, InactiveAlpha);
@@ -34,25 +34,25 @@ public sealed record O5Theme {
     public float InactiveAlpha { get; init; } = 0.4f;
 
     /// <summary>Selection highlight (e.g. text selection).</summary>
-    public Color MenuHover { get; init; } = new(0.635f, 0.655f, 0.878f, 0.4f);
+    public Color MenuHover { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.48f, 0.720f, 0.22f, adaptLuminance: true);
 
     /// <summary>Card header background.</summary>
-    public Color CardHeader { get; init; } = new Color32(76, 77, 102, 255);
+    public Color CardHeader { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.24f, 0.235f);
 
     /// <summary>Card content background.</summary>
-    public Color CardPanel { get; init; } = new Color32(47, 46, 58, 255);
+    public Color CardPanel { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.18f, 0.145f);
 
     /// <summary>Semantic red (delete, errors).</summary>
     public Color SoftRed { get; init; } = new(0.886f, 0.404f, 0.427f, 1f);
 
     /// <summary>Button background on hover. Slightly brighter than <see cref="ObjectButton"/>.</summary>
-    public Color ButtonHover { get; init; } = new(0.612f, 0.639f, 0.925f, 1f);
+    public Color ButtonHover { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.43f, 0.895f, 1f, adaptLuminance: true);
 
     /// <summary>Button background while pressed. Strongly brighter; settles back to hover/normal on release.</summary>
-    public Color ButtonPressed { get; init; } = new(0.812f, 0.827f, 1f, 1f);
+    public Color ButtonPressed { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.28f, 0.975f, 1f, adaptLuminance: true);
 
     /// <summary>Primary text.</summary>
-    public Color Text { get; init; } = new(1f, 1f, 1f, 1f);
+    public Color Text { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.03f, 0.985f);
 
     /// <summary>Secondary text (previews, hints, inactive labels). Derived from <see cref="Text"/>.</summary>
     public Color TextDim => O5Palette.Dim(Text, TextDimAlpha);
@@ -67,19 +67,19 @@ public sealed record O5Theme {
     public float TextFaintAlpha { get; init; } = 0.2f;
 
     /// <summary>Tooltip background.</summary>
-    public Color TooltipBG { get; init; } = new(0f, 0f, 0f, 0.6f);
+    public Color TooltipBG { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.18f, 0.085f, 0.94f);
 
     /// <summary>Full-screen dim behind modal editors.</summary>
     public Color OverlayScrim { get; init; } = new(0f, 0f, 0f, 0.58f);
 
     /// <summary>Window/panel outline ring tint.</summary>
-    public Color Outline { get; init; } = new(1f, 1f, 1f, 1f);
+    public Color Outline { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.22f, 0.88f, 0.20f);
 
     /// <summary>Control outline when not hovered. Transparent by default.</summary>
     public Color ControlOutlineIdle { get; init; } = new(1f, 1f, 1f, 0f);
 
     /// <summary>Control outline on hover.</summary>
-    public Color ControlOutlineHover { get; init; } = new(0.569f, 0.604f, 1f, 1f);
+    public Color ControlOutlineHover { get; init; } = O5Palette.Shade(O5Palette.DefaultBaseColor, 0.51f, 0.785f, 1f, adaptLuminance: true);
 
     /// <summary>Formula input: valid result.</summary>
     public Color MathOk { get; init; } = new(0.588f, 1f, 0.569f, 1f);
@@ -155,12 +155,34 @@ public sealed record O5Theme {
     /// <summary>Default heading font size.</summary>
     public float FontSizeH1 { get; init; } = 32f;
 
+    /// <summary>Builds a monochrome dark theme derived from a single base color.</summary>
+    public static O5Theme FromMonochrome(Color baseColor) => O5Palette.FromMonochrome(baseColor);
+
     /// <summary>Default dark theme.</summary>
     public static O5Theme Dark { get; } = new();
 
-    /// <summary>Original Overlayer palette.</summary>
-    public static O5Theme Overlayer { get; } = new() {
+    /// <summary>Default Overlayer monochrome palette.</summary>
+    public static O5Theme Overlayer { get; } = O5Palette.FromMonochrome(O5Palette.DefaultBaseColor);
+
+    /// <summary>Legacy fixed-color Overlayer palette prior to dynamic monochrome theming.</summary>
+    public static O5Theme OverlayerStatic { get; } = Overlayer with {
         PanelBG = new Color(0.165f, 0.161f, 0.196f, 1f),
+        TopBar = new Color(0.255f, 0.259f, 0.333f, 1f),
+        MenuBG = new Color(0.42f, 0.431f, 0.545f, 1f),
+        ObjectBG = new Color(0.235f, 0.227f, 0.294f, 1f),
+        ObjectButton = new Color(0.478f, 0.514f, 0.875f, 1f),
+        ObjectActive = new Color(0.569f, 0.604f, 1f, 1f),
+        ObjectActiveBright = new Color(0.812f, 0.827f, 1f, 1f),
+        MenuHover = new Color(0.635f, 0.655f, 0.878f, 0.4f),
+        CardHeader = new Color32(76, 77, 102, 255),
+        CardPanel = new Color32(47, 46, 58, 255),
+        ButtonHover = new Color(0.612f, 0.639f, 0.925f, 1f),
+        ButtonPressed = new Color(0.812f, 0.827f, 1f, 1f),
+        Text = new Color(1f, 1f, 1f, 1f),
+        TooltipBG = new Color(0f, 0f, 0f, 0.6f),
+        Outline = new Color(1f, 1f, 1f, 1f),
+        ControlOutlineIdle = new Color(1f, 1f, 1f, 0f),
+        ControlOutlineHover = new Color(0.569f, 0.604f, 1f, 1f),
     };
 
     /// <summary>Light theme alternative.</summary>

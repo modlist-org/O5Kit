@@ -102,6 +102,7 @@ public static partial class O5Factory {
         bool isCurrentActive = activeValue;
         CanvasGroup? contentCanvasGroup = null;
         void UpdateComponentToggle(bool animate) {
+            var curTheme = ctx.Theme;
             var onSprite = ctx.Sprites.Icon("toggle-on");
             var offSprite = ctx.Sprites.Icon("toggle-off");
             if (isCurrentActive && onSprite != null) {
@@ -112,14 +113,14 @@ public static partial class O5Factory {
 
             if (!animate) {
                 toggleVisualRect.sizeDelta = new Vector2(26f, 26f);
-                toggleVisualImage.color = isCurrentActive ? theme.ObjectActive : theme.ObjectInactive;
+                toggleVisualImage.color = isCurrentActive ? curTheme.ObjectActive : curTheme.ObjectInactive;
                 return;
             }
 
             toggleVisualRect.sizeDelta = new Vector2(30f, 30f);
             var tvr = toggleVisualRect;
             var tvi = toggleVisualImage;
-            var target = isCurrentActive ? theme.ObjectActive : theme.ObjectInactive;
+            var target = isCurrentActive ? curTheme.ObjectActive : curTheme.ObjectInactive;
             Color startColor = tvi.color;
             toggleTween?.Kill();
             toggleTween = ctx.Tween.TweenFloat(
@@ -313,7 +314,8 @@ public static partial class O5Factory {
             }
 
             float foldTarget = expanding ? 180f : 0f;
-            Color foldColorTarget = expanding ? theme.ObjectActive : theme.ObjectInactive;
+            var curTheme = ctx.Theme;
+            Color foldColorTarget = expanding ? curTheme.ObjectActive : curTheme.ObjectInactive;
             Color foldStartColor = fi.color;
             foreach (var h in foldoutTweens) {
                 h.Kill();

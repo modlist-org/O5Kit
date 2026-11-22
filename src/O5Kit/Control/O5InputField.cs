@@ -176,6 +176,20 @@ public sealed class O5InputField : O5Object {
     }
 
     /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        Core.RefreshTheme();
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        if (IconImage) {
+            IconImage.color = O5Palette.WithAlpha(next.Text, IconImage.color.a);
+        }
+        if (Placeholder) {
+            Placeholder.color = O5Palette.WithAlpha(next.Text, Placeholder.color.a);
+        }
+    }
+
+    /// <inheritdoc/>
     public override void Dispose() {
         if (IsDisposed) {
             return;

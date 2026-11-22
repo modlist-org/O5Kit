@@ -103,6 +103,16 @@ public class O5InputCore {
         }
     }
 
+    /// <summary>Re-applies caret and selection colors from the active theme.</summary>
+    public void RefreshTheme() {
+        if (InputField) {
+            var caret = Ctx.Theme.ObjectActive;
+            caret.a = InputField.caretColor.a;
+            InputField.caretColor = caret;
+            InputField.selectionColor = Ctx.Theme.MenuHover;
+        }
+    }
+
     private void SetupInputField(bool multiline) {
         InputField.lineType = multiline
             ? TMPro.TMP_InputField.LineType.MultiLineNewline

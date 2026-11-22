@@ -187,6 +187,14 @@ public class O5Toggle : O5Object {
     }
 
     /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        UpdateVisual(true);
+    }
+
+    /// <inheritdoc/>
     public override void Dispose() {
         if (IsDisposed) {
             return;
