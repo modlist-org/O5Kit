@@ -247,7 +247,7 @@ public class O5Segmented<T> : O5Object {
                 (EventTriggerType.PointerEnter, _ => OnSegmentHoverEnter(index)),
                 (EventTriggerType.PointerExit, _ => OnSegmentHoverExit(index)),
                 (EventTriggerType.PointerDown, e => {
-                    if (e is PointerEventData ped && ped.button == PointerEventData.InputButton.Left) {
+                    if (UnityUtils.AsPointerEventData(e) is { } ped && ped.button == PointerEventData.InputButton.Left) {
                         OnSegmentPressEnter(index);
                     }
                 }),
@@ -377,6 +377,26 @@ public class O5Segmented<T> : O5Object {
                     : TMPro.FontStyles.Normal;
             }
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (O5Palette.ApproxEquals(NormalColor, prev.ObjectButton)) {
+            NormalColor = next.ObjectButton;
+        }
+        if (O5Palette.ApproxEquals(ActiveColor, prev.ObjectActive)) {
+            ActiveColor = next.ObjectActive;
+        }
+        if (O5Palette.ApproxEquals(BorderColor, prev.ControlOutlineIdle)) {
+            BorderColor = next.ControlOutlineIdle;
+        }
+        if (OutlineImage) {
+            OutlineImage.color = BorderColor;
+        }
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        UpdateVisual(true);
     }
 
     /// <inheritdoc/>

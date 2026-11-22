@@ -189,7 +189,6 @@ public static partial class O5Factory {
             }
         };
 
-        dropdown.RebuildList();
         UpdateHeight();
         return dropdown;
     }
@@ -384,7 +383,6 @@ public static partial class O5Factory {
             }
         };
 
-        dropdown.RebuildList();
         UpdateHeight();
         return dropdown;
     }

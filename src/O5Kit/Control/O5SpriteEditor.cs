@@ -535,7 +535,7 @@ public sealed class O5SpriteEditor : O5Object {
     }
 
     private void DragGuide(O5SpriteGuide guide, BaseEventData data) {
-        PointerEventData? pointer = data as PointerEventData;
+        PointerEventData? pointer = UnityUtils.AsPointerEventData(data);
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left ||
             _texture == null || _preview == null ||
             !RectTransformUtility.ScreenPointToLocalPointInRectangle(

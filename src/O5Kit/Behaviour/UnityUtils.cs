@@ -51,4 +51,13 @@ public static class UnityUtils {
             AddEvent(trigger, type, cb);
         }
     }
+
+    /// <summary>Casts EventTrigger <see cref="BaseEventData"/> to <see cref="PointerEventData"/> safely on both Mono and IL2CPP.</summary>
+    public static PointerEventData? AsPointerEventData(BaseEventData? e) {
+#if IL2CPP
+        return e?.TryCast<PointerEventData>();
+#else
+        return e as PointerEventData;
+#endif
+    }
 }

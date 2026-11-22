@@ -68,6 +68,9 @@ public class O5Dropdown<T> : O5Object {
     /// <summary>Fired when expansion changes so the factory can animate layout.</summary>
     public Action? OnLayoutChanged;
 
+    /// <summary>Fired after <see cref="RebuildList"/> recreates the dropdown rows.</summary>
+    public event Action? OnListRebuilt;
+
     private ITweenHandle? _triangleTween, _triangleTintTween, _changeTween;
 
     /// <summary>Layout height tween owned by the factory. Killed on dispose.</summary>
@@ -315,6 +318,7 @@ public class O5Dropdown<T> : O5Object {
         for (int i = ListObject.transform.childCount - 1; i >= 0; i--) {
             Transform child = ListObject.transform.GetChild(i);
             if (child != null) {
+                child.SetParent(null, false);
                 UnityEngine.Object.Destroy(child.gameObject);
             }
         }
@@ -345,7 +349,7 @@ public class O5Dropdown<T> : O5Object {
                     hoverTween?.Kill();
                     _itemHoverTweens.Remove(hoverTween!);
                     hoverTween = Ctx.Tween.TweenColor(
-                        () => img.color, v => img.color = v, theme.ObjectActive, 0.12f);
+                        () => img.color, v => img.color = v, Ctx.Theme.ObjectActive, 0.12f);
                     _itemHoverTweens.Add(hoverTween);
                 }
             ),
@@ -358,7 +362,7 @@ public class O5Dropdown<T> : O5Object {
                 }
             ),
                 (EventTriggerType.PointerClick, (e) => {
-                    PointerEventData? pointerData = e as PointerEventData;
+                    PointerEventData? pointerData = UnityUtils.AsPointerEventData(e);
                     if (pointerData == null || pointerData.button != PointerEventData.InputButton.Left) {
                         return;
                     }
@@ -371,6 +375,8 @@ public class O5Dropdown<T> : O5Object {
             )
             );
         }
+
+        OnListRebuilt?.Invoke();
     }
 
     private TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
@@ -395,6 +401,14 @@ public class O5Dropdown<T> : O5Object {
     }
 
     /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        UpdateVisual(true);
+    }
+
+    /// <inheritdoc/>
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
         SetExpanded(false);
@@ -412,6 +426,7 @@ public class O5Dropdown<T> : O5Object {
         LayoutSeq?.Kill();
         _triangleTween = _triangleTintTween = _changeTween = LayoutSeq = null;
         OnLayoutChanged = null;
+        OnListRebuilt = null;
         foreach (var tween in _itemHoverTweens) {
             tween?.Kill();
         }

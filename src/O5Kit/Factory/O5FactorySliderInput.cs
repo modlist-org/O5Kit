@@ -238,7 +238,7 @@ public static partial class O5Factory {
                     return;
                 }
 
-                var ped = e as PointerEventData;
+                var ped = UnityUtils.AsPointerEventData(e);
                 if (ped != null && ped.button != InputButton.Left) {
                     return;
                 }
@@ -436,7 +436,7 @@ public static partial class O5Factory {
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerUp,
                 e => {
-                    PointerEventData? ped = e as PointerEventData;
+                    PointerEventData? ped = UnityUtils.AsPointerEventData(e);
                     if (ped == null || ped.button != InputButton.Left) {
                         return;
                     }

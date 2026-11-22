@@ -333,7 +333,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
 
             UnityUtils.AddEvents(trigger,
                 (EventTriggerType.PointerClick, (e) => {
-                    PointerEventData? pointerData = e as PointerEventData;
+                    PointerEventData? pointerData = UnityUtils.AsPointerEventData(e);
                     if (pointerData == null || pointerData.button != PointerEventData.InputButton.Left) {
                         return;
                     }
@@ -389,6 +389,14 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         ulong valueBits = Convert.ToUInt64(value);
         ulong flagBits = Convert.ToUInt64(flag);
         return (valueBits & flagBits) == flagBits;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
+        }
+        UpdateVisual(true);
     }
 
     /// <inheritdoc/>

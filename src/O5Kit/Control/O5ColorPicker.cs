@@ -515,7 +515,7 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private bool TryGetPointerPosition(BaseEventData data, out Vector2 normalized) {
-        PointerEventData? pointer = data as PointerEventData;
+        PointerEventData? pointer = UnityUtils.AsPointerEventData(data);
         normalized = default;
         if (pointer == null || pointer.button != PointerEventData.InputButton.Left) {
             return false;
@@ -807,6 +807,31 @@ public sealed class O5ColorPicker : O5Object {
         }
 
         return a + (segment * Mathf.Clamp01(Vector2.Dot(point - a, segment) / length));
+    }
+
+    /// <inheritdoc/>
+    protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
+        if (_body) {
+            var bodyBg = _body.GetComponent<Image>();
+            if (bodyBg) {
+                bodyBg.color = next.PanelBG;
+            }
+        }
+        if (_rgbModeBackground) {
+            _rgbModeBackground.color = _hsvMode ? Color.clear : next.ObjectActive;
+        }
+        if (_hsvModeBackground) {
+            _hsvModeBackground.color = _hsvMode ? next.ObjectActive : Color.clear;
+        }
+        if (_rgbModeLabel) {
+            _rgbModeLabel.color = _hsvMode ? next.TextDim : next.Text;
+        }
+        if (_hsvModeLabel) {
+            _hsvModeLabel.color = _hsvMode ? next.Text : next.TextDim;
+        }
+        if (_hexInput != null && _hexInput.InputField && _hexInput.InputField.textComponent) {
+            _hexInput.InputField.textComponent.color = next.Text;
+        }
     }
 
     /// <inheritdoc/>
