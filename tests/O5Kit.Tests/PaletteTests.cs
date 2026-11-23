@@ -35,23 +35,32 @@ internal static class PaletteTests {
         T.Check(O5Palette.ToHexRgb(ocean) == "4E9EF0", "roundtrip ocean hex");
         T.Check(!O5Palette.TryParseHexRgb("ZZZZZZ", out _), "reject invalid hex");
 
-        // monochrome derivation preserves base hue across surfaces and accents
+        // OKLCH round-trip across primary, accent, and neutral colors
+        foreach (var sample in new[] { overlayer, ocean, c, new UnityEngine.Color(0.5f, 0.5f, 0.5f, 1f), new UnityEngine.Color(0.2f, 0.8f, 0.4f, 1f) }) {
+            O5Palette.RgbToOklch(sample.r, sample.g, sample.b, out float l, out float ch, out float h);
+            var back = O5Palette.OklchToRgb(l, ch, h, sample.a);
+            T.Approx(sample.r, back.r, "oklch roundtrip r", 0.002f);
+            T.Approx(sample.g, back.g, "oklch roundtrip g", 0.002f);
+            T.Approx(sample.b, back.b, "oklch roundtrip b", 0.002f);
+        }
+
+        // monochrome derivation preserves base OKLCH hue across surfaces and accents
         var theme = O5Palette.FromMonochrome(overlayer);
-        O5Palette.RgbToHsv(overlayer.r, overlayer.g, overlayer.b, out float baseH, out _, out _);
-        O5Palette.RgbToHsv(theme.PanelBG.r, theme.PanelBG.g, theme.PanelBG.b, out float panelH, out float panelS, out float panelV);
-        O5Palette.RgbToHsv(theme.ObjectButton.r, theme.ObjectButton.g, theme.ObjectButton.b, out float btnH, out float btnS, out float btnV);
-        O5Palette.RgbToHsv(theme.ObjectActive.r, theme.ObjectActive.g, theme.ObjectActive.b, out float actH, out float actS, out float actV);
-        T.Approx(baseH, panelH, "panel preserves base hue", 0.01f);
-        T.Approx(baseH, btnH, "button preserves base hue", 0.01f);
-        T.Approx(baseH, actH, "active preserves base hue", 0.01f);
-        T.Check(panelV < 0.15f && panelS < 0.25f, "panel has HUD-editor-like dark low-sat surface");
+        O5Palette.RgbToOklch(overlayer.r, overlayer.g, overlayer.b, out _, out _, out float baseOklchH);
+        O5Palette.RgbToOklch(theme.PanelBG.r, theme.PanelBG.g, theme.PanelBG.b, out float panelL, out float panelC, out float panelH);
+        O5Palette.RgbToOklch(theme.ObjectButton.r, theme.ObjectButton.g, theme.ObjectButton.b, out float btnL, out float btnC, out float btnH);
+        O5Palette.RgbToOklch(theme.ObjectActive.r, theme.ObjectActive.g, theme.ObjectActive.b, out float actL, out float actC, out float actH);
+        T.Approx(baseOklchH, panelH, "panel preserves base OKLCH hue", 0.015f);
+        T.Approx(baseOklchH, btnH, "button preserves base OKLCH hue", 0.015f);
+        T.Approx(baseOklchH, actH, "active preserves base OKLCH hue", 0.015f);
+        T.Check(panelL < 0.22f && panelC < 0.02f, "panel has HUD-editor-like dark low-chroma surface");
         T.Check(theme.PanelBG.b < theme.CardPanel.b && theme.CardPanel.b < theme.ObjectBG.b && theme.ObjectBG.b < theme.CardHeader.b, "surface elevation ladder increases");
         T.Check(O5Palette.ApproxEquals(theme.ObjectButton, theme.ObjectActive), "button matches active color");
-        O5Palette.RgbToHsv(theme.ButtonHover.r, theme.ButtonHover.g, theme.ButtonHover.b, out _, out _, out float hoverV);
-        O5Palette.RgbToHsv(theme.ObjectActiveBright.r, theme.ObjectActiveBright.g, theme.ObjectActiveBright.b, out _, out _, out float brightV);
-        O5Palette.RgbToHsv(theme.ButtonPressed.r, theme.ButtonPressed.g, theme.ButtonPressed.b, out _, out _, out float pressV);
-        T.Check(btnS > panelS && btnV > panelV && actV >= btnV, "accents step up in saturation and brightness");
-        T.Check(hoverV > btnV && brightV > hoverV && pressV > brightV, "button highlight ladder steps upward");
+        O5Palette.RgbToOklch(theme.ButtonHover.r, theme.ButtonHover.g, theme.ButtonHover.b, out float hoverL, out _, out _);
+        O5Palette.RgbToOklch(theme.ObjectActiveBright.r, theme.ObjectActiveBright.g, theme.ObjectActiveBright.b, out float brightL, out _, out _);
+        O5Palette.RgbToOklch(theme.ButtonPressed.r, theme.ButtonPressed.g, theme.ButtonPressed.b, out float pressL, out _, out _);
+        T.Check(btnC > panelC && btnL > panelL && actL >= btnL, "accents step up in chroma and lightness");
+        T.Check(hoverL > btnL && brightL > hoverL && pressL > brightL, "button highlight ladder steps upward");
 
         // grayscale base produces neutral low-chroma theme
         var grayTheme = O5Palette.FromMonochrome(new UnityEngine.Color(0.5f, 0.5f, 0.5f, 1f));
@@ -88,5 +97,23 @@ internal static class PaletteTests {
         T.Check(O5Palette.ApproxEquals(staticTheme.CardPanel, new UnityEngine.Color32(47, 46, 58, 255)), "static CardPanel matches legacy");
         T.Check(O5Palette.ApproxEquals(staticTheme.MathOk, O5Theme.Overlayer.MathOk), "static inherits unmapped MathOk from Overlayer");
         T.Check(O5Palette.ApproxEquals(staticTheme.SoftRed, O5Theme.Overlayer.SoftRed), "static inherits unmapped SoftRed from Overlayer");
+
+        // MaxSrgbChroma gamut boundary checks
+        T.Approx(0f, O5Palette.MaxSrgbChroma(0f, 0.2f), "MaxSrgbChroma at L=0 is 0");
+        T.Approx(0f, O5Palette.MaxSrgbChroma(1f, 0.2f), "MaxSrgbChroma at L=1 is 0");
+        foreach (float testHue in new[] { 0f, 0.25f, 0.5f, 0.75f }) {
+            float maxC = O5Palette.MaxSrgbChroma(0.65f, testHue);
+            T.Check(maxC > 0.05f && maxC <= 0.37f, $"MaxSrgbChroma at L=0.65 H={testHue} in range");
+            var gamutEdge = O5Palette.OklchToRgb(0.65f, maxC, testHue);
+            O5Palette.RgbToOklch(gamutEdge.r, gamutEdge.g, gamutEdge.b, out float backL, out float backC, out _);
+            T.Approx(0.65f, backL, $"MaxSrgbChroma roundtrip L at H={testHue}", 0.003f);
+            T.Approx(maxC, backC, $"MaxSrgbChroma roundtrip C at H={testHue}", 0.003f);
+        }
+        float yellowHue = 110f / 360f;
+        float blueHue = 264f / 360f;
+        T.Check(O5Palette.MaxSrgbChroma(0.90f, yellowHue) > O5Palette.MaxSrgbChroma(0.90f, blueHue),
+            "at L=0.90 yellow has wider sRGB chroma than blue");
+        T.Check(O5Palette.MaxSrgbChroma(0.45f, blueHue) > O5Palette.MaxSrgbChroma(0.45f, yellowHue),
+            "at L=0.45 blue has wider sRGB chroma than yellow");
     }
 }
