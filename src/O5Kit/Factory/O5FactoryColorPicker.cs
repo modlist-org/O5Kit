@@ -149,8 +149,9 @@ public static partial class O5Factory {
         modeLayout.childControlHeight = true;
         modeLayout.childForceExpandWidth = true;
         modeLayout.childForceExpandHeight = true;
-        var (rgbModeBackground, rgbModeLabel) = CreateModeButton(ctx, modeRow, "RGB", () => picker?.SetMode(false));
-        var (hsvModeBackground, hsvModeLabel) = CreateModeButton(ctx, modeRow, "HSV", () => picker?.SetMode(true));
+        var (rgbModeBackground, rgbModeLabel) = CreateModeButton(ctx, modeRow, "RGB", () => picker?.SetMode(O5ColorMode.Rgb));
+        var (hsvModeBackground, hsvModeLabel) = CreateModeButton(ctx, modeRow, "HSV", () => picker?.SetMode(O5ColorMode.Hsv));
+        var (oklchModeBackground, oklchModeLabel) = CreateModeButton(ctx, modeRow, "OKLCH", () => picker?.SetMode(O5ColorMode.Oklch));
 
         O5Slider[] sliders = new O5Slider[4];
         string[] names = ["R", "G", "B", "A"];
@@ -177,7 +178,7 @@ public static partial class O5Factory {
                 }
             );
             sliders[i].Rect.offsetMax = Vector2.zero;
-            sliders[i].FillImage.color = colors[i];
+            sliders[i].AccentColor = colors[i];
             sliders[i].Label.fontSize = 18f;
         }
 
@@ -186,6 +187,7 @@ public static partial class O5Factory {
             ctx, id, root, canvasRect, canvasCamera, bodyObject, bodyCanvas, preview, previewLabel,
             wheel, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
             rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel,
+            oklchModeBackground, oklchModeLabel,
             options
         );
 

@@ -10,15 +10,34 @@ using UnityEngine.UI;
 
 namespace O5Kit.Control;
 
-/// <summary>HSV wheel + RGB/HSV channel sliders + hex field, in an auto-placed popup.</summary>
+/// <summary>Channel slider space for <see cref="O5ColorPicker"/>.</summary>
+public enum O5ColorMode {
+    Rgb,
+    Hsv,
+    Oklch,
+}
+
+/// <summary>HSV wheel + RGB/HSV/OKLCH channel sliders + hex field, in an auto-placed popup.</summary>
 public sealed class O5ColorPicker : O5Object {
     private const int TextureSize = 256;
+    private const int SrgbLutSize = 2048;
     private const float PopupWidth = 360f;
     private const float PopupHeight = 578f;
     private const float PopupScale = 0.9f;
     private const float RingInner = 0.37f;
     private const float RingOuter = 0.49f;
     private const float TriangleRadius = 0.32f;
+    private const float OklchMaxChroma = 0.37f;
+    private const float OklchPadX = 0.03f;
+    private const float OklchHueBarYMin = 0.03f;
+    private const float OklchHueBarYMax = 0.14f;
+    private const float OklchChartYMin = 0.20f;
+    private const float OklchChartYMax = 0.97f;
+    private const float OklchChartCorner = 0.03f;
+    private const float OklchHueCorner = 0.025f;
+
+    private static readonly byte[] LinearToSrgbLut = BuildLinearToSrgbLut();
+    private static readonly Color32[] OklchHueStripLut = BuildOklchHueStripLut();
 
     /// <summary>Value to reset to on middle-click. Null disables reset.</summary>
     public Color? DefaultValue { get; set; }
@@ -54,18 +73,26 @@ public sealed class O5ColorPicker : O5Object {
     private readonly O5Slider[] _sliders;
     private readonly Image _rgbModeBackground;
     private readonly Image _hsvModeBackground;
+    private readonly Image? _oklchModeBackground;
     private readonly TMPro.TextMeshProUGUI _rgbModeLabel;
     private readonly TMPro.TextMeshProUGUI _hsvModeLabel;
+    private readonly TMPro.TextMeshProUGUI? _oklchModeLabel;
     private readonly Texture2D _texture;
     private readonly Sprite _textureSprite;
+    private readonly Color32[] _pixels = new Color32[TextureSize * TextureSize];
+    private readonly float[] _maxChromaByX = new float[TextureSize];
 
     private float _hue;
     private float _saturation;
     private float _brightness;
+    private float _oklchL;
+    private float _oklchC;
+    private float _oklchH;
     private float _renderedHue = -1f;
+    private bool _renderedOklch;
     private bool _suppressHex;
     private Color? _pendingHexColor;
-    private bool _hsvMode;
+    private O5ColorMode _mode;
     private DragTarget _dragTarget;
     private ITweenHandle? _popupTween, _popupFadeTween, _validationTween;
 
@@ -113,6 +140,36 @@ public sealed class O5ColorPicker : O5Object {
         Image hsvModeBackground,
         TMPro.TextMeshProUGUI hsvModeLabel,
         O5ColorPickerOptions? options = null
+    ) : this(
+        ctx, id, rect, canvasRect, canvasCamera, body, bodyCanvas, preview, previewLabel,
+        wheelRect, hueHandle, colorHandle, hexInput, sharedOutline, sliders,
+        rgbModeBackground, rgbModeLabel, hsvModeBackground, hsvModeLabel, null, null, options
+    ) { }
+
+    /// <summary>Creates a color picker over factory-built visuals with RGB, HSV, and OKLCH mode tabs.</summary>
+    public O5ColorPicker(
+        O5Context ctx,
+        string id,
+        RectTransform rect,
+        RectTransform canvasRect,
+        Camera? canvasCamera,
+        GameObject body,
+        CanvasGroup bodyCanvas,
+        Image preview,
+        TMPro.TextMeshProUGUI previewLabel,
+        RectTransform wheelRect,
+        RectTransform hueHandle,
+        RectTransform colorHandle,
+        O5InputField hexInput,
+        Image sharedOutline,
+        O5Slider[] sliders,
+        Image rgbModeBackground,
+        TMPro.TextMeshProUGUI rgbModeLabel,
+        Image hsvModeBackground,
+        TMPro.TextMeshProUGUI hsvModeLabel,
+        Image? oklchModeBackground,
+        TMPro.TextMeshProUGUI? oklchModeLabel,
+        O5ColorPickerOptions? options = null
     ) : base(ctx, id, rect) {
         options ??= new O5ColorPickerOptions();
         _canvasRect = canvasRect;
@@ -129,6 +186,8 @@ public sealed class O5ColorPicker : O5Object {
         _rgbModeLabel = rgbModeLabel;
         _hsvModeBackground = hsvModeBackground;
         _hsvModeLabel = hsvModeLabel;
+        _oklchModeBackground = oklchModeBackground;
+        _oklchModeLabel = oklchModeLabel;
         _hexInput = hexInput;
         _hexOutline = sharedOutline;
         OnChanged = options.OnChanged;
@@ -171,7 +230,7 @@ public sealed class O5ColorPicker : O5Object {
         wheelRect.GetComponent<Image>().sprite = _textureSprite;
 
         Set(options.Value, false);
-        SetMode(false);
+        SetMode(O5ColorMode.Rgb);
         SetExpanded(false, true);
         RegisterTick();
         OnDisposed += () => {
@@ -380,6 +439,7 @@ public sealed class O5ColorPicker : O5Object {
         value.a = Mathf.Clamp01(value.a);
         Value = value;
         Color.RGBToHSV(value, out _hue, out _saturation, out _brightness);
+        SyncOklchFromValue();
         UpdateVisuals();
         if (notify) {
             OnChanged?.Invoke(Value);
@@ -388,91 +448,142 @@ public sealed class O5ColorPicker : O5Object {
 
     /// <summary>Switches channel sliders between RGB and HSV.</summary>
     /// <param name="useHsv">True for HSV + alpha, false for RGB + alpha.</param>
-    public void SetMode(bool useHsv) {
+    public void SetMode(bool useHsv) => SetMode(useHsv ? O5ColorMode.Hsv : O5ColorMode.Rgb);
+
+    /// <summary>Switches channel sliders between RGB, HSV, and OKLCH.</summary>
+    public void SetMode(O5ColorMode mode) {
         if (IsDisposed) {
             return;
         }
 
         var theme = Ctx.Theme;
-        _hsvMode = useHsv;
-        _rgbModeBackground.color = useHsv ? Color.clear : theme.ObjectActive;
-        _hsvModeBackground.color = useHsv ? theme.ObjectActive : Color.clear;
-        _rgbModeLabel.color = useHsv ? theme.TextDim : theme.Text;
-        _hsvModeLabel.color = useHsv ? theme.Text : theme.TextDim;
+        _mode = mode;
+        ApplyModeTabColors(theme);
 
-        string[] labels = useHsv ? ["H", "S", "V", "A"] : ["R", "G", "B", "A"];
+        string[] labels;
+        double[] mins;
+        double[] maxs;
+        string[] formats;
+        float[] defaults;
+        Color[] colors = GetModeSliderColors(theme);
+
         Color baseColor = DefaultValue ?? Value;
-        Color.RGBToHSV(baseColor, out float defaultHue, out float defaultSaturation, out float defaultBrightness);
-        float[] defaults = useHsv
-            ? [defaultHue, defaultSaturation, defaultBrightness, baseColor.a]
-            : [baseColor.r, baseColor.g, baseColor.b, baseColor.a];
-        Color[] colors = useHsv
-            ? [
-                Color.HSVToRGB(_hue, 1f, 1f),
-                theme.ChannelS,
-                theme.ChannelV,
-                theme.ChannelA
-            ]
-            : [
-                theme.ChannelR,
-                theme.ChannelG,
-                theme.ChannelB,
-                theme.ChannelA
-            ];
+        switch (mode) {
+            case O5ColorMode.Hsv: {
+                labels = ["H", "S", "V", "A"];
+                mins = [0d, 0d, 0d, 0d];
+                maxs = [1d, 1d, 1d, 1d];
+                formats = ["F2", "F2", "F2", "F2"];
+                Color.RGBToHSV(baseColor, out float defaultHue, out float defaultSaturation, out float defaultBrightness);
+                defaults = [defaultHue, defaultSaturation, defaultBrightness, baseColor.a];
+                break;
+            }
+            case O5ColorMode.Oklch: {
+                labels = ["L", "C", "H", "A"];
+                mins = [0d, 0d, 0d, 0d];
+                maxs = [1d, OklchMaxChroma, 360d, 1d];
+                formats = ["F2", "F3", "F0", "F2"];
+                O5Palette.RgbToOklch(baseColor.r, baseColor.g, baseColor.b, out float defL, out float defC, out float defH);
+                defaults = [defL, Math.Min(defC, OklchMaxChroma), defH * 360f, baseColor.a];
+                break;
+            }
+            default: {
+                labels = ["R", "G", "B", "A"];
+                mins = [0d, 0d, 0d, 0d];
+                maxs = [1d, 1d, 1d, 1d];
+                formats = ["F2", "F2", "F2", "F2"];
+                defaults = [baseColor.r, baseColor.g, baseColor.b, baseColor.a];
+                break;
+            }
+        }
+
         for (int i = 0; i < _sliders.Length; i++) {
             _sliders[i].Label.text = labels[i];
-            _sliders[i].FillImage.color = colors[i];
+            _sliders[i].Min = mins[i];
+            _sliders[i].Max = maxs[i];
+            _sliders[i].Format = formats[i];
+            _sliders[i].AccentColor = colors[i];
             _sliders[i].SetDefaultValue(DefaultValue.HasValue ? defaults[i] : null, true);
         }
 
         UpdateSliderValues();
+        UpdateTexture();
+        UpdateHandles();
     }
 
     /// <summary>Writes one channel (0..3) in the active color mode.</summary>
     /// <param name="channel">Channel index.</param>
-    /// <param name="value">Normalized channel value.</param>
+    /// <param name="value">Channel value in the active mode's range.</param>
     public void SetChannel(int channel, double value) {
-        value = MathCompat.Clamp(value, 0d, 1d);
-        if (!_hsvMode) {
+        if (_mode == O5ColorMode.Rgb) {
+            double clamped = MathCompat.Clamp(value, 0d, 1d);
             Color color = Value;
             switch (channel) {
                 case 0:
-                    color.r = (float)value;
+                    color.r = (float)clamped;
                     break;
                 case 1:
-                    color.g = (float)value;
+                    color.g = (float)clamped;
                     break;
                 case 2:
-                    color.b = (float)value;
+                    color.b = (float)clamped;
                     break;
                 default:
-                    color.a = (float)value;
+                    color.a = (float)clamped;
                     break;
             }
             Set(color);
             return;
         }
 
+        if (_mode == O5ColorMode.Hsv) {
+            double clamped = MathCompat.Clamp(value, 0d, 1d);
+            switch (channel) {
+                case 0:
+                    _hue = (float)clamped;
+                    break;
+                case 1:
+                    _saturation = (float)clamped;
+                    break;
+                case 2:
+                    _brightness = (float)clamped;
+                    break;
+                case 3:
+                    Value = new Color(Value.r, Value.g, Value.b, (float)clamped);
+                    UpdateVisuals();
+                    OnChanged?.Invoke(Value);
+                    return;
+            }
+
+            Color rgb = Color.HSVToRGB(_hue, _saturation, _brightness);
+            rgb.a = Value.a;
+            Value = rgb;
+            SyncOklchFromValue();
+            UpdateVisuals();
+            OnChanged?.Invoke(Value);
+            return;
+        }
+
         switch (channel) {
             case 0:
-                _hue = (float)value;
+                _oklchL = (float)MathCompat.Clamp(value, 0d, 1d);
                 break;
             case 1:
-                _saturation = (float)value;
+                _oklchC = (float)MathCompat.Clamp(value, 0d, OklchMaxChroma);
                 break;
             case 2:
-                _brightness = (float)value;
+                _oklchH = (float)MathCompat.Clamp(value / 360d, 0d, 1d);
                 break;
             case 3:
-                Value = new Color(Value.r, Value.g, Value.b, (float)value);
+                Value = new Color(Value.r, Value.g, Value.b, (float)MathCompat.Clamp(value, 0d, 1d));
                 UpdateVisuals();
                 OnChanged?.Invoke(Value);
                 return;
         }
 
-        Color rgb = Color.HSVToRGB(_hue, _saturation, _brightness);
-        rgb.a = Value.a;
-        Value = rgb;
+        Color oklchRgb = O5Palette.OklchToRgb(_oklchL, _oklchC, _oklchH, Value.a);
+        Value = oklchRgb;
+        Color.RGBToHSV(oklchRgb, out _hue, out _saturation, out _brightness);
         UpdateVisuals();
         OnChanged?.Invoke(Value);
     }
@@ -481,6 +592,20 @@ public sealed class O5ColorPicker : O5Object {
     /// <param name="data">Pointer event.</param>
     public void BeginPointer(BaseEventData data) {
         if (!TryGetPointerPosition(data, out Vector2 normalized)) {
+            return;
+        }
+
+        if (_mode == O5ColorMode.Oklch) {
+            float u = normalized.x + 0.5f;
+            float v = normalized.y + 0.5f;
+            if (u < -0.02f || u > 1.02f || v < -0.02f || v > 1.02f) {
+                return;
+            }
+
+            _dragTarget = v <= (OklchHueBarYMax + OklchChartYMin) * 0.5f
+                ? DragTarget.Hue
+                : DragTarget.Triangle;
+            ApplyPointer(normalized);
             return;
         }
 
@@ -537,11 +662,32 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private void ApplyPointer(Vector2 normalized) {
+        if (_mode == O5ColorMode.Oklch) {
+            float u = normalized.x + 0.5f;
+            float v = normalized.y + 0.5f;
+            float tX = Mathf.Clamp01((u - OklchPadX) / (1f - (OklchPadX * 2f)));
+            if (_dragTarget == DragTarget.Hue) {
+                _oklchH = tX;
+            } else {
+                _oklchL = tX;
+                float rawC = Mathf.Clamp01((v - OklchChartYMin) / (OklchChartYMax - OklchChartYMin)) * OklchMaxChroma;
+                _oklchC = Math.Min(rawC, O5Palette.MaxSrgbChroma(_oklchL, _oklchH));
+            }
+
+            Color pickedOklch = O5Palette.OklchToRgb(_oklchL, _oklchC, _oklchH, Value.a);
+            Value = pickedOklch;
+            Color.RGBToHSV(pickedOklch, out _hue, out _saturation, out _brightness);
+            UpdateVisuals();
+            OnChanged?.Invoke(Value);
+            return;
+        }
+
         if (_dragTarget == DragTarget.Hue) {
             _hue = Mathf.Repeat(Mathf.Atan2(normalized.y, normalized.x) / ((float)Math.PI * 2f), 1f);
             Color rgb = Color.HSVToRGB(_hue, _saturation, _brightness);
             rgb.a = Value.a;
             Value = rgb;
+            SyncOklchFromValue();
             UpdateVisuals();
             OnChanged?.Invoke(Value);
             return;
@@ -560,6 +706,7 @@ public sealed class O5ColorPicker : O5Object {
         Color picked = Color.HSVToRGB(_hue, _saturation, _brightness);
         picked.a = Value.a;
         Value = picked;
+        SyncOklchFromValue();
         UpdateVisuals();
         OnChanged?.Invoke(Value);
     }
@@ -639,16 +786,77 @@ public sealed class O5ColorPicker : O5Object {
             + 0.0722f * Linearize(color.b);
     }
 
+    private void SyncOklchFromValue() {
+        O5Palette.RgbToOklch(Value.r, Value.g, Value.b, out _oklchL, out _oklchC, out float newH);
+        if (_oklchC >= 1e-4f) {
+            _oklchH = newH;
+        }
+    }
+
+    private void ApplyModeTabColors(O5Theme theme) {
+        if (_rgbModeBackground) {
+            _rgbModeBackground.color = _mode == O5ColorMode.Rgb ? theme.ObjectActive : Color.clear;
+        }
+        if (_hsvModeBackground) {
+            _hsvModeBackground.color = _mode == O5ColorMode.Hsv ? theme.ObjectActive : Color.clear;
+        }
+        if (_oklchModeBackground) {
+            _oklchModeBackground.color = _mode == O5ColorMode.Oklch ? theme.ObjectActive : Color.clear;
+        }
+        if (_rgbModeLabel) {
+            _rgbModeLabel.color = _mode == O5ColorMode.Rgb ? theme.Text : theme.TextDim;
+        }
+        if (_hsvModeLabel) {
+            _hsvModeLabel.color = _mode == O5ColorMode.Hsv ? theme.Text : theme.TextDim;
+        }
+        if (_oklchModeLabel) {
+            _oklchModeLabel.color = _mode == O5ColorMode.Oklch ? theme.Text : theme.TextDim;
+        }
+    }
+
+    private Color[] GetModeSliderColors(O5Theme theme) {
+        switch (_mode) {
+            case O5ColorMode.Hsv:
+                return [
+                    Color.HSVToRGB(_hue, 1f, 1f),
+                    theme.ChannelS,
+                    theme.ChannelV,
+                    theme.ChannelA
+                ];
+            case O5ColorMode.Oklch:
+                Color huePreview = O5Palette.OklchToRgb(0.7f, 0.18f, _oklchH);
+                return [
+                    new Color(0.85f, 0.85f, 0.85f, 1f),
+                    huePreview,
+                    huePreview,
+                    theme.ChannelA
+                ];
+            default:
+                return [
+                    theme.ChannelR,
+                    theme.ChannelG,
+                    theme.ChannelB,
+                    theme.ChannelA
+                ];
+        }
+    }
+
     private void UpdateSliderValues() {
-        double[] values = _hsvMode
-            ? [_hue, _saturation, _brightness, Value.a]
-            : [Value.r, Value.g, Value.b, Value.a];
+        double[] values = _mode switch {
+            O5ColorMode.Hsv => [_hue, _saturation, _brightness, Value.a],
+            O5ColorMode.Oklch => [_oklchL, _oklchC, _oklchH * 360f, Value.a],
+            _ => [Value.r, Value.g, Value.b, Value.a],
+        };
         for (int i = 0; i < _sliders.Length; i++) {
             _sliders[i].Set(values[i], false);
         }
 
-        if (_hsvMode) {
-            _sliders[0].FillImage.color = Color.HSVToRGB(_hue, 1f, 1f);
+        if (_mode == O5ColorMode.Hsv) {
+            _sliders[0].AccentColor = Color.HSVToRGB(_hue, 1f, 1f);
+        } else if (_mode == O5ColorMode.Oklch) {
+            Color huePreview = O5Palette.OklchToRgb(0.7f, 0.18f, _oklchH);
+            _sliders[1].AccentColor = huePreview;
+            _sliders[2].AccentColor = huePreview;
         }
     }
 
@@ -712,6 +920,18 @@ public sealed class O5ColorPicker : O5Object {
 
     private void UpdateHandles() {
         float size = Math.Min(_wheelRect.rect.width, _wheelRect.rect.height);
+        if (_mode == O5ColorMode.Oklch) {
+            float spanX = 1f - (OklchPadX * 2f);
+            float hueU = OklchPadX + (_oklchH * spanX);
+            float hueV = (OklchHueBarYMin + OklchHueBarYMax) * 0.5f;
+            _hueHandle.anchoredPosition = new Vector2((hueU - 0.5f) * size, (hueV - 0.5f) * size);
+
+            float chartU = OklchPadX + (Mathf.Clamp01(_oklchL) * spanX);
+            float chartV = Mathf.Lerp(OklchChartYMin, OklchChartYMax, Mathf.Clamp01(_oklchC / OklchMaxChroma));
+            _colorHandle.anchoredPosition = new Vector2((chartU - 0.5f) * size, (chartV - 0.5f) * size);
+            return;
+        }
+
         _hueHandle.anchoredPosition = Direction(_hue) * (size * 0.43f);
 
         float hueWeight = _saturation * _brightness;
@@ -724,13 +944,24 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private void UpdateTexture() {
-        if (_renderedHue >= 0f && Math.Abs(Mathf.DeltaAngle(_renderedHue * 360f, _hue * 360f)) < 0.5f) {
+        bool isOklch = _mode == O5ColorMode.Oklch;
+        float activeHue = isOklch ? _oklchH : _hue;
+        float hueThreshold = isOklch ? 0.25f : 0.5f;
+        if (_renderedHue >= 0f && _renderedOklch == isOklch && Math.Abs(Mathf.DeltaAngle(_renderedHue * 360f, activeHue * 360f)) < hueThreshold) {
             return;
         }
 
-        _renderedHue = _hue;
+        _renderedHue = activeHue;
+        _renderedOklch = isOklch;
+        if (isOklch) {
+            RenderOklchTexture();
+        } else {
+            RenderHsvTexture();
+        }
+    }
+
+    private void RenderHsvTexture() {
         Color hueColor = Color.HSVToRGB(_hue, 1f, 1f);
-        Color32[] pixels = new Color32[TextureSize * TextureSize];
         Vector2 huePoint = Direction(_hue) * TriangleRadius;
         Vector2 whitePoint = Direction(_hue + (1f / 3f)) * TriangleRadius;
         Vector2 blackPoint = Direction(_hue - (1f / 3f)) * TriangleRadius;
@@ -751,12 +982,143 @@ public sealed class O5ColorPicker : O5Object {
                     color.a = 1f;
                 }
 
-                pixels[(y * TextureSize) + x] = color;
+                _pixels[(y * TextureSize) + x] = color;
             }
         }
 
-        _texture.SetPixels32(pixels);
+        _texture.SetPixels32(_pixels);
         _texture.Apply(false, false);
+    }
+
+    private void RenderOklchTexture() {
+        Array.Clear(_pixels, 0, _pixels.Length);
+
+        const float uMin = OklchPadX;
+        const float uMax = 1f - OklchPadX;
+        const float spanX = uMax - uMin;
+        const float chartSpanY = OklchChartYMax - OklchChartYMin;
+        const float pixelStep = 1f / TextureSize;
+        const float aaMask = pixelStep * 1.25f;
+        const float bgR = 20f;
+        const float bgG = 20f;
+        const float bgB = 26f;
+        const float bgA = 165f;
+
+        double rad = _oklchH * 2.0 * Math.PI;
+        float cosH = (float)Math.Cos(rad);
+        float sinH = (float)Math.Sin(rad);
+
+        for (int x = 0; x < TextureSize; x++) {
+            float u = (x + 0.5f) * pixelStep;
+            float l = Mathf.Clamp01((u - uMin) / spanX);
+            _maxChromaByX[x] = O5Palette.MaxSrgbChroma(l, cosH, sinH);
+        }
+
+        float aaC = (OklchMaxChroma / (chartSpanY * TextureSize)) * 1.5f;
+
+        for (int y = 0; y < TextureSize; y++) {
+            float v = (y + 0.5f) * pixelStep;
+            bool inChartBand = v >= OklchChartYMin - pixelStep && v <= OklchChartYMax + pixelStep;
+            bool inHueBand = !inChartBand && v >= OklchHueBarYMin - pixelStep && v <= OklchHueBarYMax + pixelStep;
+            if (!inChartBand && !inHueBand) {
+                continue;
+            }
+
+            int rowOffset = y * TextureSize;
+            if (inHueBand) {
+                for (int x = 0; x < TextureSize; x++) {
+                    float u = (x + 0.5f) * pixelStep;
+                    float mask = RoundedRectAlpha(u, v, uMin, uMax, OklchHueBarYMin, OklchHueBarYMax, OklchHueCorner, aaMask);
+                    if (mask <= 0f) {
+                        continue;
+                    }
+                    Color32 strip = OklchHueStripLut[x];
+                    strip.a = (byte)Mathf.RoundToInt(255f * mask);
+                    _pixels[rowOffset + x] = strip;
+                }
+                continue;
+            }
+
+            float rawC = Mathf.Clamp01((v - OklchChartYMin) / chartSpanY) * OklchMaxChroma;
+            for (int x = 0; x < TextureSize; x++) {
+                float u = (x + 0.5f) * pixelStep;
+                float mask = RoundedRectAlpha(u, v, uMin, uMax, OklchChartYMin, OklchChartYMax, OklchChartCorner, aaMask);
+                if (mask <= 0f) {
+                    continue;
+                }
+
+                float maxC = _maxChromaByX[x];
+                if (rawC > maxC + aaC) {
+                    _pixels[rowOffset + x] = new Color32((byte)bgR, (byte)bgG, (byte)bgB, (byte)Mathf.RoundToInt(bgA * mask));
+                    continue;
+                }
+
+                float l = Mathf.Clamp01((u - uMin) / spanX);
+                float evalC = Math.Min(rawC, maxC);
+                O5Palette.TryOklchToLinearRgb(l, evalC, cosH, sinH, out float lr, out float lg, out float lb);
+                byte r = LinearToSrgbByte(lr);
+                byte g = LinearToSrgbByte(lg);
+                byte b = LinearToSrgbByte(lb);
+
+                float edgeDist = Math.Abs(rawC - maxC);
+                if (edgeDist < aaC) {
+                    float edge = (1f - (edgeDist / aaC)) * 0.30f;
+                    r = (byte)Mathf.RoundToInt(r + ((255f - r) * edge));
+                    g = (byte)Mathf.RoundToInt(g + ((255f - g) * edge));
+                    b = (byte)Mathf.RoundToInt(b + ((255f - b) * edge));
+                }
+
+                if (rawC <= maxC) {
+                    _pixels[rowOffset + x] = new Color32(r, g, b, (byte)Mathf.RoundToInt(255f * mask));
+                } else {
+                    float cov = Mathf.Clamp01(1f - ((rawC - maxC) / aaC));
+                    byte cr = (byte)Mathf.RoundToInt(bgR + ((r - bgR) * cov));
+                    byte cg = (byte)Mathf.RoundToInt(bgG + ((g - bgG) * cov));
+                    byte cb = (byte)Mathf.RoundToInt(bgB + ((b - bgB) * cov));
+                    float ca = bgA + ((255f - bgA) * cov);
+                    _pixels[rowOffset + x] = new Color32(cr, cg, cb, (byte)Mathf.RoundToInt(ca * mask));
+                }
+            }
+        }
+
+        _texture.SetPixels32(_pixels);
+        _texture.Apply(false, false);
+    }
+
+    private static float RoundedRectAlpha(float u, float v, float xMin, float xMax, float yMin, float yMax, float radius, float aa) {
+        float cx = (xMin + xMax) * 0.5f;
+        float cy = (yMin + yMax) * 0.5f;
+        float hx = ((xMax - xMin) * 0.5f) - radius;
+        float hy = ((yMax - yMin) * 0.5f) - radius;
+        float dx = Math.Max(Math.Abs(u - cx) - hx, 0f);
+        float dy = Math.Max(Math.Abs(v - cy) - hy, 0f);
+        float dist = (float)Math.Sqrt((dx * dx) + (dy * dy)) - radius;
+        return Mathf.Clamp01(0.5f - (dist / aa));
+    }
+
+    private static byte LinearToSrgbByte(float c) => LinearToSrgbLut[(int)(Mathf.Clamp01(c) * SrgbLutSize + 0.5f)];
+
+    private static byte[] BuildLinearToSrgbLut() {
+        var lut = new byte[SrgbLutSize + 1];
+        for (int i = 0; i <= SrgbLutSize; i++) {
+            float c = (float)i / SrgbLutSize;
+            float srgb = c <= 0.0031308f
+                ? 12.92f * c
+                : (float)((1.055 * Math.Pow(c, 1.0 / 2.4)) - 0.055);
+            lut[i] = (byte)Mathf.RoundToInt(Mathf.Clamp01(srgb) * 255f);
+        }
+        return lut;
+    }
+
+    private static Color32[] BuildOklchHueStripLut() {
+        var lut = new Color32[TextureSize];
+        float spanX = 1f - (OklchPadX * 2f);
+        for (int x = 0; x < TextureSize; x++) {
+            float u = (x + 0.5f) / TextureSize;
+            float h = Mathf.Clamp01((u - OklchPadX) / spanX);
+            lut[x] = O5Palette.OklchToRgb(0.70f, 0.17f, h);
+        }
+        return lut;
     }
 
     private static Vector2 Direction(float turns) {
@@ -817,17 +1179,10 @@ public sealed class O5ColorPicker : O5Object {
                 bodyBg.color = next.PanelBG;
             }
         }
-        if (_rgbModeBackground) {
-            _rgbModeBackground.color = _hsvMode ? Color.clear : next.ObjectActive;
-        }
-        if (_hsvModeBackground) {
-            _hsvModeBackground.color = _hsvMode ? next.ObjectActive : Color.clear;
-        }
-        if (_rgbModeLabel) {
-            _rgbModeLabel.color = _hsvMode ? next.TextDim : next.Text;
-        }
-        if (_hsvModeLabel) {
-            _hsvModeLabel.color = _hsvMode ? next.Text : next.TextDim;
+        ApplyModeTabColors(next);
+        Color[] sliderColors = GetModeSliderColors(next);
+        for (int i = 0; i < _sliders.Length; i++) {
+            _sliders[i].AccentColor = sliderColors[i];
         }
         if (_hexInput != null && _hexInput.InputField && _hexInput.InputField.textComponent) {
             _hexInput.InputField.textComponent.color = next.Text;
