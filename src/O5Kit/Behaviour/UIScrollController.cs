@@ -131,10 +131,6 @@ public class UIScrollController
     }
 
     private void HandleWheel() {
-        if (ShouldConsumeParentScroll?.Invoke() == true) {
-            return;
-        }
-
         if (!IsPointerOverViewport()) {
             return;
         }
@@ -142,6 +138,10 @@ public class UIScrollController
         float wheel = O5Input.MouseScrollDelta.y;
 
         if (Math.Abs(wheel) <= 0.0001f) {
+            return;
+        }
+
+        if (ShouldConsumeParentScroll?.Invoke() == true) {
             return;
         }
 

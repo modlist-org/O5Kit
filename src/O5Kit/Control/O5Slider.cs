@@ -128,7 +128,11 @@ public class O5Slider : O5Object {
     internal Color EffectiveHoverOutline => _accentColor ?? Ctx.Theme.ControlOutlineHover;
 
     /// <summary>True when any slider is currently hovered by the pointer.</summary>
-    public static bool AnyHovered => _hovered != null && !_hovered.IsDisposed;
+    public static bool AnyHovered => _hovered != null
+        && !_hovered.IsDisposed
+        && _hovered.Rect != null
+        && _hovered.Rect
+        && _hovered.Rect.gameObject.activeInHierarchy;
 
     /// <summary>Optional gate enabling mouse-wheel adjustment on hovered sliders.</summary>
     public static Func<bool>? EnableWheelAdjust { get; set; }
@@ -592,7 +596,7 @@ public class O5Slider : O5Object {
     /// <inheritdoc/>
     protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
         if (ChangedUpImage) {
-            ChangedUpImage.color = next.ObjectBG;
+            ChangedUpImage.color = O5Palette.WithAlpha(next.ObjectBG, ChangedUpImage.color.a);
         }
         if (PreviewLabel) {
             PreviewLabel.color = next.TextDim;
