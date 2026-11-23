@@ -112,7 +112,20 @@ public class O5Slider : O5Object {
     /// <summary>Last valid formula result, if any.</summary>
     public double? LastValidValue { get; private set; }
     private bool _isUpdatingFromCode;
+    private Color? _accentColor;
     private static O5Slider? _hovered;
+
+    /// <summary>Optional per-slider accent color overriding theme accent for fill, changed dot, hover outline, and caret. Null follows theme accent.</summary>
+    public Color? AccentColor {
+        get => _accentColor;
+        set {
+            _accentColor = value;
+            ApplyAccentVisuals();
+        }
+    }
+
+    internal Color EffectiveAccent => _accentColor ?? Ctx.Theme.ObjectActive;
+    internal Color EffectiveHoverOutline => _accentColor ?? Ctx.Theme.ControlOutlineHover;
 
     /// <summary>True when any slider is currently hovered by the pointer.</summary>
     public static bool AnyHovered => _hovered != null && !_hovered.IsDisposed;
@@ -232,7 +245,7 @@ public class O5Slider : O5Object {
                 }
 
                 PreviewLabel.text = "";
-                SetStateVisuals(Ctx.Theme.ObjectActive, false);
+                SetStateVisuals(EffectiveAccent, false);
             }
         );
         valueInputField.onSelect.AddListener(
@@ -551,19 +564,48 @@ public class O5Slider : O5Object {
             1f, duration, ease: ease);
     }
 
+    private void ApplyAccentVisuals() {
+        if (IsDisposed) {
+            return;
+        }
+
+        Color accent = EffectiveAccent;
+        if (FillImage) {
+            FillImage.color = O5Palette.WithAlpha(accent, FillImage.color.a);
+        }
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(accent, ChangedImage.color.a);
+        }
+        if (OutlineImage && OutlineImage.color.a > 0.001f) {
+            OutlineImage.color = O5Palette.WithAlpha(EffectiveHoverOutline, OutlineImage.color.a);
+        }
+        if (InputCore != null && InputCore.InputField) {
+            var caret = accent;
+            caret.a = InputCore.InputField.caretColor.a;
+            InputCore.InputField.caretColor = caret;
+            InputCore.InputField.selectionColor = _accentColor.HasValue
+                ? O5Palette.WithAlpha(accent, 0.25f)
+                : Ctx.Theme.MenuHover;
+        }
+    }
+
     /// <inheritdoc/>
     protected override void OnThemeChanged(O5Theme prev, O5Theme next) {
-        if (FillImage && O5Palette.ApproxEquals(FillImage.color, prev.ObjectActive)) {
-            FillImage.color = next.ObjectActive;
-        }
         if (ChangedUpImage) {
             ChangedUpImage.color = next.ObjectBG;
         }
-        if (ChangedImage) {
-            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
-        }
         if (PreviewLabel) {
             PreviewLabel.color = next.TextDim;
+        }
+        if (_accentColor.HasValue) {
+            ApplyAccentVisuals();
+            return;
+        }
+        if (FillImage && O5Palette.ApproxEquals(FillImage.color, prev.ObjectActive)) {
+            FillImage.color = next.ObjectActive;
+        }
+        if (ChangedImage) {
+            ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
         }
         InputCore.RefreshTheme();
     }

@@ -25,8 +25,6 @@ public static partial class O5Factory {
         O5SliderOptions? options = null
     ) {
         options ??= new O5SliderOptions();
-        double min = options.Min;
-        double max = options.Max;
         RectTransform rect = ControlBackground(ctx, parent);
         rect.SetParent(parent, false);
 
@@ -95,11 +93,20 @@ public static partial class O5Factory {
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
 
+        O5Slider? sliderRef = null;
+        Image outlineImg = O5Effects.HoverOutline(
+            ctx,
+            rect.gameObject,
+            trigger,
+            () => sliderRef?.EffectiveHoverOutline ?? ctx.Theme.ControlOutlineHover
+        );
+
         O5Slider slider = new(
             ctx, id, rect, fillRect, fillImg, label, inputField, previewLabel,
-            changeImg, changeUpImg, O5Effects.HoverOutline(ctx, rect.gameObject, trigger), options) {
+            changeImg, changeUpImg, outlineImg, options) {
             ShowFill = options.ShowFill
         };
+        sliderRef = slider;
         inputObj.SetActive(true);
 
         Transform? canvasRoot = parent.GetComponentInParent<Canvas>()?.transform;
@@ -124,8 +131,8 @@ public static partial class O5Factory {
         };
 
         double Apply(double v) {
-            v = options.DragFilter != null ? options.DragFilter(v) : v;
-            return slider.ClampDrag ? MathCompat.Clamp(v, min, max) : v;
+            v = slider.DragFilter != null ? slider.DragFilter(v) : v;
+            return slider.ClampDrag ? MathCompat.Clamp(v, slider.Min, slider.Max) : v;
         }
 
         bool isDragging = false;
@@ -182,7 +189,7 @@ public static partial class O5Factory {
                     }
 
                     if (slider.ClampDrag) {
-                        cachedValue = MathCompat.Clamp(cachedValue, min, max);
+                        cachedValue = MathCompat.Clamp(cachedValue, slider.Min, slider.Max);
                     }
 
                     slider.Set(Apply(cachedValue));
