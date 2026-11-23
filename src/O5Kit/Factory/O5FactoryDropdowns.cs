@@ -66,6 +66,19 @@ public static partial class O5Factory {
         Image triangleImage = triangle.AddComponent<Image>();
         triangleImage.sprite = ctx.Sprites.Icon("Triangle128");
 
+        RectTransform? indicatorRect = null;
+        if (options.ShowIndexIndicator) {
+            GameObject indicator = new("IndexIndicator");
+            indicator.transform.SetParent(rect, false);
+
+            indicatorRect = indicator.AddComponent<RectTransform>();
+            indicatorRect.anchorMin = new Vector2(0f, 0f);
+            indicatorRect.anchorMax = new Vector2(0.5f, 0f);
+            indicatorRect.pivot = new Vector2(0f, 0f);
+            indicatorRect.offsetMin = new Vector2(O5Dropdown.IndicatorLeftPadding, O5Dropdown.IndicatorBottomPadding);
+            indicatorRect.offsetMax = new Vector2(0f, O5Dropdown.IndicatorBottomPadding + O5Dropdown.IndicatorHeight);
+        }
+
         GameObject list = new("List");
         list.transform.SetParent(root.transform, false);
 
@@ -107,7 +120,8 @@ public static partial class O5Factory {
             list,
             listRect,
             listCg,
-            options
+            options,
+            indicatorRect
         );
 
         LayoutElement? parentLayout = parent.GetComponent<LayoutElement>();
@@ -168,6 +182,9 @@ public static partial class O5Factory {
 
         var headerTrigger = rect.gameObject.AddComponent<EventTrigger>();
         O5Effects.HoverOutline(ctx, rect.gameObject, headerTrigger);
+        UnityUtils.AddEvents(headerTrigger,
+            (EventTriggerType.PointerEnter, () => dropdown.SetHovered(true)),
+            (EventTriggerType.PointerExit, () => dropdown.SetHovered(false)));
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnClick += btn => {

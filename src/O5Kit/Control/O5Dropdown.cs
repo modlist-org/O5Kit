@@ -6,6 +6,7 @@ using System.Linq;
 using O5Kit.Behaviour;
 using O5Kit.Core;
 using O5Kit.Factory;
+using O5Kit.Input;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -24,8 +25,54 @@ public static class O5UiEvents {
     public static Action<bool>? OnToggleChanged { get; set; }
 }
 
+/// <summary>Wheel-selection state shared by every <see cref="O5Dropdown{T}"/>, whatever its option type.</summary>
+public static class O5Dropdown {
+    internal static O5Object? Hovered;
+
+    /// <summary>Optional gate enabling mouse-wheel selection on hovered, closed dropdowns.</summary>
+    public static Func<bool>? EnableWheelAdjust { get; set; }
+
+    /// <summary>Fired whenever a dropdown value changes via mouse wheel.</summary>
+    public static Action? OnAnyWheelChanged { get; set; }
+
+    /// <summary>True when a closed dropdown that the wheel would change is under the pointer.</summary>
+    public static bool AnyWheelTarget => Hovered is IWheelSelectable w && w.AcceptsWheel;
+
+    internal interface IWheelSelectable {
+        bool AcceptsWheel { get; }
+    }
+
+    internal const float IndicatorLeftPadding = 16f;
+    internal const float IndicatorBottomPadding = 4f;
+    internal const float IndicatorHeight = 4f;
+    internal const float SelectedPillWidth = 18f;
+    internal const float UnselectedPillWidth = 8f;
+    internal const float PillGap = 4f;
+    internal const float BarDotWidth = 14f;
+    internal const float IndicatorTweenDuration = 0.3f;
+    internal const O5Ease IndicatorTweenEase = O5Ease.OutQuad;
+
+    /// <summary>Total width required to render <paramref name="count"/> pills in multi-dot mode.</summary>
+    public static float RequiredDotsWidth(int count)
+        => count <= 0 ? 0f : SelectedPillWidth + ((count - 1) * (UnselectedPillWidth + PillGap));
+
+    /// <summary>Returns true when <paramref name="count"/> items exceed <paramref name="maxWidth"/> and must fall back to bar + single-dot mode.</summary>
+    public static bool ShouldUseBarMode(int count, float maxWidth)
+        => count > 1 && maxWidth > 0f && RequiredDotsWidth(count) > maxWidth;
+
+    /// <summary>Computes the left-edge x offset for the single dot in bar mode.</summary>
+    public static float BarDotOffsetX(int index, int count, float maxWidth) {
+        if (count <= 1 || index < 0 || maxWidth <= 0f) {
+            return 0f;
+        }
+        float dotWidth = Math.Min(BarDotWidth, maxWidth);
+        float t = Math.Max(0f, Math.Min(1f, index / (float)(count - 1)));
+        return t * Math.Max(0f, maxWidth - dotWidth);
+    }
+}
+
 /// <summary>Single-select dropdown with an animated expanding list.</summary>
-public class O5Dropdown<T> : O5Object {
+public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
     /// <summary>Value to reset to on middle-click.</summary>
     public T? DefaultValue { get; set; }
 
@@ -62,6 +109,12 @@ public class O5Dropdown<T> : O5Object {
     /// <summary>List fade group.</summary>
     public CanvasGroup ListCanvasGroup { get; }
 
+    /// <summary>Optional container for the selected-index indicator.</summary>
+    public RectTransform? IndicatorRect { get; }
+
+    /// <summary>Whether the selected-index indicator is enabled.</summary>
+    public bool ShowIndexIndicator { get; }
+
     /// <summary>Whether the list is open.</summary>
     public bool Expanded { get; private set; }
 
@@ -71,11 +124,16 @@ public class O5Dropdown<T> : O5Object {
     /// <summary>Fired after <see cref="RebuildList"/> recreates the dropdown rows.</summary>
     public event Action? OnListRebuilt;
 
-    private ITweenHandle? _triangleTween, _triangleTintTween, _changeTween;
+    private ITweenHandle? _triangleTween, _triangleTintTween, _changeTween, _indicatorTween;
 
     /// <summary>Layout height tween owned by the factory. Killed on dispose.</summary>
     public ITweenHandle? LayoutSeq { get; set; }
     private readonly List<ITweenHandle> _itemHoverTweens = new();
+    private readonly List<Image> _indicatorPills = new();
+    private Image? _indicatorBarTrack;
+    private Image? _indicatorBarDot;
+    private bool _indicatorBarMode;
+    private float _lastIndicatorWidth = -1f;
 
     /// <summary>Creates a dropdown over factory-built visuals.</summary>
     /// <param name="ctx">Owning kit context.</param>
@@ -89,6 +147,7 @@ public class O5Dropdown<T> : O5Object {
     /// <param name="listRect">List layout rect.</param>
     /// <param name="listCanvasGroup">List fade group.</param>
     /// <param name="options">Behaviour. Null uses defaults.</param>
+    /// <param name="indicatorRect">Optional container for the selected-index indicator.</param>
     public O5Dropdown(
         O5Context ctx,
         string id,
@@ -100,7 +159,8 @@ public class O5Dropdown<T> : O5Object {
         GameObject listObject,
         RectTransform listRect,
         CanvasGroup listCanvasGroup,
-        O5DropdownOptions<T>? options = null
+        O5DropdownOptions<T>? options = null,
+        RectTransform? indicatorRect = null
     ) : base(ctx, id, rect) {
         options ??= new O5DropdownOptions<T>();
         Label = label;
@@ -113,6 +173,8 @@ public class O5Dropdown<T> : O5Object {
         ListObject = listObject;
         ListRect = listRect;
         ListCanvasGroup = listCanvasGroup;
+        IndicatorRect = indicatorRect;
+        ShowIndexIndicator = options.ShowIndexIndicator;
 
         Values = options.Values;
 
@@ -127,6 +189,43 @@ public class O5Dropdown<T> : O5Object {
 
         RebuildList();
         UpdateVisual(true);
+        RegisterTick();
+    }
+
+    internal void SetHovered(bool hovered) {
+        if (hovered) {
+            O5Dropdown.Hovered = this;
+        } else if (ReferenceEquals(O5Dropdown.Hovered, this)) {
+            O5Dropdown.Hovered = null;
+        }
+    }
+
+    bool O5Dropdown.IWheelSelectable.AcceptsWheel => !IsDisposed
+        && !Expanded
+        && Values.Count > 1
+        && CanvasGroup.interactable
+        && O5Dropdown.EnableWheelAdjust?.Invoke() == true;
+
+    /// <inheritdoc/>
+    public override void Tick() {
+        RefreshIndicatorSizeIfChanged();
+
+        if (!ReferenceEquals(O5Dropdown.Hovered, this) || !((O5Dropdown.IWheelSelectable)this).AcceptsWheel || O5Input.GetMouseButton(0)) {
+            return;
+        }
+
+        float wheel = O5Input.MouseScrollDelta.y;
+        if (Mathf.Abs(wheel) < 0.0001f) {
+            return;
+        }
+
+        // Wheel up moves toward the top of the list; stops at either end.
+        int index = SelectedIndex();
+        int next = Mathf.Clamp(index + (wheel > 0f ? -1 : 1), 0, Values.Count - 1);
+        if (next != index) {
+            Set(Values[next]);
+            O5Dropdown.OnAnyWheelChanged?.Invoke();
+        }
     }
 
     /// <summary>Selects a value.</summary>
@@ -143,11 +242,12 @@ public class O5Dropdown<T> : O5Object {
             Label.text = Value != null ? Display(Value) : "";
         }
 
+        UpdateVisual(true);
+        UpdateIndicator(false);
+
         if (notify) {
             OnChanged?.Invoke(value);
         }
-
-        UpdateVisual(true);
 
         OnLayoutChanged?.Invoke();
     }
@@ -376,7 +476,219 @@ public class O5Dropdown<T> : O5Object {
             );
         }
 
+        RebuildIndicator();
         OnListRebuilt?.Invoke();
+    }
+
+    private int SelectedIndex() {
+        for (int i = 0; i < Values.Count; i++) {
+            if (EqualityComparer<T>.Default.Equals(Values[i], Value)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void RefreshIndicatorSizeIfChanged() {
+        if (IndicatorRect == null || !IndicatorRect || Values.Count <= 1) {
+            return;
+        }
+
+        float w = IndicatorRect.rect.width;
+        if (Mathf.Abs(w - _lastIndicatorWidth) <= 0.5f) {
+            return;
+        }
+
+        bool needBarMode = O5Dropdown.ShouldUseBarMode(Values.Count, w);
+        if (needBarMode != _indicatorBarMode) {
+            RebuildIndicator();
+        } else {
+            _lastIndicatorWidth = w;
+            if (_indicatorBarMode) {
+                UpdateIndicator(true);
+            }
+        }
+    }
+
+    private void ClearIndicatorObjects() {
+        _indicatorTween?.Kill();
+        _indicatorTween = null;
+        _indicatorPills.Clear();
+        _indicatorBarTrack = null;
+        _indicatorBarDot = null;
+        if (IndicatorRect == null || !IndicatorRect) {
+            return;
+        }
+
+        for (int i = IndicatorRect.childCount - 1; i >= 0; i--) {
+            Transform child = IndicatorRect.GetChild(i);
+            if (child != null) {
+                child.SetParent(null, false);
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+        }
+    }
+
+    private Image CreateIndicatorImage(string name) {
+        var obj = new GameObject(name);
+        obj.transform.SetParent(IndicatorRect, false);
+        var rect = obj.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 0f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+
+        var img = obj.AddComponent<Image>();
+        img.sprite = Ctx.Sprites.RoundedControl;
+        img.type = Image.Type.Sliced;
+        img.raycastTarget = false;
+        if (img.sprite != null && img.sprite.border.y > 0f && img.sprite.pixelsPerUnit > 0f) {
+            float targetRadius = O5Dropdown.IndicatorHeight * 0.5f;
+            img.pixelsPerUnitMultiplier = (img.sprite.border.y * 100f) / (img.sprite.pixelsPerUnit * targetRadius);
+        }
+        return img;
+    }
+
+    private void RebuildIndicator() {
+        if (IndicatorRect == null || !IndicatorRect) {
+            return;
+        }
+
+        ClearIndicatorObjects();
+        int count = Values.Count;
+        if (!ShowIndexIndicator || count <= 1) {
+            IndicatorRect.gameObject.SetActive(false);
+            return;
+        }
+
+        IndicatorRect.gameObject.SetActive(true);
+        float maxWidth = IndicatorRect.rect.width;
+        _lastIndicatorWidth = maxWidth;
+        _indicatorBarMode = O5Dropdown.ShouldUseBarMode(count, maxWidth);
+
+        if (_indicatorBarMode) {
+            var track = CreateIndicatorImage("Track");
+            RectTransform trackRect = track.rectTransform;
+            trackRect.anchorMin = Vector2.zero;
+            trackRect.anchorMax = Vector2.one;
+            trackRect.offsetMin = Vector2.zero;
+            trackRect.offsetMax = Vector2.zero;
+            _indicatorBarTrack = track;
+            _indicatorBarDot = CreateIndicatorImage("Dot");
+        } else {
+            for (int i = 0; i < count; i++) {
+                _indicatorPills.Add(CreateIndicatorImage($"Dot_{i}"));
+            }
+        }
+
+        UpdateIndicator(true);
+    }
+
+    private void UpdateIndicator(bool noAnimate) {
+        if (IndicatorRect == null || !IndicatorRect || Values.Count <= 1) {
+            return;
+        }
+
+        _indicatorTween?.Kill();
+        _indicatorTween = null;
+
+        var theme = Ctx.Theme;
+        Color activeColor = theme.ObjectActive;
+        Color inactiveColor = theme.ObjectInactive;
+        int selected = SelectedIndex();
+        int count = Values.Count;
+
+        if (_indicatorBarMode) {
+            if (_indicatorBarTrack) {
+                _indicatorBarTrack!.color = inactiveColor;
+            }
+            if (!_indicatorBarDot) {
+                return;
+            }
+
+            bool hasSelection = selected >= 0;
+            _indicatorBarDot!.gameObject.SetActive(hasSelection);
+            if (!hasSelection) {
+                return;
+            }
+
+            float maxWidth = IndicatorRect.rect.width;
+            float dotWidth = Mathf.Min(O5Dropdown.BarDotWidth, Math.Max(0f, maxWidth));
+            RectTransform dotRect = _indicatorBarDot.rectTransform;
+            dotRect.sizeDelta = new Vector2(dotWidth, 0f);
+            _indicatorBarDot.color = activeColor;
+
+            float targetX = O5Dropdown.BarDotOffsetX(selected, count, maxWidth);
+            if (noAnimate) {
+                dotRect.anchoredPosition = new Vector2(targetX, 0f);
+            } else {
+                float startX = dotRect.anchoredPosition.x;
+                _indicatorTween = Ctx.Tween.TweenFloat(
+                    () => 0f,
+                    t => {
+                        if (dotRect) {
+                            dotRect.anchoredPosition = new Vector2(Mathf.LerpUnclamped(startX, targetX, t), 0f);
+                        }
+                    },
+                    1f, O5Dropdown.IndicatorTweenDuration, ease: O5Dropdown.IndicatorTweenEase);
+            }
+            return;
+        }
+
+        if (_indicatorPills.Count != count) {
+            return;
+        }
+
+        if (noAnimate) {
+            float x = 0f;
+            for (int i = 0; i < count; i++) {
+                Image pill = _indicatorPills[i];
+                if (!pill) {
+                    continue;
+                }
+                bool isSelected = i == selected;
+                float w = isSelected ? O5Dropdown.SelectedPillWidth : O5Dropdown.UnselectedPillWidth;
+                pill.color = isSelected ? activeColor : inactiveColor;
+                RectTransform pillRect = pill.rectTransform;
+                pillRect.sizeDelta = new Vector2(w, 0f);
+                pillRect.anchoredPosition = new Vector2(x, 0f);
+                x += w + O5Dropdown.PillGap;
+            }
+            return;
+        }
+
+        var startWidths = new float[count];
+        var targetWidths = new float[count];
+        var startColors = new Color[count];
+        var targetColors = new Color[count];
+        for (int i = 0; i < count; i++) {
+            Image pill = _indicatorPills[i];
+            bool isSelected = i == selected;
+            startWidths[i] = pill ? pill.rectTransform.sizeDelta.x : O5Dropdown.UnselectedPillWidth;
+            targetWidths[i] = isSelected ? O5Dropdown.SelectedPillWidth : O5Dropdown.UnselectedPillWidth;
+            startColors[i] = pill ? pill.color : inactiveColor;
+            targetColors[i] = isSelected ? activeColor : inactiveColor;
+        }
+
+        _indicatorTween = Ctx.Tween.TweenFloat(
+            () => 0f,
+            t => {
+                float x = 0f;
+                for (int i = 0; i < _indicatorPills.Count; i++) {
+                    Image pill = _indicatorPills[i];
+                    if (!pill) {
+                        continue;
+                    }
+                    float w = Mathf.LerpUnclamped(startWidths[i], targetWidths[i], t);
+                    pill.color = Color.LerpUnclamped(startColors[i], targetColors[i], t);
+                    RectTransform pillRect = pill.rectTransform;
+                    pillRect.sizeDelta = new Vector2(w, 0f);
+                    pillRect.anchoredPosition = new Vector2(x, 0f);
+                    x += w + O5Dropdown.PillGap;
+                }
+            },
+            1f, O5Dropdown.IndicatorTweenDuration, ease: O5Dropdown.IndicatorTweenEase);
     }
 
     private TMPro.TextMeshProUGUI CreateRowText(RectTransform parent) {
@@ -405,7 +717,9 @@ public class O5Dropdown<T> : O5Object {
         if (ChangedImage) {
             ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
         }
+        bool animatingIndicator = _indicatorTween?.IsAlive == true;
         UpdateVisual(true);
+        UpdateIndicator(!animatingIndicator);
     }
 
     /// <inheritdoc/>
@@ -423,8 +737,12 @@ public class O5Dropdown<T> : O5Object {
         _triangleTween?.Kill();
         _triangleTintTween?.Kill();
         _changeTween?.Kill();
+        _indicatorTween?.Kill();
         LayoutSeq?.Kill();
-        _triangleTween = _triangleTintTween = _changeTween = LayoutSeq = null;
+        _triangleTween = _triangleTintTween = _changeTween = _indicatorTween = LayoutSeq = null;
+        _indicatorPills.Clear();
+        _indicatorBarTrack = null;
+        _indicatorBarDot = null;
         OnLayoutChanged = null;
         OnListRebuilt = null;
         foreach (var tween in _itemHoverTweens) {
@@ -432,6 +750,7 @@ public class O5Dropdown<T> : O5Object {
         }
 
         _itemHoverTweens.Clear();
+        SetHovered(false);
         base.Dispose();
     }
 }

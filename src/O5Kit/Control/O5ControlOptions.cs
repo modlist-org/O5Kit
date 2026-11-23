@@ -55,6 +55,9 @@ public sealed class O5DropdownOptions<T> {
 
     /// <summary>Fired when the value changes.</summary>
     public Action<T?>? OnChanged { get; set; }
+
+    /// <summary>Show the selected-index indicator under the header. Set false for action/button-style dropdowns.</summary>
+    public bool ShowIndexIndicator { get; set; } = true;
 }
 
 /// <summary>Flag-style multi-select dropdown behaviour.</summary>

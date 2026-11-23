@@ -53,6 +53,7 @@ internal static class OptionsTests {
         T.Eq(null, d.DefaultValue, "dropdown DefaultValue");
         T.Eq("x", d.Display("x"), "dropdown Display");
         T.Eq(null, d.OnChanged, "dropdown OnChanged");
+        T.Check(d.ShowIndexIndicator, "dropdown ShowIndexIndicator default");
         var di = new O5DropdownOptions<int>();
         T.Eq("5", di.Display(5), "dropdown int Display");
 
@@ -88,5 +89,16 @@ internal static class OptionsTests {
         // NB: b.Icon (Sprite) not touched: UnityEngine is unavailable off-game.
         T.Approx(5f, b.IconPadding, "button IconPadding");
         T.Eq(null, b.Height, "button Height");
+
+        // Dropdown index indicator math
+        T.Approx(0f, O5Dropdown.RequiredDotsWidth(0), "indicator width 0");
+        T.Approx(78f, O5Dropdown.RequiredDotsWidth(6), "indicator width 6");
+        T.Check(!O5Dropdown.ShouldUseBarMode(1, 50f), "indicator bar mode off for 1");
+        T.Check(!O5Dropdown.ShouldUseBarMode(6, 78f), "indicator fits exactly at 78");
+        T.Check(O5Dropdown.ShouldUseBarMode(6, 77.9f), "indicator bar mode when exceeding maxWidth");
+        T.Check(!O5Dropdown.ShouldUseBarMode(20, 0f), "indicator defers bar mode before layout");
+        T.Approx(0f, O5Dropdown.BarDotOffsetX(0, 10, 100f), "bar dot start");
+        T.Approx(86f, O5Dropdown.BarDotOffsetX(9, 10, 100f), "bar dot end (100 - 14)");
+        T.Approx(43f, O5Dropdown.BarDotOffsetX(1, 3, 100f), "bar dot midpoint");
     }
 }
