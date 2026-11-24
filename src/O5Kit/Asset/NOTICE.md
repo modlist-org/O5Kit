@@ -1,6 +1,6 @@
 # O5Kit bundled artwork — Overlayer team (Free to use)
 
-All UI shapes and control icons in `Image/` (`Circle128.png`, `CircleHalf128.png`, `CircleOutline128O32.png`, `ToggleCircle128.png`, `Triangle128.png`, `X128.png`, and the legacy unreferenced files) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction.
+All UI shapes in `Image/` (`Circle128.png`, `CircleHalf128.png`, `CircleOutline128O32.png`, and the legacy unreferenced files) and monochrome icon vector SVGs in `Icons/` (`Circle.svg`, `ToggleCircle.svg`, `Triangle.svg`, `X.svg`, compiled into `O5KitIcons.ttf` at build time) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction.
 
 Attribution is not required, though crediting the Overlayer team is greatly appreciated!
 

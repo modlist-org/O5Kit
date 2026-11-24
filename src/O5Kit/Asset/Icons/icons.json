@@ -1,0 +1,29 @@
+{
+  "fontName": "O5KitIcons",
+  "unitsPerEm": 1024,
+  "ascender": 896,
+  "descender": -128,
+  "sourceSize": 128,
+  "glyphs": [
+    {
+      "name": "Circle",
+      "codepoint": "U+E001",
+      "svg": "Circle.svg"
+    },
+    {
+      "name": "ToggleCircle",
+      "codepoint": "U+E002",
+      "svg": "ToggleCircle.svg"
+    },
+    {
+      "name": "Triangle",
+      "codepoint": "U+E003",
+      "svg": "Triangle.svg"
+    },
+    {
+      "name": "X",
+      "codepoint": "U+E004",
+      "svg": "X.svg"
+    }
+  ]
+}

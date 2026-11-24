@@ -105,4 +105,40 @@
     <!-- Superseded O5Kit-original shapes (kept on disk only, unreferenced). -->
     <EmbeddedResource Remove="Asset\Image\Panel256.png;Asset\Image\Control256.png;Asset\Image\TopBar256.png;Asset\Image\Outline256.png;Asset\Image\Ring256.png" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <_IconFontGenDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../tool/IconFontGen'))</_IconFontGenDir>
+    <_IconFontGenProj>$(_IconFontGenDir)/IconFontGen.csproj</_IconFontGenProj>
+    <_IconFontGenDll>$(_IconFontGenDir)/bin/Release/net10.0/IconFontGen.dll</_IconFontGenDll>
+    <_IconFontManifest>$(MSBuildProjectDirectory)/Asset/Icons/icons.json</_IconFontManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <_IconFontGenSource Include="$(_IconFontGenProj);$(_IconFontGenDir)/*.cs" />
+    <_IconFontInputs Include="$(_IconFontManifest);Asset/Icons/*.svg;$(_IconFontGenDll)" />
+  </ItemGroup>
+
+  <Target Name="BuildIconFontGen"
+          BeforeTargets="DispatchToInnerBuilds"
+          Inputs="@(_IconFontGenSource)"
+          Outputs="$(_IconFontGenDll)">
+    <Exec Command="dotnet build &quot;$(_IconFontGenProj)&quot; -c Release --nologo -v q" />
+  </Target>
+
+  <Target Name="GenerateIconFont"
+          DependsOnTargets="BuildIconFontGen"
+          Condition="'$(TargetFramework)' != ''"
+          Inputs="@(_IconFontInputs)"
+          Outputs="$(IntermediateOutputPath)Icons/O5KitIcons.ttf">
+    <Exec Command="dotnet &quot;$(_IconFontGenDll)&quot; &quot;$(_IconFontManifest)&quot; &quot;$(IntermediateOutputPath)Icons/O5KitIcons.ttf&quot;" />
+  </Target>
+
+  <Target Name="IncludeIconFont"
+          DependsOnTargets="GenerateIconFont"
+          Condition="'$(TargetFramework)' != ''"
+          BeforeTargets="AssignTargetPaths;PrepareResources;PrepareResourceNames">
+    <ItemGroup>
+      <EmbeddedResource Include="$(IntermediateOutputPath)Icons/O5KitIcons.ttf" LogicalName="O5Kit.Asset.Font.O5KitIcons.ttf" />
+    </ItemGroup>
+  </Target>
 </Project>
