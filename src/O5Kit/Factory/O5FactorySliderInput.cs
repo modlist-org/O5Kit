@@ -31,11 +31,25 @@ public static partial class O5Factory {
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
+        // Background-shaped clip; the full-width fill slides inside it (see O5Slider.SetFillT).
+        GameObject fillClip = new("FillClip");
+        fillClip.transform.SetParent(rect, false);
+        RectTransform clipRect = fillClip.AddComponent<RectTransform>();
+        clipRect.anchorMin = Vector2.zero;
+        clipRect.anchorMax = Vector2.one;
+        clipRect.offsetMin = Vector2.zero;
+        clipRect.offsetMax = Vector2.zero;
+        Image clipImg = fillClip.AddComponent<Image>();
+        clipImg.sprite = ctx.Sprites.RoundedControl;
+        clipImg.type = Image.Type.Sliced;
+        clipImg.raycastTarget = false;
+        fillClip.AddComponent<Mask>().showMaskGraphic = false;
+
         GameObject fill = new("Fill");
-        fill.transform.SetParent(rect, false);
+        fill.transform.SetParent(clipRect, false);
 
         RectTransform fillRect = fill.AddComponent<RectTransform>();
-        fillRect.anchorMin = new Vector2(0f, 0f);
+        fillRect.anchorMin = new Vector2(-1f, 0f);
         fillRect.anchorMax = new Vector2(0f, 1f);
         fillRect.pivot = new Vector2(0f, 0.5f);
         fillRect.anchoredPosition = Vector2.zero;
@@ -90,6 +104,8 @@ public static partial class O5Factory {
 
         GameObject changeUp = AddSmallChangedCircle(ctx, fillRect);
         Image changeUpImg = changeUp.GetComponent<Image>();
+        RectTransform changeUpRect = changeUp.GetComponent<RectTransform>();
+        changeUpRect.anchorMin = changeUpRect.anchorMax = new Vector2(1f, 1f);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
 

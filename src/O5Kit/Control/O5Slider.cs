@@ -480,9 +480,7 @@ public class O5Slider : O5Object {
 
         if (noAnimate) {
             if (ShowFill) {
-                Vector2 fra = FillRect.anchorMax;
-                fra.x = ToFillT(Normalize());
-                FillRect.anchorMax = fra;
+                SetFillT(ToFillT(Normalize()));
             }
 
             Color ci = ChangedImage.color;
@@ -498,7 +496,7 @@ public class O5Slider : O5Object {
         }
 
         if (ShowFill) {
-            _fillTween = TweenAnchorMaxX(FillRect, ToFillT(Normalize()), 0.6f, O5Ease.OutExpo);
+            _fillTween = TweenFillT(ToFillT(Normalize()), 0.6f, O5Ease.OutExpo);
         }
 
         var changed = ChangedImage;
@@ -566,7 +564,7 @@ public class O5Slider : O5Object {
 
         if (showFill && value.HasValue && isCalculating) {
             _fillTween?.Kill();
-            _fillTween = TweenAnchorMaxX(FillRect, ToFillT(Normalize(value.Value)), 0.4f, O5Ease.OutExpo);
+            _fillTween = TweenFillT(ToFillT(Normalize(value.Value)), 0.4f, O5Ease.OutExpo);
         }
     }
 
@@ -673,16 +671,24 @@ public class O5Slider : O5Object {
 #endif
     }
 
-    private ITweenHandle TweenAnchorMaxX(RectTransform rect, float targetX, float duration, O5Ease ease) {
-        var r = rect;
-        float startX = r.anchorMax.x;
+    // The fill keeps full width and slides left (anchors t-1..t) under the
+    // background-shaped clip, so tiny values never squash the 9-slice corners.
+    // The changed-dot counter-slides to stay pinned to the background.
+    private void SetFillT(float t) {
+        FillRect.anchorMin = new Vector2(t - 1f, FillRect.anchorMin.y);
+        FillRect.anchorMax = new Vector2(t, FillRect.anchorMax.y);
+        RectTransform dot = ChangedUpImage.rectTransform;
+        dot.anchorMin = new Vector2(1f - t, dot.anchorMin.y);
+        dot.anchorMax = new Vector2(1f - t, dot.anchorMax.y);
+    }
+
+    private ITweenHandle TweenFillT(float targetT, float duration, O5Ease ease) {
+        float startT = FillRect.anchorMax.x;
         return Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
-                if (r) {
-                    var am = r.anchorMax;
-                    am.x = Mathf.LerpUnclamped(startX, targetX, t);
-                    r.anchorMax = am;
+                if (FillRect && ChangedUpImage) {
+                    SetFillT(Mathf.LerpUnclamped(startT, targetT, t));
                 }
             },
             1f, duration, ease: ease);
