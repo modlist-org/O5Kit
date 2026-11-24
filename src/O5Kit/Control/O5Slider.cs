@@ -148,7 +148,13 @@ public class O5Slider : O5Object {
         }
     }
 
-    private ITweenHandle? _fillTween, _changeTween, _stateTween;
+    private ITweenHandle? _fillTween, _changeTween, _stateTween, _shakeTween;
+    private float _shakeOffset, _shakeAppliedOffset;
+    private float _shakeAppliedX = float.NaN;
+#if !IL2CPP
+    private Canvas.WillRenderCanvases? _shakeRenderHook;
+    private bool _shakeRenderHooked;
+#endif
 
     /// <summary>Creates a slider over factory-built visuals.</summary>
     /// <param name="ctx">Owning kit context.</param>
@@ -189,6 +195,9 @@ public class O5Slider : O5Object {
                 }
 
                 var (rawResult, rawState) = Evaluator<double>.Evaluate(val, Value);
+                if (double.IsNaN(rawResult) || double.IsInfinity(rawResult)) {
+                    rawState = EvalState.Error;
+                }
                 LastValidValue = rawState != EvalState.Error
                     ? ApplyInputFilter(ClampSafe(rawResult, EffectiveInputMin, EffectiveInputMax, ClampInput))
                     : null;
@@ -243,6 +252,7 @@ public class O5Slider : O5Object {
             (val) => {
                 if (LastValidValue == null) {
                     InputCore.SetValue(Value.ToString(Format), false);
+                    PlayErrorShake();
                 } else {
                     SetFromInput(LastValidValue.Value);
                     OnComplete?.Invoke(Value);
@@ -254,9 +264,15 @@ public class O5Slider : O5Object {
         );
         valueInputField.onSelect.AddListener(
 #if IL2CPP
-            new Action<string>((_) => InputCore.SetValue(Value.ToString("R"), false))
+            new Action<string>((_) => {
+                LastValidValue = Value;
+                InputCore.SetValue(Value.ToString("R"), false);
+            })
 #else
-            (_) => InputCore.SetValue(Value.ToString("R"), false)
+            (_) => {
+                LastValidValue = Value;
+                InputCore.SetValue(Value.ToString("R"), false);
+            }
 #endif
         );
         PreviewLabel = previewLabel;
@@ -280,6 +296,7 @@ public class O5Slider : O5Object {
         ShowFill = options.ShowFill;
         Value = ApplyDragFilter(options.Value);
         Value = ClampSafe(Value, Min, Max, ClampDrag);
+        LastValidValue = Value;
 
         RegisterTick();
         UpdateVisual(true);
@@ -553,6 +570,109 @@ public class O5Slider : O5Object {
         }
     }
 
+    // Damped-spring style shake: ~3.5 decaying oscillations, first swing to the left (~12px), settling exactly at 0.
+    private const float ShakeTotalDuration = 0.55f;
+    private const float ShakeAmplitude = 16f;
+    private const float ShakeFrequency = 6.5f;
+    private const float ShakeDecay = 3f;
+    private const float ShakeBlendDuration = 0.06f;
+
+    /// <summary>Shakes the slider horizontally to signal an invalid formula with a natural damped oscillation (left first). Re-triggering restarts smoothly from the current offset.</summary>
+    public void PlayErrorShake() {
+        if (IsDisposed || !Rect) {
+            return;
+        }
+
+        _shakeTween?.Kill();
+        float start = _shakeOffset;
+        SubscribeShakeRender(true);
+        // One linear 0..1 driver with the curve evaluated here, so no tween chaining or backend easing quirks are involved.
+        _shakeTween = Ctx.Tween.TweenFloat(
+            () => 0f,
+            p => SetShakeOffset(EvaluateShake(start, p * ShakeTotalDuration)),
+            1f, ShakeTotalDuration,
+            () => {
+                SetShakeOffset(0f);
+                SubscribeShakeRender(false);
+                _shakeTween = null;
+            },
+            O5Ease.Linear);
+    }
+
+    /// <summary>Cancels any active error shake and restores the slider's resting horizontal position.</summary>
+    public void ResetShake() {
+        _shakeTween?.Kill();
+        _shakeTween = null;
+        SetShakeOffset(0f);
+        SubscribeShakeRender(false);
+    }
+
+    internal static float EvaluateShake(float start, float time) {
+        if (time <= 0f) {
+            return start;
+        }
+
+        float u = Mathf.Clamp01(time / ShakeTotalDuration);
+        if (u >= 1f) {
+            return 0f;
+        }
+
+        // Exponential decay times a linear fade guarantees the curve lands on exactly 0 at the end.
+        float envelope = Mathf.Exp(-ShakeDecay * u) * (1f - u);
+        float wave = -Mathf.Sin(2f * (float)Math.PI * ShakeFrequency * time);
+
+        // Leftover offset from an interrupted shake eases out quickly instead of jumping.
+        float blend = 1f - Mathf.Clamp01(time / ShakeBlendDuration);
+        return ShakeAmplitude * envelope * wave + start * blend * blend;
+    }
+
+    private void SetShakeOffset(float offset) {
+        _shakeOffset = offset;
+        ApplyShakeOffset();
+    }
+
+    // Rebases on the rect's live x whenever something else (e.g. a layout rebuild) moved it since our last write,
+    // so the shake never fights the layout and always settles on the current layout position.
+    private void ApplyShakeOffset() {
+        if (IsDisposed || !Rect) {
+            _shakeAppliedX = float.NaN;
+            _shakeAppliedOffset = 0f;
+            return;
+        }
+
+        if (_shakeOffset == 0f && _shakeAppliedOffset == 0f) {
+            _shakeAppliedX = float.NaN;
+            return;
+        }
+
+        Vector2 pos = Rect.anchoredPosition;
+        bool untouched = !float.IsNaN(_shakeAppliedX) && Mathf.Abs(pos.x - _shakeAppliedX) < 0.001f;
+        float baseX = untouched ? pos.x - _shakeAppliedOffset : pos.x;
+        pos.x = baseX + _shakeOffset;
+        Rect.anchoredPosition = pos;
+        _shakeAppliedOffset = _shakeOffset;
+        _shakeAppliedX = _shakeOffset == 0f ? float.NaN : pos.x;
+    }
+
+    // Layout groups rebuild inside Canvas.willRenderCanvases; re-applying after them keeps the offset visible
+    // even when the parent layout is rebuilt every frame.
+    private void SubscribeShakeRender(bool on) {
+#if !IL2CPP
+        if (on == _shakeRenderHooked) {
+            return;
+        }
+
+        _shakeRenderHook ??= ApplyShakeOffset;
+        if (on) {
+            Canvas.willRenderCanvases += _shakeRenderHook;
+        } else {
+            Canvas.willRenderCanvases -= _shakeRenderHook;
+        }
+
+        _shakeRenderHooked = on;
+#endif
+    }
+
     private ITweenHandle TweenAnchorMaxX(RectTransform rect, float targetX, float duration, O5Ease ease) {
         var r = rect;
         float startX = r.anchorMax.x;
@@ -624,6 +744,7 @@ public class O5Slider : O5Object {
         _changeTween?.Kill();
         _stateTween?.Kill();
         _fillTween = _changeTween = _stateTween = null;
+        ResetShake();
         InputCore.Dispose();
         base.Dispose();
     }

@@ -118,6 +118,7 @@ public static partial class O5Factory {
         }
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
+        ovent.OnDisabled += slider.ResetShake;
         ovent.OnClick += e => {
             switch (e) {
                 case InputButton.Middle:
