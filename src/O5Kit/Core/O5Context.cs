@@ -16,6 +16,9 @@ public sealed class O5Context : IDisposable {
     /// <summary>Sprite slicing style handed to the default sprite provider.</summary>
     public O5SpriteStyle SpriteStyle { get; }
 
+    /// <summary>Scale-aware rounded shape sprites. Feed <see cref="O5ShapeSprites.Tick"/> the canvas scale each frame and <see cref="O5ShapeSprites.Track"/> the canvas root.</summary>
+    public O5ShapeSprites Shapes { get; }
+
     /// <summary>Active sprite source.</summary>
     public ISpriteProvider Sprites { get; }
 
@@ -46,6 +49,7 @@ public sealed class O5Context : IDisposable {
     /// <param name="spriteStyle">Slicing style for the default sprite provider. Null uses <see cref="O5SpriteStyle.Default"/> (Overlayer values).</param>
     /// <param name="sprites">Sprite source. Null creates a <see cref="DefaultSpriteProvider"/> owned by this context.</param>
     /// <param name="fonts">Font source. Null creates a <see cref="DefaultFontProvider"/> owned by this context.</param>
+    /// <param name="shapes">Shape rasterizer shared with the sprite provider. Null creates one owned by this context.</param>
     /// <param name="tween">Tween backend. Null uses the automatic chain (LitMotion, game DOTween, PrimeTween, instant).</param>
     public O5Context(
         O5Config? config = null,
@@ -53,15 +57,22 @@ public sealed class O5Context : IDisposable {
         O5SpriteStyle? spriteStyle = null,
         ISpriteProvider? sprites = null,
         IFontProvider? fonts = null,
-        ITweenRunner? tween = null) {
+        ITweenRunner? tween = null,
+        O5ShapeSprites? shapes = null) {
         Config = config ?? new O5Config();
         Theme = theme ?? O5Theme.Dark;
         SpriteStyle = spriteStyle ?? O5SpriteStyle.Default;
+        if (shapes != null) {
+            Shapes = shapes;
+        } else {
+            Shapes = new O5ShapeSprites();
+            _owned.Add(Shapes);
+        }
 
         if (sprites != null) {
             Sprites = sprites;
         } else {
-            var owned = new DefaultSpriteProvider(SpriteStyle);
+            var owned = new DefaultSpriteProvider(SpriteStyle, Shapes);
             _owned.Add(owned);
             Sprites = owned;
         }

@@ -44,6 +44,7 @@ public sealed class O5Canvas : IDisposable {
 
         root.AddComponent<GraphicRaycaster>();
 
+        ctx.Shapes.Track(root.transform);
         var created = new O5Canvas(root, canvas, scaler);
         created.ApplyScale(ctx.Config.UIScale);
         return created;

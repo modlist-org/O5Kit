@@ -12,52 +12,36 @@ namespace O5Kit.Core;
 public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
     private readonly O5Resources _resources = O5Resources.Bundled();
     private readonly O5SpriteStyle _style;
+    private readonly O5ShapeSprites _shapes;
+    private readonly bool _ownsShapes;
     private readonly Dictionary<string, Sprite> _cache = new();
     private bool _disposed;
 
     /// <summary>Creates a provider over the bundled artwork.</summary>
     /// <param name="style">Slicing style. Null uses <see cref="O5SpriteStyle.Default"/> (Overlayer values).</param>
-    public DefaultSpriteProvider(O5SpriteStyle? style = null) {
+    /// <param name="shapes">Scale-aware rasterizer for the rounded roles. Null creates an owned one.</param>
+    public DefaultSpriteProvider(O5SpriteStyle? style = null, O5ShapeSprites? shapes = null) {
         _style = style ?? O5SpriteStyle.Default;
+        _ownsShapes = shapes == null;
+        _shapes = shapes ?? new O5ShapeSprites();
     }
 
-    // Role art is shared with Overlayer verbatim (O5Asset): circles double as
-    // panels/controls/bars/outlines; see Asset/NOTICE.md.
+    // Rounded roles are rasterized at the live canvas scale (pixel-exact);
+    // the outline art strokes half its corner border.
     /// <inheritdoc/>
-    public Sprite RoundedPanel => GetSliced(O5Asset.Circle128, _style.Panel);
+    public Sprite RoundedPanel => _shapes.Get(O5Shape.FromSlice(_style.Panel));
 
     /// <inheritdoc/>
-    public Sprite RoundedControl => GetSliced(O5Asset.Circle128, _style.Control);
+    public Sprite RoundedControl => _shapes.Get(O5Shape.FromSlice(_style.Control));
 
     /// <inheritdoc/>
-    public Sprite TopBar => GetSliced(O5Asset.CircleHalf128, _style.TopBar);
+    public Sprite TopBar => _shapes.Get(O5Shape.FromSlice(_style.TopBar));
 
     /// <inheritdoc/>
-    public Sprite RoundedOutline => GetSliced(O5Asset.CircleOutline128O32, _style.Outline);
+    public Sprite RoundedOutline => _shapes.Get(O5Shape.FromSlice(_style.Outline, _style.Outline.Border.x * 0.5f));
 
     /// <inheritdoc/>
     public Sprite Circle => GetSimple(O5Asset.Circle128);
-
-    private Sprite GetSliced(O5Asset asset, O5Slice slice) {
-        string key = $"sliced:{asset}:{slice.Ppu}:{slice.Border}";
-        if (_cache.TryGetValue(key, out Sprite? cached) && cached) {
-            return cached;
-        }
-
-        Texture2D? texture = _resources.GetTexture(asset);
-        if (texture == null) {
-            throw new InvalidOperationException($"O5Kit: bundled asset missing: {asset}");
-        }
-
-        Sprite sprite = Sprite.Create(
-            texture,
-            new Rect(0f, 0f, texture.width, texture.height),
-            new Vector2(0.5f, 0.5f),
-            slice.Ppu, 0, SpriteMeshType.FullRect, slice.Border);
-        sprite.hideFlags = HideFlags.HideAndDontSave;
-        _cache[key] = sprite;
-        return sprite;
-    }
 
     private Sprite GetSimple(O5Asset asset) {
         string key = $"simple:{asset}";
@@ -94,6 +78,10 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
         }
 
         _cache.Clear();
+        if (_ownsShapes) {
+            _shapes.Dispose();
+        }
+
         _resources.Dispose();
     }
 }
