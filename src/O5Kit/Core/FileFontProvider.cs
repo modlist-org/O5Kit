@@ -35,6 +35,9 @@ public sealed class FileFontProvider : IFontProvider, IDisposable {
     /// <inheritdoc/>
     public TMPro.TMP_FontAsset Monospace => _monoAsset ??= LoadSlot("O5Custom-Mono.otf", _mono) ?? _fallback.Monospace;
 
+    /// <inheritdoc/>
+    public TMPro.TMP_FontAsset? Icons => _fallback.Icons;
+
     private TMPro.TMP_FontAsset? LoadSlot(string name, byte[]? data)
         => data == null ? null : _resources.LoadFontAsset(data, name);
 

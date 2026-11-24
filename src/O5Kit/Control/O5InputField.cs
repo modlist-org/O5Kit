@@ -28,8 +28,8 @@ public sealed class O5InputField : O5Object {
     /// <summary>Placeholder text. May be null for code-constructed fields.</summary>
     public TMPro.TextMeshProUGUI? Placeholder => Core.Placeholder;
 
-    /// <summary>Trailing icon image.</summary>
-    public Image IconImage { get; }
+    /// <summary>Trailing icon glyph.</summary>
+    public TMPro.TextMeshProUGUI Icon { get; }
 
     /// <summary>Dot shown while the value differs from default.</summary>
     public Image ChangedImage { get; }
@@ -43,7 +43,7 @@ public sealed class O5InputField : O5Object {
     /// <param name="rect">Root rect.</param>
     /// <param name="inputField">TMP input.</param>
     /// <param name="placeholder">Placeholder text.</param>
-    /// <param name="iconImage">Trailing icon.</param>
+    /// <param name="icon">Trailing icon.</param>
     /// <param name="changedImage">Changed-dot image.</param>
     /// <param name="options">Behaviour. Null uses defaults.</param>
     public O5InputField(
@@ -52,14 +52,14 @@ public sealed class O5InputField : O5Object {
         RectTransform rect,
         TMPro.TMP_InputField inputField,
         TMPro.TextMeshProUGUI placeholder,
-        Image iconImage,
+        TMPro.TextMeshProUGUI icon,
         Image changedImage,
         O5InputOptions? options = null
     ) : base(ctx, id, rect) {
         options ??= new O5InputOptions();
         DefaultValue = options.DefaultValue;
         ChangedImage = changedImage;
-        IconImage = iconImage;
+        Icon = icon;
 
         Core = new O5InputCore(ctx, inputField, placeholder, options.Value ?? string.Empty, val => {
             UpdateVisual();
@@ -142,8 +142,11 @@ public sealed class O5InputField : O5Object {
             target, 0.2f);
     }
 
-    private void UpdateIconImage(bool focused) {
-        if (IsDisposed || IconImage == null || !IconImage.enabled || IconImage.sprite == null) {
+    /// <summary>Replaces the trailing icon.</summary>
+    public void SetIcon(O5Icon icon) => O5FactoryIcons.SetIcon(Icon, icon);
+
+    private void UpdateIcon(bool focused) {
+        if (IsDisposed || Icon == null || !Icon.enabled || string.IsNullOrEmpty(Icon.text)) {
             return;
         }
         if (_iconFocused == focused) {
@@ -152,7 +155,7 @@ public sealed class O5InputField : O5Object {
         _iconFocused = focused;
 
         _iconTween?.Kill();
-        var icon = IconImage;
+        var icon = Icon;
         _iconTween = Ctx.Tween.TweenFloat(
             () => icon.color.a,
             v => {
@@ -172,7 +175,7 @@ public sealed class O5InputField : O5Object {
         }
 
         Core.OnTick();
-        UpdateIconImage(InputField.isFocused);
+        UpdateIcon(InputField.isFocused);
     }
 
     /// <inheritdoc/>
@@ -181,8 +184,8 @@ public sealed class O5InputField : O5Object {
         if (ChangedImage) {
             ChangedImage.color = O5Palette.WithAlpha(next.ObjectActive, ChangedImage.color.a);
         }
-        if (IconImage) {
-            IconImage.color = O5Palette.WithAlpha(next.Text, IconImage.color.a);
+        if (Icon) {
+            Icon.color = O5Palette.WithAlpha(next.Text, Icon.color.a);
         }
         if (Placeholder) {
             Placeholder.color = O5Palette.WithAlpha(next.Text, Placeholder.color.a);

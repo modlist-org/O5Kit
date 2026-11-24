@@ -3,6 +3,7 @@
 using System;
 using O5Kit.Core;
 using O5Kit.Factory;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -32,8 +33,8 @@ public class O5Toggle : O5Object {
         }
     }
 
-    /// <summary>Sliding circle image.</summary>
-    public Image CircleImage { get; }
+    /// <summary>Sliding circle icon glyph.</summary>
+    public TMPro.TextMeshProUGUI CircleIcon { get; }
 
     /// <summary>Dot shown while the value differs from default.</summary>
     public Image ChangedImage { get; }
@@ -48,7 +49,7 @@ public class O5Toggle : O5Object {
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Label text.</param>
-    /// <param name="circleImage">Sliding circle image.</param>
+    /// <param name="circleIcon">Sliding circle icon text.</param>
     /// <param name="circleRect">Circle layout rect.</param>
     /// <param name="changedImage">Changed-dot image.</param>
     /// <param name="options">Behaviour. Null uses defaults.</param>
@@ -57,7 +58,7 @@ public class O5Toggle : O5Object {
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
-        Image circleImage,
+        TMPro.TextMeshProUGUI circleIcon,
         RectTransform circleRect,
         Image changedImage,
         O5ToggleOptions? options = null
@@ -65,7 +66,7 @@ public class O5Toggle : O5Object {
         options ??= new O5ToggleOptions();
         Label = label;
 
-        CircleImage = circleImage;
+        CircleIcon = circleIcon;
         CircleRect = circleRect;
         ChangedImage = changedImage;
         DefaultValue = options.DefaultValue;
@@ -134,21 +135,17 @@ public class O5Toggle : O5Object {
         _tintTween?.Kill();
         _changeTween?.Kill();
 
-        var onSprite = Ctx.Sprites.Icon("toggle-on");
-        var offSprite = Ctx.Sprites.Icon("toggle-off");
-        if (Value && onSprite != null) {
-            CircleImage.sprite = onSprite;
-        } else if (!Value && offSprite != null) {
-            CircleImage.sprite = offSprite;
-        }
+        O5FactoryIcons.ApplyGlyph(CircleIcon, Ctx.Fonts.Icons, Value ? O5Icons.Circle : O5Icons.ToggleCircle);
 
         var theme = Ctx.Theme;
         Color targetColor = Value ? theme.ObjectActive : theme.ObjectInactive;
         float changedTarget = DefaultValue.HasValue && DefaultValue.Value != Value ? 1f : 0f;
 
+        CircleRect.sizeDelta = new Vector2(26f, 26f);
+
         if (noAnimate) {
-            CircleRect.sizeDelta = new Vector2(26f, 26f);
-            CircleImage.color = targetColor;
+            CircleIcon.fontSize = 26f;
+            CircleIcon.color = targetColor;
 
             var c0 = ChangedImage.color;
             c0.a = changedTarget;
@@ -157,21 +154,18 @@ public class O5Toggle : O5Object {
             return;
         }
 
-        CircleRect.sizeDelta = new Vector2(30f, 30f);
-        var fromSize = new Vector2(30f, 30f);
-        var toSize = new Vector2(26f, 26f);
-        var rect = CircleRect;
+        CircleIcon.fontSize = 30f;
+        var icon = CircleIcon;
         _circleTween = Ctx.Tween.TweenFloat(
             () => 0f,
             t => {
-                if (rect) {
-                    rect.sizeDelta = Vector2.LerpUnclamped(fromSize, toSize, t);
+                if (icon) {
+                    icon.fontSize = Mathf.LerpUnclamped(30f, 26f, t);
                 }
             },
             1f, 0.3f, ease: O5Ease.OutQuad);
 
-        var img = CircleImage;
-        _tintTween = Ctx.Tween.TweenColor(() => img.color, v => img.color = v, targetColor, 0.15f, ease: O5Ease.OutQuad);
+        _tintTween = Ctx.Tween.TweenColor(() => icon.color, v => { if (icon) icon.color = v; }, targetColor, 0.15f, ease: O5Ease.OutQuad);
 
         var changed = ChangedImage;
         _changeTween = Ctx.Tween.TweenFloat(

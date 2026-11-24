@@ -38,15 +38,6 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
     /// <inheritdoc/>
     public Sprite Circle => GetSimple(O5Asset.Circle128);
 
-    /// <inheritdoc/>
-    public Sprite? Icon(string name) => name switch {
-        "toggle-on" => GetSimple(O5Asset.Circle128),
-        "toggle-off" => GetSimple(O5Asset.ToggleCircle128),
-        "Triangle128" or "triangle" => GetSimple(O5Asset.Triangle128),
-        "X128" or "x" => GetSimple(O5Asset.X128),
-        _ => Enum.TryParse<O5Asset>(name, out O5Asset asset) ? GetSimple(asset) : null,
-    };
-
     private Sprite GetSliced(O5Asset asset, O5Slice slice) {
         string key = $"sliced:{asset}:{slice.Ppu}:{slice.Border}";
         if (_cache.TryGetValue(key, out Sprite? cached) && cached) {
@@ -113,6 +104,7 @@ public sealed class DefaultFontProvider : IFontProvider, IDisposable {
     private TMPro.TMP_FontAsset? _regular;
     private TMPro.TMP_FontAsset? _medium;
     private TMPro.TMP_FontAsset? _mono;
+    private TMPro.TMP_FontAsset? _icons;
     private bool _disposed;
 
     /// <inheritdoc/>
@@ -126,6 +118,10 @@ public sealed class DefaultFontProvider : IFontProvider, IDisposable {
     /// <inheritdoc/>
     public TMPro.TMP_FontAsset Monospace
         => _mono ??= LoadEmbedded("Font.JetBrainsMonoNL-Medium.ttf", "JetBrainsMonoNL-Medium.ttf") ?? LoadSystemFont();
+
+    /// <inheritdoc/>
+    public TMPro.TMP_FontAsset? Icons
+        => _icons ??= _resources.LoadIconFontAsset("O5KitIcons.ttf");
 
     private TMPro.TMP_FontAsset? LoadEmbedded(string path, string name) {
         byte[]? data = _resources.Load(path);
@@ -149,7 +145,7 @@ public sealed class DefaultFontProvider : IFontProvider, IDisposable {
         }
 
         _disposed = true;
-        _regular = _medium = _mono = null;
+        _regular = _medium = _mono = _icons = null;
         _resources.Dispose();
     }
 }

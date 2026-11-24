@@ -326,23 +326,20 @@ public static partial class O5Factory {
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
-        GameObject iconObj = new("Icon");
-        iconObj.transform.SetParent(rect, false);
+        var iconText = O5FactoryIcons.CreateIcon(
+            rect,
+            "Icon",
+            options.Icon ?? O5Icon.None,
+            ctx.Theme.TextFaint,
+            fixedFontSize: 26f
+        );
 
-        RectTransform circleRect = iconObj.AddComponent<RectTransform>();
+        RectTransform circleRect = iconText.rectTransform;
         circleRect.anchorMin = new Vector2(1f, 0.5f);
         circleRect.anchorMax = new Vector2(1f, 0.5f);
         circleRect.pivot = new Vector2(0.5f, 0.5f);
         circleRect.anchoredPosition = new Vector2(-23f, 0f);
         circleRect.sizeDelta = new Vector2(26f, 26f);
-
-        Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = options.Icon;
-        if (options.Icon == null) {
-            iconImage.enabled = false;
-        } else {
-            iconImage.color = ctx.Theme.TextFaint;
-        }
 
         GameObject inputObj = new("Input");
         inputObj.transform.SetParent(rect, false);
@@ -416,7 +413,7 @@ public static partial class O5Factory {
             rect,
             inputField,
             placeholderText,
-            iconImage,
+            iconText,
             changeImg,
             options
         );

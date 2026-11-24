@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace O5Kit.Core;
 
-/// <summary>Rounded-rect and icon sprites. Implement this over your own assets so O5Kit ships asset-free.</summary>
+/// <summary>Rounded-rect and panel sprites. Implement this over your own assets so O5Kit ships asset-free.</summary>
 public interface ISpriteProvider {
     /// <summary>Large rounded panel background (window body).</summary>
     Sprite RoundedPanel { get; }
@@ -20,10 +20,6 @@ public interface ISpriteProvider {
 
     /// <summary>Plain filled circle (dots, handles).</summary>
     Sprite Circle { get; }
-
-    /// <summary>Named icon sprite. Return null when unmapped; callers keep their current sprite.</summary>
-    /// <param name="name">Icon key, e.g. <c>"toggle-on"</c>, <c>"toggle-off"</c>, or an asset name.</param>
-    Sprite? Icon(string name);
 }
 
 /// <summary>TMP fonts. Implement this over your own font assets.</summary>
@@ -36,4 +32,7 @@ public interface IFontProvider {
 
     /// <summary>Monospace font for numeric inputs and code.</summary>
     TMPro.TMP_FontAsset Monospace { get; }
+
+    /// <summary>Vector icon glyph font (may be null on stripped runtimes).</summary>
+    TMPro.TMP_FontAsset? Icons { get; }
 }

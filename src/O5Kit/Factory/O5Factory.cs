@@ -81,8 +81,8 @@ public static partial class O5Factory {
     public static O5Button Button(O5Context ctx, Transform parent, string id, O5ButtonOptions? options = null) {
         options ??= new O5ButtonOptions();
         var theme = ctx.Theme;
-        if (options.Icon != null) {
-            return BuildIconButton(ctx, parent, id, options);
+        if (options.Icon is { } icon && icon.Glyph != '\0') {
+            return BuildIconButton(ctx, parent, id, options, icon);
         }
 
         var rect = ControlBackground(ctx, parent, options.Height);
@@ -133,20 +133,13 @@ public static partial class O5Factory {
         return Button(ctx, parent, id, options);
     }
 
-    private static O5Button BuildIconButton(O5Context ctx, Transform parent, string id, O5ButtonOptions options) {
+    private static O5Button BuildIconButton(O5Context ctx, Transform parent, string id, O5ButtonOptions options, O5Icon icon) {
         var theme = ctx.Theme;
         var rect = ControlBackground(ctx, parent, options.Height);
         rect.gameObject.name = "O5IconButton";
 
-        var iconObj = new GameObject("Icon");
-        var iconRect = iconObj.AddComponent<RectTransform>();
-        var iconImage = iconObj.AddComponent<Image>();
-
-        iconRect.SetParent(rect, false);
-        iconImage.sprite = options.Icon;
-        iconImage.raycastTarget = false;
-        iconImage.preserveAspect = true;
-
+        var iconText = O5FactoryIcons.CreateIcon(rect, "Icon", icon, Color.white);
+        var iconRect = iconText.rectTransform;
         iconRect.anchorMin = Vector2.zero;
         iconRect.anchorMax = Vector2.one;
         iconRect.offsetMin = new Vector2(options.IconPadding, options.IconPadding);
@@ -155,7 +148,7 @@ public static partial class O5Factory {
         var bg = rect.GetComponent<Image>();
         bg.color = theme.ObjectButton;
 
-        var button = new O5Button(ctx, id, rect, iconImage, bg, options);
+        var button = new O5Button(ctx, id, rect, null, iconText, bg, options);
 
         var trigger = rect.gameObject.AddComponent<EventTrigger>();
         O5Effects.HoverOutline(ctx, rect.gameObject, trigger);

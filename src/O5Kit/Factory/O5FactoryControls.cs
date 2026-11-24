@@ -4,6 +4,7 @@ using System;
 using O5Kit.Behaviour;
 using O5Kit.Control;
 using O5Kit.Core;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -72,24 +73,27 @@ public static partial class O5Factory {
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
-        GameObject toggleCircle = new("ToggleCircle");
-        toggleCircle.transform.SetParent(rect, false);
-
-        RectTransform circleRect = toggleCircle.AddComponent<RectTransform>();
+        var circleIcon = O5FactoryIcons.CreateIcon(
+            rect,
+            "ToggleCircle",
+            ctx.Fonts.Icons,
+            O5Icons.ToggleCircle,
+            ctx.Theme.ObjectInactive,
+            fixedFontSize: 26f
+        );
+        RectTransform circleRect = circleIcon.rectTransform;
         circleRect.anchorMin = new Vector2(1f, 0.5f);
         circleRect.anchorMax = new Vector2(1f, 0.5f);
         circleRect.pivot = new Vector2(0.5f, 0.5f);
         circleRect.anchoredPosition = new Vector2(-23f, 0f);
         circleRect.sizeDelta = new Vector2(26f, 26f);
 
-        Image circleImage = toggleCircle.AddComponent<Image>();
-
         O5Toggle toggle = new(
             ctx,
             id,
             rect,
             tmp,
-            circleImage,
+            circleIcon,
             circleRect,
             changeImg,
             options

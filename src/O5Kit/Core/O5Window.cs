@@ -2,6 +2,8 @@
 
 using System;
 using O5Kit.Behaviour;
+using O5Kit.Factory;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -191,16 +193,12 @@ public sealed class O5Window : O5Object {
         Color softRed = window.Ctx.Theme.SoftRed;
         bgImage.color = O5Palette.Transparent(softRed);
 
-        var xObj = new GameObject("X");
-        xObj.transform.SetParent(close, false);
-        var xRect = xObj.AddComponent<RectTransform>();
+        var xText = O5FactoryIcons.CreateIcon(close, "X", window.Ctx.Fonts.Icons, O5Icons.X, Color.white);
+        var xRect = xText.rectTransform;
         xRect.anchorMin = Vector2.zero;
         xRect.anchorMax = Vector2.one;
         xRect.offsetMin = new Vector2(4f, 4f);
         xRect.offsetMax = new Vector2(-4f, -4f);
-        var xImage = xObj.AddComponent<Image>();
-        xImage.sprite = window.Ctx.Sprites.Icon("x") ?? window.Ctx.Sprites.Circle;
-        xImage.preserveAspect = true;
 
         var trigger = close.gameObject.AddComponent<EventTrigger>();
         var bg = bgImage;

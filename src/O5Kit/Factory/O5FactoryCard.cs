@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using O5Kit.Behaviour;
 using O5Kit.Core;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -88,49 +89,47 @@ public static partial class O5Factory {
         checkboxGo.AddComponent<EmptyGraphic>().raycastTarget = true;
         checkboxGo.SetActive(showActiveToggle);
 
-        GameObject toggleVisualGo = new("ToggleCircle");
-        toggleVisualGo.transform.SetParent(checkboxGo.transform, false);
-        RectTransform toggleVisualRect = toggleVisualGo.AddComponent<RectTransform>();
+        var toggleVisualIcon = O5FactoryIcons.CreateIcon(
+            checkboxGo.transform,
+            "ToggleCircle",
+            ctx.Fonts.Icons,
+            O5Icons.ToggleCircle,
+            theme.ObjectInactive,
+            fixedFontSize: 26f
+        );
+        RectTransform toggleVisualRect = toggleVisualIcon.rectTransform;
         toggleVisualRect.anchorMin = new Vector2(0.5f, 0.5f);
         toggleVisualRect.anchorMax = new Vector2(0.5f, 0.5f);
         toggleVisualRect.pivot = new Vector2(0.5f, 0.5f);
         toggleVisualRect.sizeDelta = new Vector2(26f, 26f);
-        var toggleVisualImage = toggleVisualGo.AddComponent<Image>();
-        toggleVisualImage.raycastTarget = false;
         ITweenHandle? toggleTween = null;
 
         bool isCurrentActive = activeValue;
         CanvasGroup? contentCanvasGroup = null;
         void UpdateComponentToggle(bool animate) {
             var curTheme = ctx.Theme;
-            var onSprite = ctx.Sprites.Icon("toggle-on");
-            var offSprite = ctx.Sprites.Icon("toggle-off");
-            if (isCurrentActive && onSprite != null) {
-                toggleVisualImage.sprite = onSprite;
-            } else if (!isCurrentActive && offSprite != null) {
-                toggleVisualImage.sprite = offSprite;
-            }
+            O5FactoryIcons.ApplyGlyph(
+                toggleVisualIcon,
+                ctx.Fonts.Icons,
+                isCurrentActive ? O5Icons.Circle : O5Icons.ToggleCircle
+            );
 
             if (!animate) {
-                toggleVisualRect.sizeDelta = new Vector2(26f, 26f);
-                toggleVisualImage.color = isCurrentActive ? curTheme.ObjectActive : curTheme.ObjectInactive;
+                toggleVisualIcon.fontSize = 26f;
+                toggleVisualIcon.color = isCurrentActive ? curTheme.ObjectActive : curTheme.ObjectInactive;
                 return;
             }
 
-            toggleVisualRect.sizeDelta = new Vector2(30f, 30f);
-            var tvr = toggleVisualRect;
-            var tvi = toggleVisualImage;
+            toggleVisualIcon.fontSize = 30f;
+            var tvi = toggleVisualIcon;
             var target = isCurrentActive ? curTheme.ObjectActive : curTheme.ObjectInactive;
             Color startColor = tvi.color;
             toggleTween?.Kill();
             toggleTween = ctx.Tween.TweenFloat(
                 () => 0f,
                 t => {
-                    if (tvr) {
-                        tvr.sizeDelta = Vector2.LerpUnclamped(new Vector2(30f, 30f), new Vector2(26f, 26f), t);
-                    }
-
                     if (tvi) {
+                        tvi.fontSize = Mathf.LerpUnclamped(30f, 26f, t);
                         tvi.color = Color.LerpUnclamped(startColor, target, t);
                     }
                 },
@@ -170,20 +169,22 @@ public static partial class O5Factory {
         triggerHLayout.childForceExpandHeight = true;
         triggerHLayout.childAlignment = TextAnchor.MiddleLeft;
 
-        GameObject foldoutGo = new("Triangle");
-        foldoutGo.transform.SetParent(titleTriggerGo.transform, false);
-        var foldoutRect = foldoutGo.AddComponent<RectTransform>();
+        var foldoutIcon = O5FactoryIcons.CreateIcon(
+            titleTriggerGo.transform,
+            "Triangle",
+            ctx.Fonts.Icons,
+            O5Icons.Triangle,
+            theme.ObjectActive,
+            fixedFontSize: 26f
+        );
+        var foldoutRect = foldoutIcon.rectTransform;
         foldoutRect.anchorMin = new Vector2(1f, 0.5f);
         foldoutRect.anchorMax = new Vector2(1f, 0.5f);
         foldoutRect.pivot = new Vector2(0.5f, 0.5f);
         foldoutRect.anchoredPosition = new Vector2(-23f, 0f);
         foldoutRect.sizeDelta = new Vector2(26f, 26f);
         foldoutRect.localRotation = Quaternion.Euler(0f, 0f, 180f);
-        var foldoutImage = foldoutGo.AddComponent<Image>();
-        foldoutImage.sprite = ctx.Sprites.Icon("Triangle128");
-        foldoutImage.color = theme.ObjectActive;
-        foldoutImage.raycastTarget = false;
-        foldoutGo.AddComponent<LayoutElement>().ignoreLayout = true;
+        foldoutIcon.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
         List<ITweenHandle> foldoutTweens = new();
 
         GameObject titleGo = new("TitleText");
@@ -200,17 +201,21 @@ public static partial class O5Factory {
         titleLayout.flexibleWidth = 1f;
 
         if (showDeleteButton) {
-            GameObject deleteGo = new("DeleteBtn");
-            deleteGo.transform.SetParent(headerGo.transform, false);
-            RectTransform deleteRect = deleteGo.AddComponent<RectTransform>();
+            var deleteIcon = O5FactoryIcons.CreateIcon(
+                headerGo.transform,
+                "DeleteBtn",
+                ctx.Fonts.Icons,
+                O5Icons.X,
+                theme.SoftRed,
+                fixedFontSize: 22f
+            );
+            deleteIcon.raycastTarget = true;
+            GameObject deleteGo = deleteIcon.gameObject;
+            RectTransform deleteRect = deleteIcon.rectTransform;
             deleteRect.sizeDelta = new Vector2(22f, 22f);
             var deleteLE = deleteGo.AddComponent<LayoutElement>();
             deleteLE.preferredWidth = 22f;
             deleteLE.preferredHeight = 22f;
-
-            var deleteImg = deleteGo.AddComponent<Image>();
-            deleteImg.sprite = ctx.Sprites.Icon("X128");
-            deleteImg.color = theme.SoftRed;
 
             var deleteTrigger = deleteGo.AddComponent<EventTrigger>();
             O5Effects.HoverOutline(ctx, deleteGo, deleteTrigger);
@@ -306,7 +311,7 @@ public static partial class O5Factory {
             var cg = contentGo;
             var cr = contentRect;
             var fr = foldoutRect;
-            var fi = foldoutImage;
+            var fi = foldoutIcon;
             bool expanding = isExpanded;
             float foldStart = fr.localRotation.eulerAngles.z;
             if (foldStart > 180f) {

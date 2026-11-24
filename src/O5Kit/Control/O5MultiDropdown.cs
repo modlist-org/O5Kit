@@ -6,6 +6,7 @@ using System.Linq;
 using O5Kit.Behaviour;
 using O5Kit.Core;
 using O5Kit.Factory;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -36,8 +37,8 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <summary>Header label.</summary>
     public TMPro.TextMeshProUGUI Label { get; }
 
-    /// <summary>Foldout triangle image.</summary>
-    public Image TriangleImage { get; }
+    /// <summary>Foldout triangle icon.</summary>
+    public TMPro.TextMeshProUGUI TriangleIcon { get; }
 
     /// <summary>Foldout triangle rect.</summary>
     public RectTransform TriangleRect { get; }
@@ -63,14 +64,14 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     private ITweenHandle? _triangleTween, _triangleTintTween, _changeTween;
     /// <summary>Layout height tween owned by the factory. Killed on dispose.</summary>
     public ITweenHandle? LayoutSeq { get; set; }
-    private readonly List<Image> _selectionImages = new();
+    private readonly List<TMPro.TextMeshProUGUI> _selectionIcons = new();
 
     /// <summary>Creates a multi dropdown over factory-built visuals.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Header label.</param>
-    /// <param name="triangleImage">Foldout triangle image.</param>
+    /// <param name="triangleIcon">Foldout triangle icon.</param>
     /// <param name="triangleRect">Foldout triangle rect.</param>
     /// <param name="changedImage">Changed-dot image.</param>
     /// <param name="listObject">List container.</param>
@@ -82,7 +83,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
-        Image triangleImage,
+        TMPro.TextMeshProUGUI triangleIcon,
         RectTransform triangleRect,
         Image changedImage,
         GameObject listObject,
@@ -92,7 +93,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     ) : base(ctx, id, rect) {
         options ??= new O5MultiDropdownOptions<T>();
         Label = label;
-        TriangleImage = triangleImage;
+        TriangleIcon = triangleIcon;
         TriangleRect = triangleRect;
         ChangedImage = changedImage;
         ListObject = listObject;
@@ -226,8 +227,8 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             if (TriangleRect) {
                 TriangleRect.localRotation = Quaternion.Euler(0f, 0f, targetRot);
             }
-            if (TriangleImage) {
-                TriangleImage.color = targetColor;
+            if (TriangleIcon) {
+                TriangleIcon.color = targetColor;
             }
 
             if (ChangedImage) {
@@ -259,7 +260,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             },
             1f, 0.4f, ease: O5Ease.OutBack);
 
-        var triImg = TriangleImage;
+        var triImg = TriangleIcon;
         if (triImg) {
             _triangleTintTween = Ctx.Tween.TweenColor(
                 () => triImg.color, v => { if (triImg) triImg.color = v; }, targetColor, 0.2f);
@@ -289,7 +290,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             return;
         }
 
-        _selectionImages.Clear();
+        _selectionIcons.Clear();
 
         for (int i = ListObject.transform.childCount - 1; i >= 0; i--) {
             Transform child = ListObject.transform.GetChild(i);
@@ -316,17 +317,21 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             rowText.rectTransform.offsetMax = new Vector2(-48f, 0f);
             rowText.raycastTarget = false;
 
-            GameObject selected = new("Selected");
-            selected.transform.SetParent(row.transform, false);
-            RectTransform selectedRect = selected.AddComponent<RectTransform>();
+            var selectedIcon = O5FactoryIcons.CreateIcon(
+                row.transform,
+                "Selected",
+                Ctx.Fonts.Icons,
+                O5Icons.ToggleCircle,
+                theme.ObjectInactive,
+                fixedFontSize: 26f
+            );
+            RectTransform selectedRect = selectedIcon.rectTransform;
             selectedRect.anchorMin = new Vector2(1f, 0.5f);
             selectedRect.anchorMax = new Vector2(1f, 0.5f);
             selectedRect.pivot = new Vector2(0.5f, 0.5f);
             selectedRect.anchoredPosition = new Vector2(-23f, 0f);
             selectedRect.sizeDelta = new Vector2(26f, 26f);
-            Image selectedImage = selected.AddComponent<Image>();
-            selectedImage.raycastTarget = false;
-            _selectionImages.Add(selectedImage);
+            _selectionIcons.Add(selectedIcon);
 
             EventTrigger trigger = row.AddComponent<EventTrigger>();
             O5Effects.HoverOutline(Ctx, row, trigger);
@@ -350,17 +355,11 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
 
     private void UpdateSelectionVisuals() {
         var theme = Ctx.Theme;
-        var onSprite = Ctx.Sprites.Icon("toggle-on");
-        var offSprite = Ctx.Sprites.Icon("toggle-off");
-        for (int i = 0; i < _selectionImages.Count && i < Values.Count; i++) {
+        var font = Ctx.Fonts.Icons;
+        for (int i = 0; i < _selectionIcons.Count && i < Values.Count; i++) {
             bool has = HasFlag(Value, Values[i]);
-            if (has && onSprite != null) {
-                _selectionImages[i].sprite = onSprite;
-            } else if (!has && offSprite != null) {
-                _selectionImages[i].sprite = offSprite;
-            }
-
-            _selectionImages[i].color = has ? theme.ObjectActive : theme.ObjectInactive;
+            O5FactoryIcons.ApplyGlyph(_selectionIcons[i], font, has ? O5Icons.Circle : O5Icons.ToggleCircle);
+            _selectionIcons[i].color = has ? theme.ObjectActive : theme.ObjectInactive;
         }
     }
 
@@ -417,7 +416,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         LayoutSeq?.Kill();
         _triangleTween = _triangleTintTween = _changeTween = LayoutSeq = null;
         OnLayoutChanged = null;
-        _selectionImages.Clear();
+        _selectionIcons.Clear();
         base.Dispose();
     }
 }

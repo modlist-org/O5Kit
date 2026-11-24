@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using O5Kit.Behaviour;
 using O5Kit.Control;
 using O5Kit.Core;
+using O5Kit.Resource;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -53,18 +54,21 @@ public static partial class O5Factory {
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
-        GameObject triangle = new("Triangle");
-        triangle.transform.SetParent(rect, false);
+        var triangleIcon = O5FactoryIcons.CreateIcon(
+            rect,
+            "Triangle",
+            ctx.Fonts.Icons,
+            O5Icons.Triangle,
+            ctx.Theme.ObjectInactive,
+            fixedFontSize: 26f
+        );
 
-        RectTransform triangleRect = triangle.AddComponent<RectTransform>();
+        RectTransform triangleRect = triangleIcon.rectTransform;
         triangleRect.anchorMin = new Vector2(1f, 0.5f);
         triangleRect.anchorMax = new Vector2(1f, 0.5f);
         triangleRect.pivot = new Vector2(0.5f, 0.5f);
         triangleRect.anchoredPosition = new Vector2(-23f, 0f);
         triangleRect.sizeDelta = new Vector2(26f, 26f);
-
-        Image triangleImage = triangle.AddComponent<Image>();
-        triangleImage.sprite = ctx.Sprites.Icon("Triangle128");
 
         RectTransform? indicatorRect = null;
         if (options.ShowIndexIndicator) {
@@ -114,7 +118,7 @@ public static partial class O5Factory {
             id,
             rootRect,
             tmp,
-            triangleImage,
+            triangleIcon,
             triangleRect,
             changeImg,
             list,
@@ -266,18 +270,21 @@ public static partial class O5Factory {
         GameObject change = AddSmallChangedCircle(ctx, rect);
         Image changeImg = change.GetComponent<Image>();
 
-        GameObject triangle = new("Triangle");
-        triangle.transform.SetParent(rect, false);
+        var triangleIcon = O5FactoryIcons.CreateIcon(
+            rect,
+            "Triangle",
+            ctx.Fonts.Icons,
+            O5Icons.Triangle,
+            ctx.Theme.ObjectInactive,
+            fixedFontSize: 26f
+        );
 
-        RectTransform triangleRect = triangle.AddComponent<RectTransform>();
+        RectTransform triangleRect = triangleIcon.rectTransform;
         triangleRect.anchorMin = new Vector2(1f, 0.5f);
         triangleRect.anchorMax = new Vector2(1f, 0.5f);
         triangleRect.pivot = new Vector2(0.5f, 0.5f);
         triangleRect.anchoredPosition = new Vector2(-23f, 0f);
         triangleRect.sizeDelta = new Vector2(26f, 26f);
-
-        Image triangleImage = triangle.AddComponent<Image>();
-        triangleImage.sprite = ctx.Sprites.Icon("Triangle128");
 
         GameObject list = new("List");
         list.transform.SetParent(root.transform, false);
@@ -313,7 +320,7 @@ public static partial class O5Factory {
             id,
             rootRect,
             tmp,
-            triangleImage,
+            triangleIcon,
             triangleRect,
             changeImg,
             list,

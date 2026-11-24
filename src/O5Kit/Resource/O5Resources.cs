@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using O5Kit.Compat;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -16,18 +17,12 @@ namespace O5Kit.Resource;
 
 /// <summary>Bundled artwork keys. Only what O5Kit itself uses; game/mod icons live in the mod repo.</summary>
 public enum O5Asset {
-    /// <summary>Solid circle (panels, controls, dots, toggle-on).</summary>
+    /// <summary>Solid circle (panels, controls, dots).</summary>
     Circle128,
     /// <summary>Top-rounded bar.</summary>
     CircleHalf128,
     /// <summary>Circle outline ring, 32px stroke (panel/hover outlines).</summary>
     CircleOutline128O32,
-    /// <summary>Toggle-off circle.</summary>
-    ToggleCircle128,
-    /// <summary>Close X icon.</summary>
-    X128,
-    /// <summary>Foldout triangle icon (points down).</summary>
-    Triangle128,
 }
 
 /// <summary>Loads O5Kit-owned bundled assets. Mod-specific assets belong to the consuming mod and are loaded from that mod's assembly.</summary>
@@ -40,9 +35,6 @@ public sealed class O5Resources : IDisposable {
         [O5Asset.Circle128] = "Image.Circle128.png",
         [O5Asset.CircleHalf128] = "Image.CircleHalf128.png",
         [O5Asset.CircleOutline128O32] = "Image.CircleOutline128O32.png",
-        [O5Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
-        [O5Asset.X128] = "Image.X128.png",
-        [O5Asset.Triangle128] = "Image.Triangle128.png",
     };
 
     /// <summary>Creates a loader over an assembly manifest prefix.</summary>
@@ -121,11 +113,21 @@ public sealed class O5Resources : IDisposable {
         return texture;
     }
 
-    /// <summary>Loads a font file into a TMP asset via a temp copy. Cached by name.</summary>
+    /// <summary>Loads a font file into a TMP asset via a content-hashed temp copy. Cached by name and hash.</summary>
     /// <param name="fontData">TTF/OTF bytes.</param>
     /// <param name="name">Cache and file name, e.g. <c>"MyFont-Medium.otf"</c>.</param>
-    public TMPro.TMP_FontAsset? LoadFontAsset(byte[] fontData, string name) {
-        string key = $"font:{name}";
+    public TMPro.TMP_FontAsset? LoadFontAsset(byte[] fontData, string name)
+        => LoadFontAssetCore(fontData, name);
+
+    /// <summary>Loads an embedded icon TTF font with content-hashed caching (returns null on IL2CPP).</summary>
+    public TMPro.TMP_FontAsset? LoadIconFontAsset(string name = "O5KitIcons.ttf") {
+        byte[]? fontData = Load($"Font.{name}");
+        return fontData == null ? null : LoadFontAssetCore(fontData, name);
+    }
+
+    private TMPro.TMP_FontAsset? LoadFontAssetCore(byte[] fontData, string name) {
+        string hash = ComputeShortHash(fontData);
+        string key = $"font:{name}:{hash}";
         if (_cache.TryGetValue(key, out object? cached)) {
             return cached as TMPro.TMP_FontAsset;
         }
@@ -138,7 +140,9 @@ public sealed class O5Resources : IDisposable {
         try {
             string dir = Path.Combine(Application.temporaryCachePath, "O5Kit", "Fonts");
             Directory.CreateDirectory(dir);
-            string tempPath = Path.Combine(dir, name);
+            string stem = Path.GetFileNameWithoutExtension(name);
+            string ext = Path.GetExtension(name);
+            string tempPath = Path.Combine(dir, $"{stem}_{hash}{ext}");
             if (!File.Exists(tempPath)) {
                 File.WriteAllBytes(tempPath, fontData);
             }
@@ -151,6 +155,12 @@ public sealed class O5Resources : IDisposable {
             return null;
         }
 #endif
+    }
+
+    private static string ComputeShortHash(byte[] data) {
+        using var sha = SHA256.Create();
+        byte[] digest = sha.ComputeHash(data);
+        return BitConverter.ToString(digest, 0, 4).Replace("-", string.Empty).ToLowerInvariant();
     }
 
     /// <summary>Loads (and caches) a texture by artwork key.</summary>

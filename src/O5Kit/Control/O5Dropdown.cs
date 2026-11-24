@@ -91,8 +91,8 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
     /// <summary>Header label.</summary>
     public TMPro.TextMeshProUGUI Label { get; }
 
-    /// <summary>Foldout triangle image.</summary>
-    public Image TriangleImage { get; }
+    /// <summary>Foldout triangle icon.</summary>
+    public TMPro.TextMeshProUGUI TriangleIcon { get; }
 
     /// <summary>Foldout triangle rect.</summary>
     public RectTransform TriangleRect { get; }
@@ -140,7 +140,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
     /// <param name="id">Stable identifier.</param>
     /// <param name="rect">Root rect.</param>
     /// <param name="label">Header label.</param>
-    /// <param name="triangleImage">Foldout triangle image.</param>
+    /// <param name="triangleIcon">Foldout triangle icon.</param>
     /// <param name="triangleRect">Foldout triangle rect.</param>
     /// <param name="changedImage">Changed-dot image.</param>
     /// <param name="listObject">List container.</param>
@@ -153,7 +153,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
         string id,
         RectTransform rect,
         TMPro.TextMeshProUGUI label,
-        Image triangleImage,
+        TMPro.TextMeshProUGUI triangleIcon,
         RectTransform triangleRect,
         Image changedImage,
         GameObject listObject,
@@ -165,7 +165,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
         options ??= new O5DropdownOptions<T>();
         Label = label;
 
-        TriangleImage = triangleImage;
+        TriangleIcon = triangleIcon;
         TriangleRect = triangleRect;
 
         ChangedImage = changedImage;
@@ -344,8 +344,8 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
             if (TriangleRect) {
                 TriangleRect.localRotation = Quaternion.Euler(0f, 0f, targetRot);
             }
-            if (TriangleImage) {
-                TriangleImage.color = targetColor;
+            if (TriangleIcon) {
+                TriangleIcon.color = targetColor;
             }
 
             if (ChangedImage) {
@@ -376,7 +376,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
             },
             1f, 0.4f, ease: O5Ease.OutBack);
 
-        var triImg = TriangleImage;
+        var triImg = TriangleIcon;
         if (triImg) {
             _triangleTintTween = Ctx.Tween.TweenColor(
                 () => triImg.color, v => { if (triImg) triImg.color = v; }, targetColor, 0.2f);

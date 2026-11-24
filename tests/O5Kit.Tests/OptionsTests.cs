@@ -66,8 +66,8 @@ internal static class OptionsTests {
         T.Eq(null, inp.DefaultValue, "input DefaultValue");
         T.Eq(null, inp.Value, "input Value");
         T.Eq("", inp.Placeholder, "input Placeholder");
-        // NB: inp.Icon (Sprite) is intentionally not touched: reading it would
-        // JIT a UnityEngine type, which is unavailable outside the game.
+        // NB: inp.Icon (O5Icon) is intentionally not touched: reading it would
+        // JIT a UnityEngine/TMPro type, which is unavailable outside the game.
         T.Check(!inp.Multiline && !inp.Monospace, "input flags");
 
         // NB: T? with unconstrained T is NOT Nullable<T> for value types:
@@ -86,7 +86,7 @@ internal static class OptionsTests {
 
         var b = new O5ButtonOptions();
         T.Eq(null, b.Text, "button Text");
-        // NB: b.Icon (Sprite) not touched: UnityEngine is unavailable off-game.
+        // NB: b.Icon (O5Icon) not touched: UnityEngine/TMPro is unavailable off-game.
         T.Approx(5f, b.IconPadding, "button IconPadding");
         T.Eq(null, b.Height, "button Height");
 

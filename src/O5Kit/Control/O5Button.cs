@@ -26,8 +26,8 @@ public class O5Button : O5Object {
         }
     }
 
-    /// <summary>Icon image. Null for text buttons.</summary>
-    public Image? Icon { get; }
+    /// <summary>Icon glyph. Null for text buttons.</summary>
+    public TMPro.TextMeshProUGUI? Icon { get; }
 
     /// <summary>Background tinted on hover.</summary>
     public Image Background { get; }
@@ -60,30 +60,18 @@ public class O5Button : O5Object {
         TMPro.TextMeshProUGUI label,
         Image background,
         O5ButtonOptions? options = null
-    ) : base(ctx, id, rect) {
-        Label = label;
-        Background = background;
-        OnClick = options?.OnClick;
-        NormalColor = Ctx.Theme.ObjectButton;
+    ) : this(ctx, id, rect, label, null, background, options) { }
 
-        UpdateVisual(true);
-    }
-
-    /// <summary>Creates an icon button.</summary>
-    /// <param name="ctx">Owning kit context.</param>
-    /// <param name="id">Stable identifier.</param>
-    /// <param name="rect">Root rect, usually from <see cref="Factory.O5Factory"/>.</param>
-    /// <param name="icon">Icon image.</param>
-    /// <param name="background">Background image.</param>
-    /// <param name="options">Behaviour. Null uses defaults.</param>
-    public O5Button(
+    internal O5Button(
         O5Context ctx,
         string id,
         RectTransform rect,
-        Image icon,
+        TMPro.TextMeshProUGUI? label,
+        TMPro.TextMeshProUGUI? icon,
         Image background,
         O5ButtonOptions? options = null
     ) : base(ctx, id, rect) {
+        Label = label;
         Icon = icon;
         Background = background;
         OnClick = options?.OnClick;
@@ -91,6 +79,9 @@ public class O5Button : O5Object {
 
         UpdateVisual(true);
     }
+
+    /// <summary>Replaces the icon glyph on an icon button.</summary>
+    public void SetIcon(O5Icon icon) => O5FactoryIcons.SetIcon(Icon, icon);
 
     /// <summary>Plays the hover-in tint. Wired to pointer-enter by the factory.</summary>
     public void OnHoverEnter() {

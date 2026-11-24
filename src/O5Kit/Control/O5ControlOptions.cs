@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using O5Kit.Core;
 using UnityEngine;
 
 namespace O5Kit.Control;
@@ -11,8 +12,8 @@ public sealed class O5ButtonOptions {
     /// <summary>Text label. Null for icon buttons.</summary>
     public string? Text { get; set; }
 
-    /// <summary>Icon sprite. Null for text buttons.</summary>
-    public Sprite? Icon { get; set; }
+    /// <summary>Icon glyph. Null for text buttons.</summary>
+    public O5Icon? Icon { get; set; }
 
     /// <summary>Icon inset. Text buttons ignore this.</summary>
     public float IconPadding { get; set; } = 5f;
@@ -93,7 +94,7 @@ public sealed class O5InputOptions {
     public string Placeholder { get; set; } = string.Empty;
 
     /// <summary>Trailing icon. Null hides it.</summary>
-    public Sprite? Icon { get; set; }
+    public O5Icon? Icon { get; set; }
 
     /// <summary>Change callback.</summary>
     public Action<string>? OnChanged { get; set; }
