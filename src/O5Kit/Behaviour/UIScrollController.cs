@@ -380,14 +380,18 @@ public class UIScrollController
         }
     }
 
-    /// <summary>True when the pointer is inside the viewport. Wheel and right-drag
-    /// only engage then, so stacked windows don't scroll each other.</summary>
+    /// <summary>True when the pointer is inside the scroll area (viewport plus the
+    /// root's padding around it). Wheel and right-drag only engage then, so
+    /// stacked windows don't scroll each other.</summary>
     private bool IsPointerOverViewport() {
         if (viewport == null) {
             return false;
         }
 
-        return RectTransformUtility.RectangleContainsScreenPoint(
-            viewport, O5Input.MousePosition, null);
+        RectTransform area = GetComponent<RectTransform>();
+        return (area != null && RectTransformUtility.RectangleContainsScreenPoint(
+            area, O5Input.MousePosition, null))
+            || RectTransformUtility.RectangleContainsScreenPoint(
+                viewport, O5Input.MousePosition, null);
     }
 }
