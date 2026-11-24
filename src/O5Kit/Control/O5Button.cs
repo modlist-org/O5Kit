@@ -203,8 +203,22 @@ public class O5Button : O5Object {
     /// <inheritdoc/>
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
-        if (blocked && _holding) {
+        if (!blocked || IsDisposed) {
+            return;
+        }
+        if (_holding) {
             OnPressExit();
+        }
+        if (_hovered) {
+            _hovered = false;
+            if (noAnimate) {
+                _hoverTween?.Kill();
+                if (Background) {
+                    Background.color = NormalColor;
+                }
+            } else {
+                Tint(NormalColor, 0.12f);
+            }
         }
     }
 
