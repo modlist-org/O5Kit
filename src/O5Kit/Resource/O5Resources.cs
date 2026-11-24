@@ -17,11 +17,11 @@ namespace O5Kit.Resource;
 /// <summary>Bundled artwork keys. Only what O5Kit itself uses; game/mod icons live in the mod repo.</summary>
 public enum O5Asset {
     /// <summary>Solid circle (panels, controls, dots, toggle-on).</summary>
-    Circle256,
+    Circle128,
     /// <summary>Top-rounded bar.</summary>
-    CircleHalf256,
-    /// <summary>Circle outline ring, 64px stroke (panel/hover outlines).</summary>
-    CircleOutline256O64,
+    CircleHalf128,
+    /// <summary>Circle outline ring, 32px stroke (panel/hover outlines).</summary>
+    CircleOutline128O32,
     /// <summary>Toggle-off circle.</summary>
     ToggleCircle128,
     /// <summary>Close X icon.</summary>
@@ -37,9 +37,9 @@ public sealed class O5Resources : IDisposable {
     private readonly Dictionary<string, object> _cache = new();
 
     private static readonly Dictionary<O5Asset, string> AssetMap = new() {
-        [O5Asset.Circle256] = "Image.Circle256.png",
-        [O5Asset.CircleHalf256] = "Image.CircleHalf256.png",
-        [O5Asset.CircleOutline256O64] = "Image.CircleOutline256O64.png",
+        [O5Asset.Circle128] = "Image.Circle128.png",
+        [O5Asset.CircleHalf128] = "Image.CircleHalf128.png",
+        [O5Asset.CircleOutline128O32] = "Image.CircleOutline128O32.png",
         [O5Asset.ToggleCircle128] = "Image.ToggleCircle128.png",
         [O5Asset.X128] = "Image.X128.png",
         [O5Asset.Triangle128] = "Image.Triangle128.png",

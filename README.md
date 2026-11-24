@@ -107,7 +107,7 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 - The O5Kit logo is a placeholder. `o5kit_logo.svg` at the repository root will be replaced with the final logo before the first release.
 
 ### Artwork
-- O5Kit bundled UI shapes and icons ([`src/O5Kit/Asset`](src/O5Kit/Asset)) are modlist-org's own artwork, canonical here and consumed by Overlayer from O5Kit (see [`NOTICE.md`](src/O5Kit/Asset/NOTICE.md)). Same license terms as O5Kit (LGPL-3.0-or-later).
+- O5Kit bundled UI shapes and icons ([`src/O5Kit/Asset/Image`](src/O5Kit/Asset/Image)) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction (attribution is not required, though crediting the Overlayer team is greatly appreciated; see [`NOTICE.md`](src/O5Kit/Asset/NOTICE.md)).
 - O5Kit bundled fonts (SUIT, JetBrains Mono) under [OFL-1.1](https://opensource.org/licenses/OFL-1.1).
 
 ### Third-Party Code

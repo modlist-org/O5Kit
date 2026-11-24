@@ -24,23 +24,23 @@ public sealed class DefaultSpriteProvider : ISpriteProvider, IDisposable {
     // Role art is shared with Overlayer verbatim (O5Asset): circles double as
     // panels/controls/bars/outlines; see Asset/NOTICE.md.
     /// <inheritdoc/>
-    public Sprite RoundedPanel => GetSliced(O5Asset.Circle256, _style.Panel);
+    public Sprite RoundedPanel => GetSliced(O5Asset.Circle128, _style.Panel);
 
     /// <inheritdoc/>
-    public Sprite RoundedControl => GetSliced(O5Asset.Circle256, _style.Control);
+    public Sprite RoundedControl => GetSliced(O5Asset.Circle128, _style.Control);
 
     /// <inheritdoc/>
-    public Sprite TopBar => GetSliced(O5Asset.CircleHalf256, _style.TopBar);
+    public Sprite TopBar => GetSliced(O5Asset.CircleHalf128, _style.TopBar);
 
     /// <inheritdoc/>
-    public Sprite RoundedOutline => GetSliced(O5Asset.CircleOutline256O64, _style.Outline);
+    public Sprite RoundedOutline => GetSliced(O5Asset.CircleOutline128O32, _style.Outline);
 
     /// <inheritdoc/>
-    public Sprite Circle => GetSimple(O5Asset.Circle256);
+    public Sprite Circle => GetSimple(O5Asset.Circle128);
 
     /// <inheritdoc/>
     public Sprite? Icon(string name) => name switch {
-        "toggle-on" => GetSimple(O5Asset.Circle256),
+        "toggle-on" => GetSimple(O5Asset.Circle128),
         "toggle-off" => GetSimple(O5Asset.ToggleCircle128),
         "Triangle128" or "triangle" => GetSimple(O5Asset.Triangle128),
         "X128" or "x" => GetSimple(O5Asset.X128),
