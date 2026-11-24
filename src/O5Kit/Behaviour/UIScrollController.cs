@@ -37,6 +37,11 @@ public class UIScrollController
     public float dragSensitivity = 1f;
     /// <summary>Scrollbar-style drag ratio (reserved for scrollbar mode).</summary>
     public float dragToScrollRatio = 1f;
+    /// <summary>When true, right-drag only scrolls after moving past <see cref="rightDragThreshold"/>,
+    /// using drag deltas instead of jumping to the pointer position like a scrollbar.</summary>
+    public bool rightDragRelativeOnly;
+    /// <summary>Vertical pointer movement in screen pixels required to start relative right-drag scrolling.</summary>
+    public float rightDragThreshold = 6f;
 
     /// <summary>Smooth-scroll glide duration in seconds.</summary>
     public float scrollDuration = 0.2f;
@@ -50,7 +55,14 @@ public class UIScrollController
     /// <summary>Fired when right-drag scrolling moves a scroll view's content vertically, passing controller and delta pixels.</summary>
     public static event Action<UIScrollController, float>? OnRightDragScrolled;
 
+    /// <summary>True while or on the frame a relative right-drag consumed the pointer press.</summary>
+    public bool RightDragConsumed => (_rightDragging && _rightDragMoved) || _rightDragConsumedFrame == Time.frameCount;
+
     private bool _rightDragging;
+    private bool _rightDragMoved;
+    private float _rightDragStartMouseY;
+    private float _rightDragLastLocalY;
+    private int _rightDragConsumedFrame = -1;
 
     private float _targetY;
     private float _lastDragY;
@@ -86,10 +98,7 @@ public class UIScrollController
         // The mouse-up edge can be missed (focus loss, hierarchy rebuild):
         // held-state is truth, so a stuck drag can't pin the scroll forever.
         if (_rightDragging && !O5Input.GetMouseButton(1)) {
-            _rightDragging = false;
-            if (UseScrollEasing) {
-                ApplyTween();
-            }
+            EndRightDrag();
         }
 
         float maxOffset = Math.Max(0f, content.rect.height - viewport.rect.height);
@@ -161,6 +170,18 @@ public class UIScrollController
         }
     }
 
+    private void EndRightDrag() {
+        bool shouldTween = !rightDragRelativeOnly || _rightDragMoved;
+        if (_rightDragMoved) {
+            _rightDragConsumedFrame = Time.frameCount;
+        }
+        _rightDragging = false;
+        _rightDragMoved = false;
+        if (shouldTween && UseScrollEasing) {
+            ApplyTween();
+        }
+    }
+
     private void HandleRightDrag() {
         if (content == null || viewport == null) {
             return;
@@ -170,20 +191,25 @@ public class UIScrollController
             _rightDragging = IsPointerOverViewport();
             if (_rightDragging) {
                 _lastDragY = content.anchoredPosition.y;
+                _rightDragMoved = false;
+                _rightDragStartMouseY = O5Input.MousePosition.y;
+                if (rightDragRelativeOnly) {
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        viewport,
+                        O5Input.MousePosition,
+                        null,
+                        out Vector2 startLocal
+                    );
+                    _rightDragLastLocalY = startLocal.y;
+                }
             }
         }
 
         // Held-state heals a missed mouse-up edge (same as in ClampScrollPosition).
         if (_rightDragging && !O5Input.GetMouseButton(1)) {
-            _rightDragging = false;
-            if (UseScrollEasing) {
-                ApplyTween();
-            }
+            EndRightDrag();
         } else if (O5Input.GetMouseButtonUp(1) && _rightDragging) {
-            _rightDragging = false;
-            if (UseScrollEasing) {
-                ApplyTween();
-            }
+            EndRightDrag();
         }
 
         if (!_rightDragging) {
@@ -207,6 +233,39 @@ public class UIScrollController
             null,
             out Vector2 local
         );
+
+        if (rightDragRelativeOnly) {
+            if (!_rightDragMoved) {
+                if (Math.Abs(mouse.y - _rightDragStartMouseY) < rightDragThreshold) {
+                    return;
+                }
+                _rightDragMoved = true;
+                _targetY = content.anchoredPosition.y;
+                _lastDragY = _targetY;
+            }
+
+            _rightDragConsumedFrame = Time.frameCount;
+            float deltaLocalY = local.y - _rightDragLastLocalY;
+            _rightDragLastLocalY = local.y;
+            if (Math.Abs(deltaLocalY) <= 0.0001f) {
+                return;
+            }
+
+            AddDelta(deltaLocalY * dragSensitivity);
+
+            float relMoved = Math.Abs(_targetY - _lastDragY);
+            if (relMoved > 0.5f) {
+                _lastDragY = _targetY;
+                OnRightDragScrolled?.Invoke(this, relMoved);
+            }
+
+            if (UseScrollEasing) {
+                ApplyTween();
+            } else {
+                SnapToTarget();
+            }
+            return;
+        }
 
         float normalized = 1f - MathCompat.Clamp(
             (local.y + (viewportHeight * 0.5f)) / viewportHeight,
