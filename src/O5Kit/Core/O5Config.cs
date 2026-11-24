@@ -10,6 +10,9 @@ public sealed class O5Config {
     /// <summary>Whether <see cref="O5Tooltip"/> may show at all.</summary>
     public bool TooltipEnabled { get; set; } = true;
 
+    /// <summary>Fully shown <see cref="O5Tooltip"/> opacity (0-1).</summary>
+    public float TooltipOpacity { get; set; } = 1f;
+
     /// <summary>Whether middle-click resets a control to its default value.</summary>
     public bool MiddleClickToDefault { get; set; } = true;
 

@@ -88,18 +88,22 @@ public sealed class O5Tooltip : IDisposable {
             if (_showTimer <= 0f && _canvas != null) {
                 _fade?.Kill();
                 var c = _canvas;
-                _fade = _ctx.Tween.TweenFloat(() => c.alpha, v => c.alpha = v, 1f, FadeDuration);
+                _fade = _ctx.Tween.TweenFloat(() => c.alpha, v => c.alpha = v, Mathf.Clamp01(_ctx.Config.TooltipOpacity), FadeDuration);
             }
 
             return;
         }
 
-        float scale = _ctx.Config.UIScale;
-        Vector2 target = O5Input.MousePosition + new Vector2(24f, -28f) * scale;
-        Vector2 size = _rect.sizeDelta * scale;
+        // Track live opacity changes once the fade-in has finished.
+        if (_canvas != null && (_fade == null || !_fade.IsAlive)) {
+            float opacity = Mathf.Clamp01(_ctx.Config.TooltipOpacity);
+            if (!Mathf.Approximately(_canvas.alpha, opacity)) {
+                _canvas.alpha = opacity;
+            }
+        }
 
-        target.x = Mathf.Clamp(target.x, 0f, Screen.width - size.x);
-        target.y = Mathf.Clamp(target.y, 0f, Screen.height - size.y);
+        float scale = _ctx.Config.UIScale;
+        Vector2 target = ClampToScreen(O5Input.MousePosition + new Vector2(24f, -28f) * scale);
 
         Vector2 next = Vector2.SmoothDamp(
             _rect.position, target, ref _velocity, 0.02f,
@@ -107,6 +111,19 @@ public sealed class O5Tooltip : IDisposable {
         if (next != (Vector2)_rect.position) {
             _rect.position = next;
         }
+    }
+
+    // Pushes the top-left pivot so the whole box stays on screen. Overlay
+    // canvases map world units to screen pixels, so lossyScale is the real scale.
+    private Vector2 ClampToScreen(Vector2 topLeft) {
+        if (_rect == null) {
+            return topLeft;
+        }
+
+        Vector2 size = _rect.sizeDelta * _rect.lossyScale.x;
+        topLeft.x = Mathf.Clamp(topLeft.x, 0f, Mathf.Max(0f, Screen.width - size.x));
+        topLeft.y = Mathf.Clamp(topLeft.y, Mathf.Min(size.y, Screen.height), Screen.height);
+        return topLeft;
     }
 
     /// <summary>Shows a tooltip near the cursor after a short delay.</summary>
@@ -124,7 +141,7 @@ public sealed class O5Tooltip : IDisposable {
 
         Vector2 size = _text.GetPreferredValues(tip);
         _rect.sizeDelta = new Vector2(size.x + 32f, size.y + 32f);
-        _rect.position = O5Input.MousePosition + new Vector2(20f, -20f);
+        _rect.position = ClampToScreen(O5Input.MousePosition + new Vector2(20f, -20f));
 
         _canvas.alpha = 0f;
         _visible = true;
