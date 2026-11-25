@@ -59,6 +59,9 @@ public class UIScrollController
     /// <summary>True while or on the frame a relative right-drag consumed the pointer press.</summary>
     public bool RightDragConsumed => (_rightDragging && _rightDragMoved) || _rightDragConsumedFrame == Time.frameCount;
 
+    /// <summary>True while a held drag (right-click, or left-click in the right padding) is scrolling this view.</summary>
+    public bool DragScrolling => _rightDragging && _rightDragMoved;
+
     /// <summary>When true, a left press in the right padding strip (between the content's
     /// inner right edge and the scroll view's right edge) acts exactly like a right press.</summary>
     public bool leftClickRightPaddingDrag = true;
