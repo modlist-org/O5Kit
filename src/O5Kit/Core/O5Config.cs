@@ -19,6 +19,9 @@ public sealed class O5Config {
     /// <summary>Horizontal drag distance multiplier for sliders.</summary>
     public double SliderSensitivity { get; set; } = 1d;
 
+    /// <summary>Touch-style (Shift) drag scrolling distance multiplier, separate from sliders.</summary>
+    public double ScrollSensitivity { get; set; } = 1d;
+
     /// <summary>Global animation speed multiplier (KDE-style). 1 is normal, higher is faster,
     /// 0 or below collapses every duration to near-instant. Applied by the per-context
     /// tween decorator, so it covers the built-in runners and custom <see cref="ITweenRunner"/> implementations alike. Completions still fire asynchronously.</summary>
