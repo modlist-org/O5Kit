@@ -108,7 +108,8 @@ public class UIScrollController
     private float _lastDragY;
     private ITweenHandle? _scrollTween;
 
-    private bool UseScrollEasing => Ctx != null && Ctx.Config.ScrollEasing;
+    private bool UseScrollEasing => Ctx != null && Ctx.Config.ScrollEasing && Ctx.Config.AnimationSpeed > 0f;
+    private bool AnimationsEnabled => Ctx == null || Ctx.Config.AnimationSpeed > 0f;
 
     private void Awake() {
         if (content != null) {
@@ -239,7 +240,7 @@ public class UIScrollController
     private void EndRightDrag() {
         // Shift showing at release: coast on like a touch fling, unless the pointer was
         // held still or moving too slowly, in which case it stops right there.
-        if (_rightDragging && _rightDragMoved && _shiftRelative && content != null) {
+        if (_rightDragging && _rightDragMoved && _shiftRelative && content != null && AnimationsEnabled) {
             float v = Time.unscaledTime - _lastMoveTime > flingStillTime ? 0f : _dragVelocity;
             if (Math.Abs(v) >= flingMinVelocity) {
                 _flingVelocity = MathCompat.Clamp(v, -flingMaxVelocity, flingMaxVelocity);
