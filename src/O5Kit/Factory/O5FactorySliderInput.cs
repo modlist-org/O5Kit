@@ -126,12 +126,6 @@ public static partial class O5Factory {
         inputObj.SetActive(true);
 
         Transform? canvasRoot = parent.GetComponentInParent<Canvas>()?.transform;
-        RectTransform? dragBlocker = options.BlockHoverWhileDragging && canvasRoot != null
-            ? CreateSliderDragBlocker(canvasRoot)
-            : null;
-        if (dragBlocker) {
-            dragBlocker.gameObject.SetActive(false);
-        }
 
         var ovent = rect.gameObject.AddComponent<OventHandler>();
         ovent.OnDisabled += slider.ResetShake;
@@ -153,11 +147,23 @@ public static partial class O5Factory {
         }
 
         bool isDragging = false;
+        bool blockerAcquired = false;
         double cachedValue = 0d;
         Vector2Int resetPos = Vector2Int.zero;
         Vector2 previousMousePos = Vector2.zero;
         Vector2 startMousePos = Vector2.zero;
         Vector2? warpedFrom = null;
+
+        void EndDragCleanup(bool restoreCursor) {
+            if (restoreCursor) {
+                O5Input.OSMousePosition = resetPos;
+                Cursor.visible = true;
+            }
+            if (blockerAcquired) {
+                blockerAcquired = false;
+                ctx.ReleaseDragBlocker();
+            }
+        }
 
         UnityUtils.AddEvents(trigger,
             (EventTriggerType.PointerEnter, _ => slider.SetHovered(true)),
@@ -178,9 +184,9 @@ public static partial class O5Factory {
                 resetPos = Vector2Int.RoundToInt(O5Input.OSMousePosition);
                 startMousePos = previousMousePos = O5Input.MousePosition;
                 warpedFrom = null;
-                if (dragBlocker) {
-                    dragBlocker.gameObject.SetActive(true);
-                    dragBlocker.SetSiblingIndex(dragBlocker.parent.childCount - 1);
+                if (options.BlockHoverWhileDragging && !blockerAcquired) {
+                    blockerAcquired = true;
+                    ctx.AcquireDragBlocker();
                 }
             }
         ),
@@ -223,8 +229,9 @@ public static partial class O5Factory {
                         warpedFrom = currentMousePos;
                         previousMousePos = startMousePos;
                     }
-                } else {
+                } else if (isDragging) {
                     isDragging = false;
+                    EndDragCleanup(restoreCursor: true);
                 }
             }
         ),
@@ -233,12 +240,7 @@ public static partial class O5Factory {
                 if (isDragging) {
                     isDragging = false;
                     slider.OnComplete?.Invoke(slider.Value);
-
-                    O5Input.OSMousePosition = resetPos;
-                    Cursor.visible = true;
-                    if (dragBlocker) {
-                        dragBlocker.gameObject.SetActive(false);
-                    }
+                    EndDragCleanup(restoreCursor: true);
                 }
             }
         ),
@@ -248,12 +250,7 @@ public static partial class O5Factory {
                 }
 
                 isDragging = false;
-                O5Input.OSMousePosition = resetPos;
-                Cursor.visible = true;
-                if (dragBlocker) {
-                    dragBlocker.gameObject.SetActive(false);
-                }
-
+                EndDragCleanup(restoreCursor: true);
                 slider.OnComplete?.Invoke(slider.Value);
             }
         ),
@@ -281,12 +278,9 @@ public static partial class O5Factory {
             slider.SetHovered(false);
             if (isDragging) {
                 isDragging = false;
-                O5Input.OSMousePosition = resetPos;
-                Cursor.visible = true;
-            }
-
-            if (dragBlocker) {
-                UnityEngine.Object.Destroy(dragBlocker.gameObject);
+                EndDragCleanup(restoreCursor: true);
+            } else {
+                EndDragCleanup(restoreCursor: false);
             }
         };
 
@@ -309,19 +303,6 @@ public static partial class O5Factory {
         var options = new O5SliderOptions();
         configure?.Invoke(options);
         return Slider(ctx, parent, id, options);
-    }
-
-    private static RectTransform CreateSliderDragBlocker(Transform parent) {
-        GameObject blockerObject = new("NumericDragBlocker");
-        blockerObject.transform.SetParent(parent, false);
-        RectTransform blocker = blockerObject.AddComponent<RectTransform>();
-        blocker.anchorMin = Vector2.zero;
-        blocker.anchorMax = Vector2.one;
-        blocker.offsetMin = Vector2.zero;
-        blocker.offsetMax = Vector2.zero;
-        Image image = blockerObject.AddComponent<Image>();
-        image.color = Color.clear;
-        return blocker;
     }
 
     /// <summary>Builds a text field with icon, placeholder and middle-click reset.</summary>

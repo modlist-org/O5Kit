@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace O5Kit.Core;
 
@@ -41,6 +43,8 @@ public sealed class O5Context : IDisposable {
     public event Action<bool>? EnabledChanged;
 
     private readonly List<IDisposable> _owned = new();
+    private GameObject? _dragBlocker;
+    private int _dragBlockerRefs;
     private bool _disposed;
 
     /// <summary>Creates an owned instance. Null arguments fall back to defaults: fresh config, dark theme, Overlayer slicing style, bundled sprites/fonts, automatic tweens.</summary>
@@ -98,9 +102,57 @@ public sealed class O5Context : IDisposable {
         ThemeChanged?.Invoke(theme);
     }
 
+    /// <summary>True while a control holds the top-most drag raycast blocker (e.g. infinite slider drag).</summary>
+    public bool IsDragBlocking => _dragBlockerRefs > 0;
+
     /// <summary>Broadcasts an enabled-state change to this context's gated controls.</summary>
     /// <param name="enabled">New global state.</param>
     public void NotifyEnabledChanged(bool enabled) => EnabledChanged?.Invoke(enabled);
+
+    // Top-most full-screen raycast absorber shared across controls so hidden-cursor drags
+    // cannot trigger PointerEnter/hover highlights on other canvases.
+    internal void AcquireDragBlocker() {
+        if (_disposed) {
+            return;
+        }
+
+        Tooltip.Hide();
+        _dragBlockerRefs++;
+        if (_dragBlocker == null || !_dragBlocker) {
+            var go = new GameObject("O5DragBlocker");
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            var canvas = go.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 32767;
+            go.AddComponent<GraphicRaycaster>();
+
+            var shield = new GameObject("Shield");
+            shield.transform.SetParent(go.transform, false);
+            var rect = shield.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            var img = shield.AddComponent<Image>();
+            img.color = Color.clear;
+            img.raycastTarget = true;
+
+            _dragBlocker = go;
+        }
+
+        _dragBlocker.SetActive(true);
+    }
+
+    internal void ReleaseDragBlocker() {
+        if (_dragBlockerRefs > 0) {
+            _dragBlockerRefs--;
+        }
+
+        if (_dragBlockerRefs == 0 && _dragBlocker != null && _dragBlocker) {
+            _dragBlocker.SetActive(false);
+        }
+    }
 
     /// <summary>Disposes the tooltip and context-owned sprite/font providers.</summary>
     public void Dispose() {
@@ -109,6 +161,11 @@ public sealed class O5Context : IDisposable {
         }
 
         _disposed = true;
+        _dragBlockerRefs = 0;
+        if (_dragBlocker != null && _dragBlocker) {
+            UnityEngine.Object.Destroy(_dragBlocker);
+        }
+        _dragBlocker = null;
         Tooltip.Dispose();
         foreach (var owned in _owned) {
             owned.Dispose();

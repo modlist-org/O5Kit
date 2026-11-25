@@ -57,6 +57,6 @@ public sealed class O5SliderOptions {
     /// <summary>Value per pixel. Null scales by control width.</summary>
     public double? DragStep { get; set; }
 
-    /// <summary>Cover the canvas with a drag blocker while dragging.</summary>
-    public bool BlockHoverWhileDragging { get; set; }
+    /// <summary>Cover the screen with a top-most raycast blocker while dragging to prevent background hover highlights.</summary>
+    public bool BlockHoverWhileDragging { get; set; } = true;
 }
