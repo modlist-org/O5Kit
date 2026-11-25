@@ -113,7 +113,7 @@ public class O5Toggle : O5Object {
             OnChanged?.Invoke(value);
         }
 
-        UpdateVisual();
+        UpdateVisual(noAnimate: !changed);
         FlashIfExternal(changed, notify);
     }
 
