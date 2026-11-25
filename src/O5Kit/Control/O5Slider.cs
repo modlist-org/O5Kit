@@ -298,7 +298,7 @@ public class O5Slider : O5Object {
         Scale = options.Scale;
         ShowFill = options.ShowFill;
         Value = ApplyDragFilter(options.Value);
-        Value = ClampSafe(Value, Min, Max, ClampDrag);
+        Value = ClampSafe(Value, EffectiveInputMin, EffectiveInputMax, ClampInput);
         LastValidValue = Value;
 
         RegisterTick();
@@ -373,7 +373,9 @@ public class O5Slider : O5Object {
         bool changed = (float)value != (float)_lastRaw && (float)value != (float)Value;
         _lastRaw = value;
         value = ApplyDragFilter(value);
-        Value = ClampSafe(value, Min, Max, ClampDrag);
+        // Drag and wheel paths clamp by ClampDrag themselves; code/sync Set must respect ClampInput
+        // so unclamped text-input values are not truncated on subsequent syncs.
+        Value = ClampSafe(value, EffectiveInputMin, EffectiveInputMax, ClampInput);
 
         if (notify) {
             OnChanged?.Invoke(Value);
