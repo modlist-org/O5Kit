@@ -9,6 +9,7 @@ namespace O5Kit.Transition;
 /// <summary>Slide-and-fade transition between registered pages.</summary>
 public static class O5PageSwitcher {
     private static readonly List<ITweenHandle> _active = new();
+    private static RectTransform? _current;
 
     private static void KillActive() {
         foreach (var h in _active) {
@@ -23,8 +24,11 @@ public static class O5PageSwitcher {
     /// <param name="pages">Page registry (id to rect).</param>
     /// <param name="from">Outgoing page id.</param>
     /// <param name="to">Incoming page id.</param>
+    /// <param name="deactivateHidden">Deactivate pages once they are hidden, so they skip layout,
+    /// batching and updates (window resizes otherwise relayout every page each frame).</param>
     /// <returns>False when ids match or a page is missing.</returns>
-    public static bool SwitchPage(O5Context ctx, IReadOnlyDictionary<int, RectTransform> pages, int from, int to) {
+    public static bool SwitchPage(O5Context ctx, IReadOnlyDictionary<int, RectTransform> pages, int from, int to,
+        bool deactivateHidden = false) {
         if (from == to) {
             return false;
         }
@@ -45,12 +49,16 @@ public static class O5PageSwitcher {
         }
 
         KillActive();
+        _current = toPage;
 
         foreach (var pair in pages) {
             if (pair.Key == to || pair.Value == null) {
                 continue;
             }
 
+            if (deactivateHidden && pair.Key != from) {
+                pair.Value.gameObject.SetActive(false);
+            }
             pair.Value.anchoredPosition = new Vector2(-1100f, pair.Value.anchoredPosition.y);
             var otherCg = pair.Value.GetComponent<CanvasGroup>();
             if (otherCg != null) {
@@ -59,6 +67,8 @@ public static class O5PageSwitcher {
             }
         }
 
+        fromPage.gameObject.SetActive(true);
+        toPage.gameObject.SetActive(true);
         fromPage.anchoredPosition = Vector2.zero;
         toPage.anchoredPosition = new Vector2(1100f, 0f);
 
@@ -103,6 +113,9 @@ public static class O5PageSwitcher {
             () => {
                 if (fromCg) {
                     fromCg.interactable = fromCg.blocksRaycasts = false;
+                }
+                if (deactivateHidden && fromPage && fromPage != _current) {
+                    fromPage.gameObject.SetActive(false);
                 }
             },
             O5Ease.OutExpo));
