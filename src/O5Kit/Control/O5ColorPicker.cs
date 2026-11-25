@@ -45,6 +45,9 @@ public sealed class O5ColorPicker : O5Object {
     /// <summary>Current color.</summary>
     public Color Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => ColorUtility.ToHtmlStringRGBA(Value);
+
     /// <summary>Whether the popup is open.</summary>
     public bool Expanded { get; private set; }
 
@@ -190,6 +193,13 @@ public sealed class O5ColorPicker : O5Object {
         _oklchModeLabel = oklchModeLabel;
         _hexInput = hexInput;
         _hexOutline = sharedOutline;
+        // The picker's own fields follow the picker; only the picker itself shows outside changes.
+        foreach (var slider in sliders) {
+            slider.FlashOnExternalChange = false;
+        }
+        if (hexInput != null) {
+            hexInput.FlashOnExternalChange = false;
+        }
         OnChanged = options.OnChanged;
         OnComplete = options.OnComplete;
         DefaultValue = options.DefaultValue;
@@ -437,6 +447,7 @@ public sealed class O5ColorPicker : O5Object {
         value.g = Mathf.Clamp01(value.g);
         value.b = Mathf.Clamp01(value.b);
         value.a = Mathf.Clamp01(value.a);
+        bool changed = !((Color32)Value).Equals((Color32)value);
         Value = value;
         Color.RGBToHSV(value, out _hue, out _saturation, out _brightness);
         SyncOklchFromValue();
@@ -444,6 +455,7 @@ public sealed class O5ColorPicker : O5Object {
         if (notify) {
             OnChanged?.Invoke(Value);
         }
+        FlashIfExternal(changed, notify);
     }
 
     /// <summary>Switches channel sliders between RGB and HSV.</summary>

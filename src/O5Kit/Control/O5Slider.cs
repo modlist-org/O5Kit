@@ -40,6 +40,9 @@ public class O5Slider : O5Object {
     /// <summary>Current value.</summary>
     public double Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => ((float)Value).ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>Display format, e.g. <c>"F2"</c>.</summary>
     public string Format { get; set; }
 
@@ -364,6 +367,11 @@ public class O5Slider : O5Object {
             return;
         }
 
+        // Raw number, before the filter / clamp / display rounding: a change smaller than the shown
+        // decimals (or than a filter step) still counts. Float precision, so a float setting
+        // reflecting this slider's own double value isn't a change.
+        bool changed = (float)value != (float)_lastRaw && (float)value != (float)Value;
+        _lastRaw = value;
         value = ApplyDragFilter(value);
         Value = ClampSafe(value, Min, Max, ClampDrag);
 
@@ -371,17 +379,22 @@ public class O5Slider : O5Object {
             OnChanged?.Invoke(Value);
         }
 
+        string shown = Value.ToString(Format);
         _isUpdatingFromCode = true;
-        InputCore.SetValue(Value.ToString(Format), false);
+        InputCore.SetValue(shown, false);
         _isUpdatingFromCode = false;
 
         UpdateVisual();
+        FlashIfExternal(changed, notify);
     }
+
+    private double _lastRaw = double.NaN;
 
     private void SetFromInput(double value) {
         if (IsDisposed || double.IsNaN(value)) {
             return;
         }
+        _lastRaw = value;
 
         Value = ClampSafe(
             value,

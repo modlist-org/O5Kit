@@ -20,6 +20,9 @@ public class O5Segmented<T> : O5Object {
     /// <summary>Current value.</summary>
     public T? Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => Value?.ToString() ?? string.Empty;
+
     /// <summary>Available options. Replace via <see cref="SetValues"/>.</summary>
     public IReadOnlyList<T> Values { get; private set; }
 
@@ -155,6 +158,7 @@ public class O5Segmented<T> : O5Object {
         if (notify) {
             OnChanged?.Invoke(Value);
         }
+        FlashIfExternal(true, notify);
     }
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>

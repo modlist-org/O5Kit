@@ -79,6 +79,9 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
     /// <summary>Current value.</summary>
     public T? Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => Value?.ToString() ?? string.Empty;
+
     /// <summary>Available options. Replace via <see cref="SetValues"/>.</summary>
     public IReadOnlyList<T> Values { get; private set; }
 
@@ -236,6 +239,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
             return;
         }
 
+        bool changed = !EqualityComparer<T>.Default.Equals(Value!, value!);
         Value = value;
 
         if (Label != null && Label) {
@@ -250,6 +254,7 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
         }
 
         OnLayoutChanged?.Invoke();
+        FlashIfExternal(changed, notify);
     }
 
     /// <summary>Builds a dropdown under <paramref name="parent"/>. Owns all GameObjects; the caller only passes behaviour.</summary>

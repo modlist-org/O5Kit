@@ -22,6 +22,9 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <summary>Current combined flags value.</summary>
     public T Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => Value.ToString();
+
     /// <summary>Available flags. Replace via <see cref="SetValues"/>.</summary>
     public IReadOnlyList<T> Values { get; private set; }
 
@@ -119,6 +122,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
             return;
         }
 
+        bool changed = !EqualityComparer<T>.Default.Equals(Value, value);
         Value = value;
         if (Label != null && Label) {
             Label.text = Summary(Value);
@@ -130,6 +134,7 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
         }
 
         UpdateVisual(true);
+        FlashIfExternal(changed, notify);
     }
 
     /// <summary>XORs a flag into the current value.</summary>

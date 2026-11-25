@@ -17,6 +17,9 @@ public class O5Toggle : O5Object {
     /// <summary>Current value.</summary>
     public bool Value { get; private set; }
 
+    /// <inheritdoc/>
+    public override string? ShownValue => Value ? "1" : "0";
+
     /// <summary>Fired when the value changes via <see cref="Set"/>.</summary>
     public Action<bool>? OnChanged { get; set; }
 
@@ -103,6 +106,7 @@ public class O5Toggle : O5Object {
             return;
         }
 
+        bool changed = Value != value;
         Value = value;
 
         if (notify) {
@@ -110,6 +114,7 @@ public class O5Toggle : O5Object {
         }
 
         UpdateVisual();
+        FlashIfExternal(changed, notify);
     }
 
     /// <summary>Flips the current value.</summary>

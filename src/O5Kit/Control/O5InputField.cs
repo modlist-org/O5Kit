@@ -19,6 +19,9 @@ public sealed class O5InputField : O5Object {
     /// <summary>Current text.</summary>
     public string Value => Core.Value;
 
+    /// <inheritdoc/>
+    public override string? ShownValue => Value;
+
     /// <summary>Change callback.</summary>
     public Action<string>? OnChanged => Core.OnChanged;
 
@@ -97,12 +100,14 @@ public sealed class O5InputField : O5Object {
             return;
         }
 
+        bool changed = !string.Equals(Core.Value ?? string.Empty, value ?? string.Empty, StringComparison.Ordinal);
         Core.SetValue(value, false);
         if (notify) {
             Core.OnChanged?.Invoke(value);
         }
 
         UpdateVisual();
+        FlashIfExternal(changed, notify);
     }
 
     /// <summary>Restores <see cref="DefaultValue"/>. No-op when null.</summary>
