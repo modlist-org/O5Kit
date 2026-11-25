@@ -189,100 +189,92 @@ public class ResizeHandle
         ResizeHandleType.BottomRight
     };
 
-    private const float HANDLE_CORNER = 26f;
+    /// <summary>Outward thickness of edge handles. Handles sit fully outside the panel edge
+    /// so clicks just inside the border reach the panel's own controls.</summary>
     private const float HANDLE_SIDE = 12f;
+    /// <summary>Outward size of corner handles (diagonal square beyond each corner).</summary>
+    private const float HANDLE_CORNER = 16f;
 
-    /// <summary>Creates all eight edge/corner handles around <paramref name="panel"/>.</summary>
+    /// <summary>Creates all eight edge/corner handles around <paramref name="panel"/>.
+    /// Handles live in a sibling "ResizeFrame" that tracks the panel, so a clipping mask on the
+    /// panel can't swallow their raycasts.</summary>
     /// <param name="ctx">Owning kit context.</param>
     /// <param name="panel">Panel to make resizable.</param>
     /// <param name="panelParent">Coordinate space for measuring drags.</param>
     /// <param name="minWidth">Minimum width before UI scale. Non-positive uses <see cref="DefaultMinWidth"/>.</param>
     /// <param name="minHeight">Minimum height before UI scale. Non-positive uses <see cref="DefaultMinHeight"/>.</param>
-    public static void CreateResizeHandles(O5Context ctx, RectTransform panel, RectTransform panelParent, float minWidth = -1f, float minHeight = -1f) {
+    /// <returns>The frame holding the handles (its children are the handles).</returns>
+    public static RectTransform CreateResizeHandles(O5Context ctx, RectTransform panel, RectTransform panelParent, float minWidth = -1f, float minHeight = -1f) {
+        RectTransform frame = new GameObject($"{panel.name}_ResizeFrame").AddComponent<RectTransform>();
+        frame.SetParent(panel.parent, false);
+        frame.SetSiblingIndex(panel.GetSiblingIndex() + 1);
+        frame.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+        ResizeFrameFollower follower = frame.gameObject.AddComponent<ResizeFrameFollower>();
+        follower.Panel = panel;
+        follower.Sync();
+
         foreach (ResizeHandleType type in HandleOrder) {
             GameObject handle = new($"Resize_{type}");
-            handle.transform.SetParent(panel, false);
+            handle.transform.SetParent(frame, false);
 
             RectTransform rect = handle.AddComponent<RectTransform>();
-
-            bool isCorner =
-                type is ResizeHandleType.TopLeft
-                or ResizeHandleType.TopRight
-                or ResizeHandleType.BottomLeft
-                or ResizeHandleType.BottomRight;
-
-            if (isCorner) {
-                rect.sizeDelta = new Vector2(HANDLE_CORNER, HANDLE_CORNER);
-            }
+            rect.pivot = new Vector2(0.5f, 0.5f);
 
             switch (type) {
                 case ResizeHandleType.Top:
                     rect.anchorMin = new Vector2(0f, 1f);
                     rect.anchorMax = new Vector2(1f, 1f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(HANDLE_CORNER, -HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(-HANDLE_CORNER, HANDLE_SIDE);
-                    rect.anchoredPosition = Vector2.zero;
+                    rect.offsetMin = new Vector2(0f, 0f);
+                    rect.offsetMax = new Vector2(0f, HANDLE_SIDE);
                     break;
 
                 case ResizeHandleType.Bottom:
                     rect.anchorMin = new Vector2(0f, 0f);
                     rect.anchorMax = new Vector2(1f, 0f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(HANDLE_CORNER, -HANDLE_SIDE);
-                    rect.offsetMax = new Vector2(-HANDLE_CORNER, HANDLE_SIDE);
-                    rect.anchoredPosition = Vector2.zero;
+                    rect.offsetMin = new Vector2(0f, -HANDLE_SIDE);
+                    rect.offsetMax = new Vector2(0f, 0f);
                     break;
 
                 case ResizeHandleType.Left:
                     rect.anchorMin = new Vector2(0f, 0f);
                     rect.anchorMax = new Vector2(0f, 1f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_CORNER);
-                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_CORNER);
-                    rect.anchoredPosition = Vector2.zero;
+                    rect.offsetMin = new Vector2(-HANDLE_SIDE, 0f);
+                    rect.offsetMax = new Vector2(0f, 0f);
                     break;
 
                 case ResizeHandleType.Right:
                     rect.anchorMin = new Vector2(1f, 0f);
                     rect.anchorMax = new Vector2(1f, 1f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.offsetMin = new Vector2(-HANDLE_SIDE, HANDLE_CORNER);
-                    rect.offsetMax = new Vector2(HANDLE_SIDE, -HANDLE_CORNER);
-                    rect.anchoredPosition = Vector2.zero;
+                    rect.offsetMin = new Vector2(0f, 0f);
+                    rect.offsetMax = new Vector2(HANDLE_SIDE, 0f);
                     break;
 
                 case ResizeHandleType.TopLeft:
-                    rect.anchorMin = new Vector2(0f, 1f);
-                    rect.anchorMax = new Vector2(0f, 1f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
+                    rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+                    rect.offsetMin = new Vector2(-HANDLE_CORNER, 0f);
+                    rect.offsetMax = new Vector2(0f, HANDLE_CORNER);
                     break;
 
                 case ResizeHandleType.TopRight:
-                    rect.anchorMin = new Vector2(1f, 1f);
-                    rect.anchorMax = new Vector2(1f, 1f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, -HANDLE_CORNER * 0.5f);
+                    rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+                    rect.offsetMin = new Vector2(0f, 0f);
+                    rect.offsetMax = new Vector2(HANDLE_CORNER, HANDLE_CORNER);
                     break;
 
                 case ResizeHandleType.BottomLeft:
-                    rect.anchorMin = new Vector2(0f, 0f);
-                    rect.anchorMax = new Vector2(0f, 0f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
+                    rect.anchorMin = rect.anchorMax = new Vector2(0f, 0f);
+                    rect.offsetMin = new Vector2(-HANDLE_CORNER, -HANDLE_CORNER);
+                    rect.offsetMax = new Vector2(0f, 0f);
                     break;
 
                 case ResizeHandleType.BottomRight:
-                    rect.anchorMin = new Vector2(1f, 0f);
-                    rect.anchorMax = new Vector2(1f, 0f);
-                    rect.pivot = new Vector2(0.5f, 0.5f);
-                    rect.anchoredPosition = new Vector2(-HANDLE_CORNER * 0.5f, HANDLE_CORNER * 0.5f);
+                    rect.anchorMin = rect.anchorMax = new Vector2(1f, 0f);
+                    rect.offsetMin = new Vector2(0f, -HANDLE_CORNER);
+                    rect.offsetMax = new Vector2(HANDLE_CORNER, 0f);
                     break;
             }
 
             Image image = handle.AddComponent<Image>();
-            image.sprite = ctx.Sprites.Circle;
             image.color = Color.clear;
 
             ResizeHandle resize = handle.AddComponent<ResizeHandle>();
@@ -293,6 +285,65 @@ public class ResizeHandle
             resize.PanelParent = panelParent;
             resize.minWidthBeforeScale = minWidth;
             resize.minHeightBeforeScale = minHeight;
+        }
+
+        follower.Sync();
+        return frame;
+    }
+}
+
+#if IL2CPP
+[RegisterTypeInIl2Cpp]
+#endif
+/// <summary>Keeps a resize frame glued to its panel: same rect, active state and sibling slot
+/// (right above the panel). Destroys itself with the panel.</summary>
+public class ResizeFrameFollower
+#if IL2CPP
+    (IntPtr ptr) : MonoBehaviour(ptr)
+#else
+    : MonoBehaviour
+#endif
+{
+    /// <summary>Panel to track.</summary>
+    public RectTransform? Panel;
+
+    private void LateUpdate() => Sync();
+
+    /// <summary>Copies the panel's layout, visibility and sibling order onto this frame.</summary>
+    public void Sync() {
+        if (Panel == null) {
+            Destroy(gameObject);
+            return;
+        }
+
+        var self = (RectTransform)transform;
+        if (self.parent != Panel.parent) {
+            self.SetParent(Panel.parent, false);
+        }
+
+        self.anchorMin = Panel.anchorMin;
+        self.anchorMax = Panel.anchorMax;
+        self.pivot = Panel.pivot;
+        self.sizeDelta = Panel.sizeDelta;
+        self.anchoredPosition = Panel.anchoredPosition;
+        self.localScale = Panel.localScale;
+        self.localRotation = Panel.localRotation;
+
+        CanvasGroup? group = Panel.GetComponent<CanvasGroup>();
+        bool show = Panel.gameObject.activeSelf && (group == null || group.blocksRaycasts);
+        for (int i = 0; i < self.childCount; i++) {
+            GameObject child = self.GetChild(i).gameObject;
+            if (child.activeSelf != show) {
+                child.SetActive(show);
+            }
+        }
+
+        int panelIndex = Panel.GetSiblingIndex();
+        int index = self.GetSiblingIndex();
+        if (index < panelIndex) {
+            self.SetSiblingIndex(panelIndex);
+        } else if (index > panelIndex + 1) {
+            self.SetSiblingIndex(panelIndex + 1);
         }
     }
 }
