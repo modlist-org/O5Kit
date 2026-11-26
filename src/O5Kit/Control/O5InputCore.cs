@@ -82,6 +82,10 @@ public class O5InputCore {
 
         _hasFocused = focused;
         O5InputBlocker.SetFocused(focused, focused ? InputField.gameObject : null);
+        try {
+            UnityEngine.Input.imeCompositionMode = focused ? IMECompositionMode.On : IMECompositionMode.Auto;
+        } catch {
+        }
 
         UpdateCaretAnimation(focused);
         UpdatePlaceholder(focused);
@@ -218,6 +222,10 @@ public class O5InputCore {
         if (_hasFocused) {
             _hasFocused = false;
             O5InputBlocker.SetFocused(false);
+            try {
+                UnityEngine.Input.imeCompositionMode = IMECompositionMode.Auto;
+            } catch {
+            }
         }
 
         _caretLooping = false;
