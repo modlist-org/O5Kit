@@ -1,0 +1,27 @@
+# O5Kit Agent Guidelines
+
+- **Purpose:** Standalone Unity uGUI + input toolkit extracted from Overlayer v5 (`O5Kit.1.0.dll`, LGPL-3.0-or-later). Read [`llms.txt`](llms.txt) for consumer copy-paste templates and complete API reference.
+- **No Shared Statics:** Every consumer creates its own `O5Context` (owns `O5Config`, `O5Theme`, `O5ShapeSprites`, `ISpriteProvider`, `IFontProvider`, `ITweenRunner`, `O5Tooltip`) and passes it to `O5Canvas`, `O5WindowManager`, and `O5Factory`.
+- **Two Configurations (`O5Kit.csproj`):**
+  - Mono: `Release_Mono` / `Debug_Mono` -> `netstandard2.1`
+  - IL2CPP: `Release_IL2CPP` / `Debug_IL2CPP` -> `net6.0`, defines `IL2CPP`, aliases `TMPro` to `Il2CppTMPro`
+  - Side-by-side identity: `<AssemblyName>` auto-derives `O5Kit.{major}.{minor}` (currently `O5Kit.1.0.dll`). XML docs (`O5Kit.1.0.xml`) are generated beside the DLL.
+- **Mono & Pure-.NET Constraints:**
+  - Keep math/config/palette/eval logic decoupled from `UnityEngine.UI` / `UnityEngine.UIModule` (or isolate UI types inside nested classes as in `O5ColorSpace.Runtime`) so pure-.NET `O5Kit.Tests` runs without a Unity player.
+  - Only call BCL APIs present in Unity's Mono runtime (avoid `MemoryExtensions.Contains` Span overloads on `IReadOnlyList<T>`).
+- **IL2CPP Interop Invariants:**
+  - Under `#if IL2CPP`, native Unity `Graphic`/`Component`/`Transform` wrappers returned by Unity APIs may proxy the base type (`Graphic`, `Transform`), so check concrete/injected types with `TryCast<T>()` (or `UnityUtils.AsRectTransform(transform)` / `UnityUtils.TryCastComponent<T>(comp)`; guard stripped native components via `UnityUtils.IsComponentTypeAvailable<T>()` / `UnityUtils.SafeGetComponent<T>(go)`) rather than bare C# casts/`is`/`as`/`is not`.
+  - Use `UnityUtils.GetWorldCornersSafe(rect, corners)` instead of `rect.GetWorldCorners(Vector3[])` (IL2CPP discards writebacks to managed `Vector3[]`).
+  - `ClassInjector` skips native base constructors on IL2CPP-injected subclasses: call `UnityUtils.InitInjectedMaskableGraphic(g)` after `AddComponent` on injected `MaskableGraphic` subclasses (initializes `m_Maskable`, `m_Corners`, `m_OnCullStateChanged`), and `UnityUtils.InitInjectedTMPInputField(f)` on injected `TMP_InputField` subclasses (called automatically by `O5Factory.Input` when `FieldFactory` is set; also call at top of `OnEnable()`).
+  - Never call `base.VirtualMethod()` inside an `override` of a native Unity virtual method on an IL2CPP-injected subclass (`Il2CppInterop` dispatches virtually and causes infinite recursion / `StackOverflowException`). Use `UnityUtils.InvokeBaseMethod(this, nativeMethodPtr, ...)` for non-virtual base calls.
+  - When deployed into MelonLoader `UserLibs/`, injected `[RegisterTypeInIl2Cpp]` behaviours in `O5Kit.Behaviour` are NOT auto-scanned by MelonLoader. `O5Context.RegisterIl2CppTypes()` registers all 7 (`EmptyGraphic`, `DragHandler`, `NonRaycastButton`, `OventHandler`, `ResizeHandle`, `ResizeFrameFollower`, `UIScrollController`) idempotently and is called automatically by `new O5Context(...)`; update `O5Context.RegisterIl2CppTypes()` whenever adding a new `[RegisterTypeInIl2Cpp]` behaviour in `O5Kit`.
+  - Use `DelegateSupport.ConvertDelegate<TDelegate>(...)` when subscribing C# delegates to IL2CPP Unity events (`Canvas.willRenderCanvases`, button events, etc.).
+- **Color Space Parity (`O5ColorSpace`):**
+  - `O5Canvas` and `O5Context`'s drag blocker wire `O5ColorSpace` automatically. Never mutate `Graphic.color` for Linear-space compensation; compensate via `CanvasRenderer.SetColor` + `Canvas.vertexColorAlwaysGammaSpace` inside `O5ColorSpace`.
+- **Verification:**
+  - Pure-.NET tests (no Unity player needed): `./test.sh`
+  - Native math library (optional, Zig 0.17+): `./native/build.sh`
+  - Mono + IL2CPP builds (against `Directory.Build.props` / sibling `../O5Dev`):
+    - `dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono`
+    - `dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP`
+  - Full live Unity 6 host verification (Mono + IL2CPP, when sibling `../O5Dev` exists): `../O5Dev/o5dev mod all && ../O5Dev/o5dev test && ../O5Dev/o5dev verify all`

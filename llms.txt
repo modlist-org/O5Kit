@@ -1,0 +1,222 @@
+# O5Kit Agent Reference (llms.txt)
+
+O5Kit (`O5Kit.1.0.dll`, namespace root `O5Kit`, LGPL-3.0-or-later) is a self-contained runtime uGUI toolkit for Unity mods (Mono `netstandard2.1` + IL2CPP `net6.0` MelonLoader). No Editor prefabs or game assets are required: rounded 9-slice sprites, icons, SUIT/JetBrains Mono fonts, input handling, tooltips, and tweens are bundled.
+
+---
+
+## 1. Project Setup
+
+### Reference from a Mod `.csproj`
+Map mod configurations to O5Kit configurations (`*_Mono` for Mono, `*_IL2CPP` for IL2CPP):
+
+```xml
+<PropertyGroup>
+  <_O5KitConfig Condition="$(Configuration.Contains('IL2CPP'))">$(Configuration.Replace('_ML_IL2CPP', '_IL2CPP'))</_O5KitConfig>
+  <_O5KitConfig Condition="!$(Configuration.Contains('IL2CPP'))">$(Configuration.Replace('_ML', '_Mono'))</_O5KitConfig>
+</PropertyGroup>
+
+<ItemGroup>
+  <ProjectReference Include="../O5Kit/src/O5Kit/O5Kit.csproj">
+    <SetConfiguration>Configuration=$(_O5KitConfig)</SetConfiguration>
+    <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    <Private>true</Private>
+  </ProjectReference>
+</ItemGroup>
+```
+
+Deploy `O5Kit.1.0.dll` to MelonLoader `UserLibs/` (next to the game's `Mods/` folder) so multiple mods share one assembly copy. Ship `LICENCE.md` (LGPL-3.0-or-later).
+
+### Build Properties (`Directory.Build.props`)
+Copy `Directory.Build.example.props` to `Directory.Build.props`. Against sibling `O5Dev`:
+- Mono: `GamePath=../O5Dev/Builds/Mono`, `GameData=O5Dev_Data`
+- IL2CPP: `Il2CppPath=../O5Dev/Builds/IL2CPP`, `Il2CppData=../O5Dev/Builds/IL2CPP/MelonLoader/Il2CppAssemblies`
+
+### IL2CPP Startup Registration
+MelonLoader does not auto-scan `UserLibs/` for `[RegisterTypeInIl2Cpp]`. `O5Context.RegisterIl2CppTypes()` registers all 7 O5Kit behaviours (`EmptyGraphic`, `DragHandler`, `NonRaycastButton`, `OventHandler`, `ResizeHandle`, `ResizeFrameFollower`, `UIScrollController`) idempotently and is called **automatically** by `new O5Context(...)` (safe no-op on Mono). Only call `O5Context.RegisterIl2CppTypes()` explicitly if you add an O5Kit behaviour before constructing an `O5Context`.
+
+Also pass `--no-nographics` (normal GUI mode) or desktop player; TMPro shaders + TMP Essential Resources must exist in the host game (present in `O5Dev` and standard Unity games).
+
+---
+
+## 2. Minimal End-to-End Mod Template
+
+```csharp
+using System;
+using System.Collections.Generic;
+using MelonLoader;
+using O5Kit.Control;
+using O5Kit.Core;
+using O5Kit.Factory;
+using O5Kit.Input;
+using UnityEngine;
+
+public sealed class ExampleMod : MelonMod {
+    private O5Context? _ctx;
+    private O5WindowManager? _windows;
+    private O5Window? _win;
+    private GameObject? _root;
+    private readonly List<O5Object> _controls = new();
+
+    public override void OnInitializeMelon() {
+        // Automatically calls O5Context.RegisterIl2CppTypes() on IL2CPP builds.
+        _ctx = new O5Context(
+            config: new O5Config { UIScale = 1f },
+            theme: O5Theme.Overlayer // or O5Theme.Dark / O5Theme.Light
+        );
+
+        _root = new GameObject("ExampleModUI");
+        UnityEngine.Object.DontDestroyOnLoad(_root);
+
+        _windows = O5WindowManager.Create(_ctx, _root.transform, "ExampleWindows");
+        _win = _windows.Create(new O5WindowOptions {
+            Title = "My Mod",
+            Size = new Vector2(680f, 540f),
+            Resizable = true,
+            MinSize = new Vector2(420f, 360f),
+        });
+        _win.CloseRequested += w => w.Rect.gameObject.SetActive(false);
+        _win.Rect.gameObject.SetActive(true);
+
+        var (_, content, _) = O5Factory.ScrollView(_ctx, _win.Content, spacing: 8f);
+
+        var helloBtn = O5Factory.Button(_ctx, O5Factory.Row(_ctx, content), "btn_hello", o => {
+            o.Text = "Click me";
+            o.OnClick = () => MelonLogger.Msg("Clicked");
+        });
+        helloBtn.Rect.AddToolTip(_ctx, "Button tooltip");
+        _controls.Add(helloBtn);
+
+        _controls.Add(O5Factory.Toggle(_ctx, O5Factory.Row(_ctx, content), "tgl_enabled", o => {
+            o.Text = "Enabled";
+            o.DefaultValue = true;
+            o.Value = true;
+            o.OnChanged = v => _ctx.NotifyEnabledChanged(v);
+        }));
+
+        _controls.Add(O5Factory.Slider(_ctx, O5Factory.Row(_ctx, content), "sld_scale", o => {
+            o.Label = "Scale";
+            o.Min = 0.5;
+            o.Max = 2.0;
+            o.DefaultValue = 1.0;
+            o.Value = 1.0;
+            o.Format = "F2";
+            o.OnChanged = v => _ctx.Config.UIScale = (float)v;
+            o.OnComplete = v => _windows.Canvas.ApplyScale((float)v);
+        }));
+
+        O5ShortcutManager.Register("toggle_ui", new O5KeyCombo(KeyCode.F9), onPressed: _ => {
+            if (_win != null && !_win.IsDisposed) {
+                var go = _win.Rect.gameObject;
+                go.SetActive(!go.activeSelf);
+            }
+        });
+    }
+
+    public override void OnUpdate() {
+        O5Object.TickAll();
+        if (_windows != null) {
+            _ctx?.Shapes.Tick(_windows.Canvas.Canvas.scaleFactor);
+        }
+        _ctx?.Tooltip.Tick();
+        O5ShortcutManager.HandleUpdate();
+    }
+
+    public override void OnDeinitializeMelon() {
+        O5ShortcutManager.Unregister("toggle_ui");
+        foreach (var c in _controls) c.Dispose();
+        _controls.Clear();
+        _windows?.Dispose();
+        _ctx?.Dispose();
+        if (_root) UnityEngine.Object.Destroy(_root);
+    }
+}
+```
+
+---
+
+## 3. Core Lifecycle & Architecture
+
+### `O5Context` (`O5Kit.Core`)
+Owned per consumer. Constructor parameters are all optional:
+`new O5Context(O5Config? config = null, O5Theme? theme = null, O5SpriteStyle? spriteStyle = null, ISpriteProvider? sprites = null, IFontProvider? fonts = null, ITweenRunner? tween = null, O5ShapeSprites? shapes = null)`
+- `ctx.SetTheme(O5Theme theme)` updates live controls via `ThemeTransitioned` / `ThemeChanged`.
+- `ctx.NotifyEnabledChanged(bool enabled)` drives any control with `control.EnabledWhen = () => ...`.
+- `ctx.Tooltip.Initialize(Transform parent)` (called manually if using `O5Canvas` directly; `O5Window` / `O5Factory` tooltip triggers call `ctx.Tooltip.Show(...)` / `Hide()`).
+
+### `O5Canvas` & `O5WindowManager` (`O5Kit.Core`)
+- `O5Canvas.Create(ctx, parent, name = "O5Canvas")` creates a `ScreenSpaceOverlay` Canvas (`sortingOrder = 32767`), `CanvasScaler` (1920x1080 base), `GraphicRaycaster`, tracks `ctx.Shapes`, and calls `O5ColorSpace.Track(canvas)`.
+  - `canvas.ApplyScale(float scale)`
+  - `canvas.Dispose()` untracks `O5ColorSpace` and destroys `Root`.
+- `O5WindowManager.Create(ctx, parent, name = "O5Windows")` wraps an `O5Canvas` and z-order focus handling.
+  - `manager.Create(O5WindowOptions)`
+  - `manager.BringToFront(window)`, `manager.Destroy(window)`, `manager.Dispose()`
+- `O5WindowOptions`:
+  `Id`, `Title` (`"Window"`), `Size` (`640x480`), `Position` (`Vector2?`), `Icon` (`Sprite?`), `IconSize` (`40`), `ShowCloseButton` (`true`), `Draggable` (`true`), `MinSize` (`900x500`), `Resizable` (`false`), `ShowOutline` (`true`), `ClipContent` (`false`), `TopBarHeight` (`60`), `Padding` (`12,12,12,12`), `PanelColor` (`Color?`), `TopBarColor` (`Color?`), `TitleFontSize` (`float?`), `TitleColor` (`Color?`), `BringToFrontOnFocus` (`true`).
+  - `window.Content` is the `RectTransform` to place controls into (typically via `O5Factory.ScrollView(ctx, window.Content, ...)`).
+  - `window.CloseRequested` fires on X click (`O5Kit` never auto-closes windows).
+
+### `O5ColorSpace` (`O5Kit.Core`)
+Guarantees Gamma-identical UI colors even in Linear-color-space Unity games (`QualitySettings.activeColorSpace == ColorSpace.Linear`):
+- `O5Canvas.Create` and `O5Context` drag blocker call `O5ColorSpace.Track` / `EnableGammaVertexColors` automatically.
+- If you create your own `Canvas` (custom overlays/popups), call `O5ColorSpace.Track(canvas)` on create and `O5ColorSpace.Untrack(canvas)` on destroy.
+- Never alter `Graphic.color` directly for Linear games; `O5ColorSpace` sets `Canvas.vertexColorAlwaysGammaSpace = true` and adjusts `CanvasRenderer.SetColor(...)` (excluding `EmptyGraphic`, `Mask` with `showMaskGraphic = false`, and compositing semi-transparent ancestors onto opaque surfaces).
+
+---
+
+## 4. Factories & Controls (`O5Kit.Factory`, `O5Kit.Control`)
+
+Every `O5Factory` control takes `(O5Context ctx, Transform parent, string id, *Options? options = null)` or `(O5Context ctx, Transform parent, string id, Action<*Options> configure)`.
+
+Keep references to returned `O5Object` controls if you want to inspect `.Value`, call `.Set(val, notify)`, `.Reset(notify)`, `.SetBlocked(blocked, noAnimate)`, or `.Dispose()`.
+Note: if a control's `Rect` is placed under `O5Factory.Row(...)`, pass the `row` `RectTransform` as `parent`, or add controls directly inside `O5Factory.ScrollView(...)`'s `content` (each control's root has a `LayoutElement` sized from `ctx.Theme.ControlHeightFor(...)`).
+
+| Control | Options Class | Key Options Properties | Control Methods / Properties |
+|---|---|---|---|
+| `O5Factory.Button` | `O5ButtonOptions` | `Text`, `Icon` (`O5Icon?`), `IconPadding` (`5`), `Height`, `OnClick` | `Text`, `OnClick`, `NormalColor`, `SetIcon(O5Icon)`, `Click(notify)` |
+| `O5Factory.Toggle` | `O5ToggleOptions` | `Text`, `Value` (`false`), `DefaultValue` (`bool?`), `OnChanged` | `Value`, `Text`, `DefaultValue`, `Set(val, notify)`, `Toggle(notify)`, `Reset(notify)` |
+| `O5Factory.Slider` | `O5SliderOptions` | `Label`, `Min` (`0`), `Max` (`100`), `Value`, `DefaultValue` (`double?`), `Format` (`"F2"`), `ClampDrag` (`true`), `ClampInput` (`true`), `InputMin`, `InputMax`, `DragFilter`, `InputFilter`, `Scale` (`IValueScale?`, e.g. `O5ValueScale.Log`), `ShowFill` (`true`), `DragStep`, `BlockHoverWhileDragging` (`true`), `OnChanged`, `OnComplete` | `Value`, `Min`, `Max`, `Set(val, notify)`, `SetNormalized(t, notify)`, `Reset(notify)`, `SetDefaultValue(val)` |
+| `O5Factory.Input` | `O5InputOptions` | `Value`, `DefaultValue`, `Placeholder`, `Icon`, `Multiline`, `Monospace`, `FieldFactory`, `OnChanged`, `OnEndEdit` | `Value`, `InputField`, `Set(val, notify)`, `Reset(notify)`, `SetIcon(O5Icon)` |
+| `O5Factory.DropDown<T>` | `O5DropdownOptions<T>` | `Values`, `Value`, `DefaultValue`, `Display` (`Func<T,string>`), `ShowIndexIndicator` (`true`), `OnChanged` | `Value`, `Expanded`, `Set(val, notify)`, `SetValues(vals, notify)`, `SetExpanded(bool)`, `Reset(notify)` |
+| `O5Factory.MultiDropDown<T>` | `O5MultiDropdownOptions<T>` (`T : struct, Enum`) | `Values`, `Value`, `DefaultValue`, `Display`, `Summary`, `OnChanged` | `Value`, `Set(val, notify)`, `Toggle(flag, notify)`, `SetValues(vals)`, `SetExpanded(bool)`, `Reset(notify)` |
+| `O5Factory.Segmented<T>` | `O5SegmentedOptions<T>` | `Values`, `Value`, `DefaultValue`, `Display`, `Height`, `FontSize`, `NormalColor`, `ActiveColor`, `BorderColor`, `OnChanged` | `Value`, `Set(val, notify)`, `SetValues(vals)`, `Reset(notify)` |
+| `O5Factory.ColorPicker` | `O5ColorPickerOptions` | `CanvasRect` (**required**: `windows.Canvas.Root.GetComponent<RectTransform>()`), `CanvasCamera` (`null` for Overlay), `Label`, `Value` (`Color.white`), `DefaultValue`, `OnChanged`, `OnComplete` | `Value`, `Expanded`, `Set(color, notify)`, `SetExpanded(bool)`, `SetMode(O5ColorMode)`, `Reset(notify)` |
+| `O5SpriteEditor.Create(ctx, canvasRoot, opts)` | `O5SpriteEditorOptions` | `ValuesFormat`, `HintEmpty`, `Left/Right/Bottom/TopLabel`, `CancelLabel`, `ApplyLabel`, `Size` | `Border`, `Window`, `Open(tex, border, title)`, `Close()`, `Applied`, `Canceled` |
+
+### Layout, Containers & Helpers
+- `O5Factory.ScrollView(ctx, parent, spacing = 12f, padding = 0f, expandLayout = false, viewportOffsetMin = null, viewportOffsetMax = null, contentPadding = null)` -> `(RectTransform viewport, RectTransform content, UIScrollController scroller)`
+- `O5Factory.Row(ctx, parent, height = null)` -> `RectTransform`
+- `O5Factory.Card(ctx, parent, title, activeValue, onActiveChanged, onDeleteClick, showDeleteButton = true, showActiveToggle = true)` -> `(RectTransform cardRect, RectTransform contentRect)`
+- `O5Factory.ControlBackground(ctx, parent, height = null)` -> `RectTransform`
+- `O5Factory.ControlText(ctx, parent, fontSize, noPad = false)` -> `TMPro.TextMeshProUGUI`
+- `O5Factory.ControlTextH1(ctx, parent)` -> `TMPro.TextMeshProUGUI`
+- `targetRect.AddToolTip(ctx, "text")` or `targetRect.AddToolTip(ctx, () => "dynamic")`
+- `O5PageSwitcher.SwitchPage(ctx, pagesDict, fromIdx, toIdx, deactivateHidden = false)`
+- `O5FactoryIcons.CreateIcon(...)` & `O5Icons`: `O5Icons.FromContext(ctx, O5Icons.Circle | ToggleCircle | Triangle | X)`
+
+---
+
+## 5. Theme, Palette, Tweens, Shortcuts & Evaluator
+
+- **Built-in Themes:** `O5Theme.Dark`, `O5Theme.Light`, `O5Theme.Overlayer`, `O5Theme.OverlayerStatic`.
+- **Single-Hue Derivation:** `O5Palette.FromMonochrome(baseColor)` or `theme with { PanelBG = ..., ObjectActive = ... }`; OKLCH helper `O5Palette.ShadeOklch(baseColor, chroma, lightness, alpha)`.
+- **Tweens (`ctx.Tween`):** `TweenFloat`, `TweenColor`, `TweenAlpha`, `TweenAnchorPos`, `TweenSizeDelta`, `TweenScale`, `TweenOffsetMin`, `Delay`, and `O5Ease` (`Linear`, `In/Out/InOutSine`, `Quad`, `Cubic`, `OutExpo`, `OutBack`, etc.).
+- **Config (`O5Config`):** `UIScale`, `TooltipEnabled`, `TooltipOpacity`, `MiddleClickToDefault`, `SliderSensitivity`, `ScrollSensitivity`, `AnimationSpeed` (`0` = instant), `ScrollEasing`.
+- **Shortcuts (`O5ShortcutManager`):** `Register(id, new O5KeyCombo(KeyCode.K, KeyCode.LeftControl), holdSeconds, onPressed, onHeld, onReleased)`, `HandleUpdate()` per frame, `IsSuspended` to pause hotkeys while typing.
+- **Math Evaluator (`O5Kit.Eval.Evaluator<T>`):** `var (result, state) = Evaluator<double>.Evaluate("1+2*PI", current, min, max);` (uses `O5KitNative` when present, falls back to built-in C# parser).
+
+---
+
+## 6. Verification Commands
+
+```bash
+# 1. Run pure-.NET unit tests
+./test.sh
+
+# 2. Build Mono / IL2CPP (creates O5Kit.1.0.dll + O5Kit.1.0.xml)
+dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
+dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
+
+# 3. Live Unity 6 verification suite — Mono + IL2CPP (if ../O5Dev exists)
+../O5Dev/o5dev mod all
+../O5Dev/o5dev verify all
+```

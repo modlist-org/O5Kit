@@ -16,62 +16,81 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
 
 </div>
 
+> [!TIP]
+> Using an AI coding agent with O5Kit? Point it at [`llms.txt`](llms.txt) (consumer API + copy-paste mod template) and [`AGENTS.md`](AGENTS.md) (build/IL2CPP invariants).
+
 # 🛠️ Installation
 
 ## 📦 From source
 
-> [!IMPORTANT]
-> You must clone with submodules. Without them the build fails at `CheckLitMotion`.
-
-1. Clone with submodules (or init them afterwards):
+1. Clone O5Kit (with submodules if building optional LitMotion support):
    ```bash
    git clone --recurse-submodules <this-repo-url>
-   # or: git submodule update --init --depth 1
    ```
-2. Copy `Directory.Build.example.props` to `Directory.Build.props` and fill in your game paths (`GamePath`/`GameData`, optionally `Il2CppPath`/`Il2CppData`).
-3. Build the configuration that matches your game:
+2. Copy [`Directory.Build.example.props`](Directory.Build.example.props) to `Directory.Build.props` and fill in your game or sibling [`O5Dev`](https://github.com/modlist-org/O5Dev) paths (`GamePath`/`GameData`, and `Il2CppPath`/`Il2CppData` for IL2CPP).
+3. Build the configuration that matches your game (emits both `O5Kit.1.0.dll` and XML docs `O5Kit.1.0.xml`):
    ```bash
    dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
    dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
    ```
-4. Native math lib (needs `zig` 0.17+): `./native/build.sh` (`./native/build.sh x86_64-windows` to cross). Output lands in `native/zig-out/lib` as `O5KitNative.<os>.<ext>`. The native C ABI (`o5_*`) is frozen — additive only, gated by `o5_abi_version` — because all mods share one loaded copy (first-win). Managed binding resolves symbols explicitly from the loaded handle and falls back to C# when unavailable.
+4. Unit tests (runs without a Unity game install):
+   ```bash
+   ./test.sh
+   ```
+5. Optional native math library (needs `zig` 0.17+): `./native/build.sh` (`./native/build.sh x86_64-windows` to cross). Output lands in `native/zig-out/lib` as `O5KitNative.<os>.<ext>`. The native C ABI (`o5_*`) is frozen — additive only, gated by `o5_abi_version` — because all mods share one loaded copy (first-win). Managed binding resolves symbols explicitly from the loaded handle and falls back to C# when unavailable.
 
 # ⌨️ Usage
 ### Setup
-* **Configure once:** Call `O5Boot.Configure(...)` at startup with your `O5Config`, `O5Theme`, `ISpriteProvider`, `IFontProvider`. The tween backend defaults to `AutoTweenRunner`: LitMotion first (compiled-in on IL2CPP, game-shipped via reflection otherwise — always probed before use, never throws), then the built-in GTweens backend.
+* **Create an isolated `O5Context`:** Every consumer owns its own context (no shared statics across mods). Bundled sprites, scale-aware shape rasterizer, SUIT/JetBrains Mono fonts, and GTweens fallback work out of the box when optional parameters are omitted:
   ```csharp
-  O5Kit.Core.O5Boot.Configure(
+  var ctx = new O5Kit.Core.O5Context(
       config: new O5Kit.Core.O5Config { UIScale = 1f },
-      sprites: new MySpriteProvider(),
-      fonts: new MyFontProvider());
+      theme: O5Kit.Core.O5Theme.Overlayer // or O5Theme.Dark / O5Theme.Light
+  );
   ```
-* **Or zero-setup:** `O5Kit.Core.O5Boot.EnsureDefaults()` installs bundled artwork, fonts and the built-in tween backend. No adapters needed to try controls.
-* **Theme:** swap presets or derive your own at runtime:
+* **Theme:** swap presets or derive single-hue monochrome variants with `O5Palette.FromMonochrome(...)`:
   ```csharp
-  O5Kit.Core.O5Boot.SetTheme(O5Kit.Core.O5Theme.Dark with { PanelBG = new Color(0.1f, 0.1f, 0.15f, 1f) });
+  ctx.SetTheme(O5Kit.Core.O5Theme.Dark with { PanelBG = new Color(0.1f, 0.1f, 0.15f, 1f) });
   ```
-  Applies to subsequently created controls; rebuild UI to restyle. Presets: `Dark`, `Light`, `Overlayer`.
+  Live controls update via `ThemeTransitioned` / `ThemeChanged`.
 * **Fonts:** load custom font files (missing slots fall back gracefully):
   ```csharp
-  O5Kit.Core.O5Boot.Configure(fonts: new O5Kit.Core.FileFontProvider(regularBytes, monoBytes));
+  var ctx = new O5Kit.Core.O5Context(fonts: new O5Kit.Core.FileFontProvider(regularBytes, mediumBytes, monoBytes));
   ```
-* **Create controls:** Use `O5Kit.Factory.O5Factory` (e.g. `Button(parent, onClick, "Hello", "btn_hello")`) or instantiate controls (`O5Button`, ...) directly.
-* **Windows:** Use `O5Kit.Core.O5WindowManager` for multi-window UI. O5Kit manages structure and z-order; visibility and open/close animation are yours (the close button raises `CloseRequested` instead of closing):
+* **Create controls:** Use `O5Kit.Factory.O5Factory` with `*Options` or inline configure lambdas:
   ```csharp
-  var windows = O5Kit.Core.O5WindowManager.Create(modRoot);
-  var win = windows.Create(new O5Kit.Core.O5WindowOptions { Title = "Hello", Icon = null });
+  var btn = O5Kit.Factory.O5Factory.Button(ctx, row, "btn_hello", o => {
+      o.Text = "Hello";
+      o.OnClick = () => MelonLogger.Msg("Clicked");
+  });
+  ```
+  Available controls: `Button`, `Toggle`, `Slider`, `Input`, `DropDown<T>`, `MultiDropDown<T>`, `Segmented<T>`, `ColorPicker`, `Card`, `ScrollView`, and `O5SpriteEditor`.
+* **Windows:** Use `O5Kit.Core.O5WindowManager` (wraps `O5Canvas` + `O5ColorSpace` Linear/Gamma color parity + `O5ShapeSprites` scale tracking). Visibility and open/close animation are yours (`CloseRequested` fires when X is clicked):
+  ```csharp
+  var windows = O5Kit.Core.O5WindowManager.Create(ctx, modRoot);
+  var win = windows.Create(new O5Kit.Core.O5WindowOptions { Title = "Hello", Resizable = true });
   win.CloseRequested += w => w.Rect.gameObject.SetActive(false);
   win.Rect.gameObject.SetActive(true);
-  var row = O5Kit.Factory.O5Factory.Row(win.Content);
+  var (_, content, _) = O5Kit.Factory.O5Factory.ScrollView(ctx, win.Content, spacing: 8f);
   ```
-* **Tick every frame:** Call `O5Kit.Core.O5Object.TickAll()` and `O5Kit.Core.O5Tooltip.Tick()` from your update loop.
-* **Hotkeys:** register named shortcuts (press + optional hold) and pump them:
+* **Tick every frame:** Pump live controls, scale-aware sprites, tooltips, and shortcuts from `OnUpdate`:
   ```csharp
-  O5Kit.Input.O5ShortcutManager.Register("toggle", new O5Kit.Input.O5KeyCombo(KeyCode.BackQuote, KeyCode.LeftAlt), 0.4f, onPressed: _ => Toggle(), onHeld: _ => Reset());
+  O5Kit.Core.O5Object.TickAll();
+  ctx.Shapes.Tick(windows.Canvas.Canvas.scaleFactor);
+  ctx.Tooltip.Tick();
+  O5Kit.Input.O5ShortcutManager.HandleUpdate();
   ```
-  Pump with `O5ShortcutManager.HandleUpdate()` each frame; gate with `IsSuspended`. Combos stay rebindable via `Get(id).Combo`.
+* **Hotkeys:** register named shortcuts (press + optional hold):
+  ```csharp
+  O5Kit.Input.O5ShortcutManager.Register(
+      "toggle",
+      new O5Kit.Input.O5KeyCombo(KeyCode.BackQuote, KeyCode.LeftAlt),
+      holdSeconds: 0.4f,
+      onPressed: _ => Toggle(),
+      onHeld: _ => Reset());
+  ```
 > [!NOTE]
-> O5Kit targets `netstandard2.1` (Mono) and `net6.0` (IL2CPP). `*_IL2CPP` configurations define the `IL2CPP` symbol automatically, which enables the MelonLoader/Il2CppInterop code paths (`RegisterTypeInIl2Cpp`, `DelegateSupport`, `TryCast` — same pattern as Overlayer's `ML && IL2CPP` blocks). IL2CPP builds reference the `MelonLoader/net6` assemblies via `GamePath`. IL2CPP support is implemented for the future; it has not been verified against an IL2CPP game yet.
+> O5Kit targets `netstandard2.1` (Mono) and `net6.0` (IL2CPP). `*_IL2CPP` configurations define `IL2CPP` and alias `TMPro` to `Il2CppTMPro`. When deploying `O5Kit.1.0.dll` in `UserLibs/` on IL2CPP, register the 6 `O5Kit.Behaviour` types via `ClassInjector.RegisterTypeInIl2Cpp<...>()` at startup (see [`llms.txt`](llms.txt#mandatory-il2cpp-startup-registration)).
 
 # 🔀 Multi-mod coexistence (versioned side-by-side)
 
@@ -81,7 +100,7 @@ Rule: **put the version in the assembly name; mods on the same version share one
 
 ```bash
 dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
-# output: O5Kit.1.0.dll (name auto-derived from <Version>, namespaces stay O5Kit)
+# output: O5Kit.1.0.dll + O5Kit.1.0.xml (name auto-derived from <Version>, namespaces stay O5Kit)
 ```
 
 - Mods referencing the same `O5Kit.1.0` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
@@ -95,7 +114,7 @@ dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
 # 🧩 [Overlayer](https://github.com/modlist-org/Overlayer)
 O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library and keeps all game-specific logic (FxValue, tags, modules) on its own side.
 > [!NOTE]
-> O5Kit is a library and cannot run standalone. Reference it from your mod and provide the resource adapters.
+> O5Kit is a library and cannot run standalone. Reference it from your mod and use `O5Context` + `O5WindowManager`.
 
 # ⚖️ Licenses
 ### O5Kit
@@ -107,7 +126,7 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 - The O5Kit logo is a placeholder. `o5kit_logo.svg` at the repository root will be replaced with the final logo before the first release.
 
 ### Artwork
-- O5Kit bundled UI shapes and icons ([`src/O5Kit/Asset/Image`](src/O5Kit/Asset/Image)) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction (attribution is not required, though crediting the Overlayer team is greatly appreciated; see [`NOTICE.md`](src/O5Kit/Asset/NOTICE.md)).
+- O5Kit bundled UI shapes and icons ([`src/O5Kit/Asset/Image`](src/O5Kit/Asset/Image), [`src/O5Kit/Asset/Icons`](src/O5Kit/Asset/Icons)) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction (attribution is not required, though crediting the Overlayer team is greatly appreciated; see [`NOTICE.md`](src/O5Kit/Asset/NOTICE.md)).
 - O5Kit bundled fonts (SUIT, JetBrains Mono) under [OFL-1.1](https://opensource.org/licenses/OFL-1.1).
 
 ### Third-Party Code

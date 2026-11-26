@@ -26,7 +26,7 @@ internal static class OptionsTests {
         T.Eq(null, s.OnComplete, "slider OnComplete");
         T.Check(s.ShowFill, "slider ShowFill");
         T.Eq(null, s.DragStep, "slider DragStep");
-        T.Check(!s.BlockHoverWhileDragging, "slider BlockHover");
+        T.Check(s.BlockHoverWhileDragging, "slider BlockHover");
 
         var configured = new O5SliderOptions();
         Action<O5SliderOptions> cfg = o => {
