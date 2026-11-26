@@ -194,7 +194,7 @@ public class O5Button : O5Object {
     /// <inheritdoc/>
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
-        if (!blocked || IsDisposed) {
+        if (!blocked || IsDisposed || Rect == null || !Rect) {
             return;
         }
         if (_holding) {

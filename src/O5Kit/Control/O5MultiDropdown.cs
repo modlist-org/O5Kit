@@ -406,6 +406,9 @@ public class O5MultiDropdown<T> : O5Object where T : struct, Enum {
     /// <inheritdoc/>
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
+        if (IsDisposed || Rect == null || !Rect) {
+            return;
+        }
         SetExpanded(false);
     }
 

@@ -53,8 +53,10 @@ public abstract class O5Object {
     /// <summary>Lazy canvas group used for blocking and fading.</summary>
     protected CanvasGroup CanvasGroup {
         get {
-            field ??= Rect.GetComponent<CanvasGroup>() ?? Rect.gameObject.AddComponent<CanvasGroup>();
-            return field;
+            if ((field == null || !field) && Rect != null && Rect) {
+                field = Rect.GetComponent<CanvasGroup>() ?? Rect.gameObject.AddComponent<CanvasGroup>();
+            }
+            return field!;
         }
     }
 
@@ -95,7 +97,12 @@ public abstract class O5Object {
     /// <param name="blocked">True to dim and block input.</param>
     /// <param name="noAnimate">Snap instead of fading.</param>
     public virtual void SetBlocked(bool blocked, bool noAnimate = false) {
-        if (IsDisposed) {
+        if (IsDisposed || Rect == null || !Rect) {
+            return;
+        }
+
+        var group = CanvasGroup;
+        if (group == null || !group) {
             return;
         }
 
@@ -104,23 +111,23 @@ public abstract class O5Object {
         float targetAlpha = blocked ? 0.4f : 1f;
 
         if (blocked) {
-            _blockedGroups.Add(CanvasGroup);
+            _blockedGroups.Add(group);
         } else {
-            _blockedGroups.Remove(CanvasGroup);
+            _blockedGroups.Remove(group);
         }
-        CanvasGroup.interactable = !blocked;
-        CanvasGroup.blocksRaycasts = !blocked;
+        group.interactable = !blocked;
+        group.blocksRaycasts = !blocked;
 
         if (noAnimate) {
-            CanvasGroup.alpha = targetAlpha;
+            group.alpha = targetAlpha;
             return;
         }
 
         _blockTween = Ctx.Tween.TweenFloat(
-            () => CanvasGroup.alpha,
+            () => group ? group.alpha : targetAlpha,
             v => {
-                if (!IsDisposed) {
-                    CanvasGroup.alpha = v;
+                if (!IsDisposed && group) {
+                    group.alpha = v;
                 }
             },
             targetAlpha, 0.2f);

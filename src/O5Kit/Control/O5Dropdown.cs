@@ -730,6 +730,9 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
     /// <inheritdoc/>
     public override void SetBlocked(bool blocked, bool noAnimate = false) {
         base.SetBlocked(blocked, noAnimate);
+        if (IsDisposed || Rect == null || !Rect) {
+            return;
+        }
         SetExpanded(false);
     }
 
