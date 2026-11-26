@@ -26,6 +26,7 @@ static class Program {
         OptionsTests.Run();
         ThemeTests.Run();
         PaletteTests.Run();
+        ColorSpaceTests.Run();
         ConfigTests.Run();
         return T.Report();
     }

@@ -36,6 +36,7 @@ public sealed class O5Canvas : IDisposable {
         var canvas = root.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 32767;
+        O5ColorSpace.Track(canvas);
 
         var scaler = root.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -63,6 +64,7 @@ public sealed class O5Canvas : IDisposable {
         }
 
         _disposed = true;
+        O5ColorSpace.Untrack(Canvas);
         UnityEngine.Object.Destroy(Root);
     }
 }
