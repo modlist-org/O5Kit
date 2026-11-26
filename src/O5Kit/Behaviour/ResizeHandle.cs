@@ -307,6 +307,12 @@ public class ResizeFrameFollower
     /// <summary>Panel to track.</summary>
     public RectTransform? Panel;
 
+    private RectTransform? _self;
+    private RectTransform? _cachedPanel;
+    private CanvasGroup? _panelGroup;
+    private bool _hasShow;
+    private bool _lastShow;
+
     private void LateUpdate() => Sync();
 
     /// <summary>Copies the panel's layout, visibility and sibling order onto this frame.</summary>
@@ -316,25 +322,46 @@ public class ResizeFrameFollower
             return;
         }
 
-        var self = (RectTransform)transform;
+        _self ??= transform.AsRectTransform();
+        var self = _self;
+        if (self == null) {
+            return;
+        }
+
+        if (_cachedPanel != Panel) {
+            _cachedPanel = Panel;
+            _panelGroup = Panel.GetComponent<CanvasGroup>();
+            _hasShow = false;
+        }
+
         if (self.parent != Panel.parent) {
             self.SetParent(Panel.parent, false);
         }
 
-        self.anchorMin = Panel.anchorMin;
-        self.anchorMax = Panel.anchorMax;
-        self.pivot = Panel.pivot;
-        self.sizeDelta = Panel.sizeDelta;
-        self.anchoredPosition = Panel.anchoredPosition;
-        self.localScale = Panel.localScale;
-        self.localRotation = Panel.localRotation;
+        Vector2 anchorMin = Panel.anchorMin;
+        if (self.anchorMin != anchorMin) self.anchorMin = anchorMin;
+        Vector2 anchorMax = Panel.anchorMax;
+        if (self.anchorMax != anchorMax) self.anchorMax = anchorMax;
+        Vector2 pivot = Panel.pivot;
+        if (self.pivot != pivot) self.pivot = pivot;
+        Vector2 sizeDelta = Panel.sizeDelta;
+        if (self.sizeDelta != sizeDelta) self.sizeDelta = sizeDelta;
+        Vector2 anchoredPos = Panel.anchoredPosition;
+        if (self.anchoredPosition != anchoredPos) self.anchoredPosition = anchoredPos;
+        Vector3 localScale = Panel.localScale;
+        if (self.localScale != localScale) self.localScale = localScale;
+        Quaternion localRot = Panel.localRotation;
+        if (self.localRotation != localRot) self.localRotation = localRot;
 
-        CanvasGroup? group = Panel.GetComponent<CanvasGroup>();
-        bool show = Panel.gameObject.activeSelf && (group == null || group.blocksRaycasts);
-        for (int i = 0; i < self.childCount; i++) {
-            GameObject child = self.GetChild(i).gameObject;
-            if (child.activeSelf != show) {
-                child.SetActive(show);
+        bool show = Panel.gameObject.activeSelf && (_panelGroup == null || _panelGroup.blocksRaycasts);
+        if (!_hasShow || _lastShow != show) {
+            _hasShow = true;
+            _lastShow = show;
+            for (int i = 0; i < self.childCount; i++) {
+                GameObject child = self.GetChild(i).gameObject;
+                if (child.activeSelf != show) {
+                    child.SetActive(show);
+                }
             }
         }
 

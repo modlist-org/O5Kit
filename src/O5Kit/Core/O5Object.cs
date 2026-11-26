@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using O5Kit.Behaviour;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -236,16 +237,24 @@ public abstract class O5Object {
     private void PlaceChangeBar(Image bar) {
         var rect = bar.rectTransform;
         rect.SetAsLastSibling();
-        Rect.GetWorldCorners(_corners);
+        Rect.GetWorldCornersSafe(_corners);
         float controlLeft = _corners[0].x;
         float? center = null;
         for (Transform? t = Rect.parent; t != null; t = t.parent) {
-            if (t is not RectTransform ancestor) {
+            var ancestor = t.AsRectTransform();
+            if (ancestor == null) {
                 continue;
             }
             var group = ancestor.GetComponent<LayoutGroup>();
-            if (group != null && group.enabled && group.padding.left > 0 && group is not HorizontalLayoutGroup) {
-                ancestor.GetWorldCorners(_corners);
+            bool isHorizontal = group != null && (
+#if IL2CPP
+                group.TryCast<HorizontalLayoutGroup>() != null
+#else
+                group is HorizontalLayoutGroup
+#endif
+            );
+            if (group != null && group.enabled && group.padding.left > 0 && !isHorizontal) {
+                ancestor.GetWorldCornersSafe(_corners);
                 float scale = ancestor.lossyScale.x;
                 center = _corners[0].x + group.padding.left * 0.5f * scale;
                 break;
@@ -254,10 +263,11 @@ public abstract class O5Object {
         if (center == null) {
             float prevLeft = controlLeft;
             for (Transform? t = Rect.parent; t != null; t = t.parent) {
-                if (t is not RectTransform ancestor) {
+                var ancestor = t.AsRectTransform();
+                if (ancestor == null) {
                     continue;
                 }
-                ancestor.GetWorldCorners(_corners);
+                ancestor.GetWorldCornersSafe(_corners);
                 float left = _corners[0].x;
                 if (left < prevLeft - 0.5f * Mathf.Max(0.0001f, ancestor.lossyScale.x)) {
                     center = (left + prevLeft) * 0.5f;
@@ -267,9 +277,9 @@ public abstract class O5Object {
             }
         }
         float worldX = center ?? controlLeft - ChangeBarFallbackGap * 0.5f * Rect.lossyScale.x;
-        Rect.GetWorldCorners(_corners);
+        Rect.GetWorldCornersSafe(_corners);
         float worldY = (_corners[0].y + _corners[1].y) * 0.5f;
-        var parent = rect.parent as RectTransform;
+        var parent = rect.parent.AsRectTransform();
         float parentScaleY = parent != null ? Mathf.Max(0.0001f, parent.lossyScale.y) : 1f;
         float height = Rect.rect.height * Rect.lossyScale.y / parentScaleY;
         rect.sizeDelta = new Vector2(ChangeBarWidth, Mathf.Max(0f, height - ChangeBarInset * 2f));

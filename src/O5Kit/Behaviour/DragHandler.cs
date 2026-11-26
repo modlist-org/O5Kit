@@ -46,7 +46,7 @@ public class DragHandler
         }
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _rect.parent as RectTransform,
+            _rect.parent.AsRectTransform(),
             O5Input.MousePosition,
             null,
             out Vector2 localPoint
@@ -61,7 +61,7 @@ public class DragHandler
         }
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _rect.parent as RectTransform,
+            _rect.parent.AsRectTransform(),
             O5Input.MousePosition,
             null,
             out Vector2 localPoint

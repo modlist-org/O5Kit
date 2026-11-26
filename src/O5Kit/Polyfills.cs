@@ -192,3 +192,31 @@ namespace System.Collections.Generic {
     }
 }
 #endif
+
+#if IL2CPP
+namespace System.Runtime.CompilerServices {
+    // Unity 6 Il2CppInterop publicizes UnityEngine's internal Nullable*Attribute
+    // with only an IntPtr proxy ctor, shadowing Roslyn's synthesized attributes (CS0656).
+    [global::System.AttributeUsage(
+        global::System.AttributeTargets.Class | global::System.AttributeTargets.Property |
+        global::System.AttributeTargets.Field | global::System.AttributeTargets.Event |
+        global::System.AttributeTargets.Parameter | global::System.AttributeTargets.ReturnValue |
+        global::System.AttributeTargets.GenericParameter,
+        AllowMultiple = false, Inherited = false)]
+    internal sealed class NullableAttribute : global::System.Attribute {
+        public readonly byte[] NullableFlags;
+        public NullableAttribute(byte flag) => NullableFlags = new[] { flag };
+        public NullableAttribute(byte[] flags) => NullableFlags = flags;
+    }
+
+    [global::System.AttributeUsage(
+        global::System.AttributeTargets.Class | global::System.AttributeTargets.Struct |
+        global::System.AttributeTargets.Method | global::System.AttributeTargets.Interface |
+        global::System.AttributeTargets.Delegate,
+        AllowMultiple = false, Inherited = false)]
+    internal sealed class NullableContextAttribute : global::System.Attribute {
+        public readonly byte Flag;
+        public NullableContextAttribute(byte flag) => Flag = flag;
+    }
+}
+#endif

@@ -353,6 +353,9 @@ public static partial class O5Factory {
         inputTarget.raycastTarget = true;
 
         TMPro.TMP_InputField inputField = options.FieldFactory?.Invoke(inputObj) ?? inputObj.AddComponent<TMPro.TMP_InputField>();
+        if (options.FieldFactory != null) {
+            UnityUtils.InitInjectedTMPInputField(inputField);
+        }
         inputField.targetGraphic = inputTarget;
 
         GameObject viewportObj = new("TextViewport");

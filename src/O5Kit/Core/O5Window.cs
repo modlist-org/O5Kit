@@ -145,7 +145,7 @@ public sealed class O5Window : O5Object {
         }
 
         if (options.Resizable) {
-            ResizeHandle.CreateResizeHandles(ctx, panel, parent as RectTransform, options.MinSize.x, options.MinSize.y);
+            ResizeHandle.CreateResizeHandles(ctx, panel, parent.AsRectTransform(), options.MinSize.x, options.MinSize.y);
         }
 
         var focusTrigger = panel.gameObject.AddComponent<EventTrigger>();

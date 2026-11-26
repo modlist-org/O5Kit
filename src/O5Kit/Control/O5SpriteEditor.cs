@@ -123,7 +123,7 @@ public sealed class O5SpriteEditor : O5Object {
     public static O5SpriteEditor Create(O5Context ctx, Transform canvasRoot, O5SpriteEditorOptions options) {
         var theme = ctx.Theme;
         var sprites = ctx.Sprites;
-        var canvasRect = canvasRoot as RectTransform;
+        var canvasRect = canvasRoot.AsRectTransform();
 
         var blocker = new GameObject("SpriteEditorBlocker");
         blocker.transform.SetParent(canvasRoot, false);
@@ -470,9 +470,9 @@ public sealed class O5SpriteEditor : O5Object {
         _image.texture = texture;
         _image.color = hasTexture ? Color.white : Ctx.Theme.WorkspaceEmpty;
         if (hasTexture) {
-            RectTransform workspace = _preview.parent as RectTransform;
-            float maxWidth = Mathf.Max(120f, workspace.rect.width - 56f);
-            float maxHeight = Mathf.Max(100f, workspace.rect.height - 48f);
+            RectTransform? workspace = _preview.parent.AsRectTransform();
+            float maxWidth = workspace != null ? Mathf.Max(120f, workspace.rect.width - 56f) : 520f;
+            float maxHeight = workspace != null ? Mathf.Max(100f, workspace.rect.height - 48f) : 340f;
             float scale = Mathf.Min(maxWidth / texture!.width, maxHeight / texture.height);
             _preview.sizeDelta = new Vector2(texture.width * scale, texture.height * scale);
         } else {

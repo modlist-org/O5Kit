@@ -46,6 +46,38 @@ public sealed class O5Context : IDisposable {
     private GameObject? _dragBlocker;
     private int _dragBlockerRefs;
     private bool _disposed;
+#if IL2CPP
+    private static bool _il2CppTypesRegistered;
+#endif
+
+    /// <summary>
+    /// Registers every O5Kit <c>MonoBehaviour</c>/<c>Graphic</c> subclass with IL2CPP <c>ClassInjector</c>.
+    /// Called automatically by <see cref="O5Context"/>; safe to call multiple times and a no-op on Mono.
+    /// Useful when <c>O5Kit.1.0.dll</c> lives in <c>UserLibs/</c>, where MelonLoader does not scan <c>[RegisterTypeInIl2Cpp]</c>.
+    /// </summary>
+    public static void RegisterIl2CppTypes() {
+#if IL2CPP
+        if (_il2CppTypesRegistered) {
+            return;
+        }
+        _il2CppTypesRegistered = true;
+        RegisterIl2CppType<O5Kit.Behaviour.EmptyGraphic>();
+        RegisterIl2CppType<O5Kit.Behaviour.DragHandler>();
+        RegisterIl2CppType<O5Kit.Behaviour.NonRaycastButton>();
+        RegisterIl2CppType<O5Kit.Behaviour.OventHandler>();
+        RegisterIl2CppType<O5Kit.Behaviour.ResizeHandle>();
+        RegisterIl2CppType<O5Kit.Behaviour.ResizeFrameFollower>();
+        RegisterIl2CppType<O5Kit.Behaviour.UIScrollController>();
+#endif
+    }
+
+#if IL2CPP
+    private static void RegisterIl2CppType<T>() where T : Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase {
+        if (!Il2CppInterop.Runtime.Injection.ClassInjector.IsTypeRegisteredInIl2Cpp<T>()) {
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<T>();
+        }
+    }
+#endif
 
     /// <summary>Creates an owned instance. Null arguments fall back to defaults: fresh config, dark theme, Overlayer slicing style, bundled sprites/fonts, automatic tweens.</summary>
     /// <param name="config">Runtime options. Null creates a fresh one (the shared default is never used).</param>
@@ -63,6 +95,7 @@ public sealed class O5Context : IDisposable {
         IFontProvider? fonts = null,
         ITweenRunner? tween = null,
         O5ShapeSprites? shapes = null) {
+        RegisterIl2CppTypes();
         Config = config ?? new O5Config();
         Theme = theme ?? O5Theme.Dark;
         SpriteStyle = spriteStyle ?? O5SpriteStyle.Default;
@@ -125,6 +158,7 @@ public sealed class O5Context : IDisposable {
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.overrideSorting = true;
             canvas.sortingOrder = 32767;
+            O5ColorSpace.EnableGammaVertexColors(canvas);
             go.AddComponent<GraphicRaycaster>();
 
             var shield = new GameObject("Shield");

@@ -510,27 +510,28 @@ public class UIScrollController
     /// content's inner right edge (minus layout right padding) and this scroll view's right edge,
     /// vertically within the viewport. Empty when there is no right padding.</summary>
     private bool IsPointerOverRightPadding() {
-        if (content == null || viewport == null || transform is not RectTransform root) {
+        var root = transform.AsRectTransform();
+        if (content == null || viewport == null || root == null) {
             return false;
         }
 
         Vector2 mouse = O5Input.MousePosition;
 
-        viewport.GetWorldCorners(Corners);
+        viewport.GetWorldCornersSafe(Corners);
         float bottom = Corners[0].y;
         float top = Corners[1].y;
         if (mouse.y < bottom || mouse.y > top) {
             return false;
         }
 
-        content.GetWorldCorners(Corners);
+        content.GetWorldCornersSafe(Corners);
         float innerRight = Corners[2].x;
         var layout = content.GetComponent<VerticalLayoutGroup>();
         if (layout != null) {
             innerRight -= layout.padding.right * content.lossyScale.x;
         }
 
-        root.GetWorldCorners(Corners);
+        root.GetWorldCornersSafe(Corners);
         float outerRight = Corners[2].x;
 
         if (outerRight - innerRight < 1f) {

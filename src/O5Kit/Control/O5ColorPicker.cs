@@ -888,7 +888,7 @@ public sealed class O5ColorPicker : O5Object {
             _validationTween?.Kill();
             float alpha = 1f;
             if (resetText) {
-                RectTransform? header = _hexOutline.rectTransform.parent as RectTransform;
+                RectTransform? header = _hexOutline.rectTransform.parent.AsRectTransform();
                 alpha = header && RectTransformUtility.RectangleContainsScreenPoint(
                     header, O5Input.MousePosition, _canvasCamera
                 ) ? 1f : 0f;
