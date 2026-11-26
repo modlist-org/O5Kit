@@ -307,6 +307,7 @@ public sealed class O5ColorPicker : O5Object {
             _body.SetActive(true);
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(_bodyRect);
+            UpdateTexture();
             UpdateHandles();
             _bodyCanvas.alpha = 1f;
             if (noAnimate) {
@@ -955,7 +956,58 @@ public sealed class O5ColorPicker : O5Object {
         _colorHandle.anchoredPosition = position * (size * TriangleRadius);
     }
 
+    private static Color32[]? _hsvRingBase;
+
+    private static Color32[] GetHsvRingBase() {
+        if (_hsvRingBase != null) {
+            return _hsvRingBase;
+        }
+        var ring = new Color32[TextureSize * TextureSize];
+        for (int y = 0; y < TextureSize; y++) {
+            float py = ((y + 0.5f) / TextureSize) - 0.5f;
+            int row = y * TextureSize;
+            for (int x = 0; x < TextureSize; x++) {
+                float px = ((x + 0.5f) / TextureSize) - 0.5f;
+                float distSq = (px * px) + (py * py);
+                if (distSq >= RingInner * RingInner && distSq <= RingOuter * RingOuter) {
+                    float angle = (float)(Math.Atan2(py, px) / (Math.PI * 2.0));
+                    if (angle < 0f) angle += 1f;
+                    ring[row + x] = HsvToColor32(angle, 1f, 1f);
+                }
+            }
+        }
+        _hsvRingBase = ring;
+        return ring;
+    }
+
+    private static Color32 HsvToColor32(float h, float s, float v) {
+        float h6 = (h - (float)Math.Floor(h)) * 6f;
+        int sector = (int)h6;
+        float f = h6 - sector;
+        float p = v * (1f - s);
+        float q = v * (1f - (s * f));
+        float t = v * (1f - (s * (1f - f)));
+        float r, g, b;
+        switch (sector) {
+            case 0: r = v; g = t; b = p; break;
+            case 1: r = q; g = v; b = p; break;
+            case 2: r = p; g = v; b = t; break;
+            case 3: r = p; g = q; b = v; break;
+            case 4: r = t; g = p; b = v; break;
+            default: r = v; g = p; b = q; break;
+        }
+        return new Color32(
+            (byte)Math.Round(Mathf.Clamp01(r) * 255f),
+            (byte)Math.Round(Mathf.Clamp01(g) * 255f),
+            (byte)Math.Round(Mathf.Clamp01(b) * 255f),
+            255
+        );
+    }
+
     private void UpdateTexture() {
+        if (!Expanded) {
+            return;
+        }
         bool isOklch = _mode == O5ColorMode.Oklch;
         float activeHue = isOklch ? _oklchH : _hue;
         float hueThreshold = isOklch ? 0.25f : 0.5f;
@@ -973,28 +1025,35 @@ public sealed class O5ColorPicker : O5Object {
     }
 
     private void RenderHsvTexture() {
-        Color hueColor = Color.HSVToRGB(_hue, 1f, 1f);
+        Color32[] ringBase = GetHsvRingBase();
+        Array.Copy(ringBase, _pixels, _pixels.Length);
+
+        Color32 hueC32 = HsvToColor32(_hue, 1f, 1f);
+        float hr = hueC32.r;
+        float hg = hueC32.g;
+        float hb = hueC32.b;
         Vector2 huePoint = Direction(_hue) * TriangleRadius;
         Vector2 whitePoint = Direction(_hue + (1f / 3f)) * TriangleRadius;
         Vector2 blackPoint = Direction(_hue - (1f / 3f)) * TriangleRadius;
 
-        for (int y = 0; y < TextureSize; y++) {
-            for (int x = 0; x < TextureSize; x++) {
-                Vector2 point = new(
-                    ((x + 0.5f) / TextureSize) - 0.5f,
-                    ((y + 0.5f) / TextureSize) - 0.5f
-                );
-                float distance = point.magnitude;
-                Color color = Color.clear;
-                if (distance is >= RingInner and <= RingOuter) {
-                    float angle = Mathf.Repeat(Mathf.Atan2(point.y, point.x) / ((float)Math.PI * 2f), 1f);
-                    color = Color.HSVToRGB(angle, 1f, 1f);
-                } else if (Barycentric(point, huePoint, whitePoint, blackPoint, out Vector3 weights)) {
-                    color = (hueColor * weights.x) + (Color.white * weights.y) + (Color.black * weights.z);
-                    color.a = 1f;
-                }
+        int minIdx = Math.Max(0, (int)Math.Floor((0.5f - TriangleRadius) * TextureSize) - 1);
+        int maxIdx = Math.Min(TextureSize - 1, (int)Math.Ceiling((0.5f + TriangleRadius) * TextureSize) + 1);
 
-                _pixels[(y * TextureSize) + x] = color;
+        for (int y = minIdx; y <= maxIdx; y++) {
+            float py = ((y + 0.5f) / TextureSize) - 0.5f;
+            int row = y * TextureSize;
+            for (int x = minIdx; x <= maxIdx; x++) {
+                float px = ((x + 0.5f) / TextureSize) - 0.5f;
+                if (Barycentric(new Vector2(px, py), huePoint, whitePoint, blackPoint, out Vector3 weights)) {
+                    float wx = weights.x;
+                    float wy = weights.y * 255f;
+                    _pixels[row + x] = new Color32(
+                        (byte)Math.Min(255, Math.Max(0, (int)((hr * wx) + wy + 0.5f))),
+                        (byte)Math.Min(255, Math.Max(0, (int)((hg * wx) + wy + 0.5f))),
+                        (byte)Math.Min(255, Math.Max(0, (int)((hb * wx) + wy + 0.5f))),
+                        255
+                    );
+                }
             }
         }
 
