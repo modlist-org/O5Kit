@@ -448,7 +448,9 @@ public sealed class O5ColorPicker : O5Object {
         value.g = Mathf.Clamp01(value.g);
         value.b = Mathf.Clamp01(value.b);
         value.a = Mathf.Clamp01(value.a);
-        bool changed = !((Color32)Value).Equals((Color32)value);
+        Color32 prev = Value;
+        Color32 next = value;
+        bool changed = prev.r != next.r || prev.g != next.g || prev.b != next.b || prev.a != next.a;
         Value = value;
         Color.RGBToHSV(value, out _hue, out _saturation, out _brightness);
         SyncOklchFromValue();

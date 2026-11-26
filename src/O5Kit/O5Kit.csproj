@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Dual-target like Overlayer: netstandard2.1 = Mono, net6.0 = IL2CPP -->
+    <!-- Dual-target like Overlayer: netstandard2.0 = Mono, net6.0 = IL2CPP -->
     <TargetFramework Condition="$(Configuration.Contains('IL2CPP'))">net6.0</TargetFramework>
-    <TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.1</TargetFramework>
+    <TargetFramework Condition="!$(Configuration.Contains('IL2CPP'))">netstandard2.0</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- NOTE: ImplicitUsings stays OFF: global `using System;` makes LitMotion's
@@ -50,17 +50,25 @@
     Unity assemblies come from the game install (same pattern as Overlayer).
     Only the small surface used by O5Kit is referenced here; extend as controls are ported.
   -->
+  <PropertyGroup Condition="!$(Configuration.Contains('IL2CPP'))">
+    <_ManagedRefPath Condition="'$(ManagedRefPath)' != ''">$(ManagedRefPath)</_ManagedRefPath>
+    <_ManagedRefPath Condition="'$(_ManagedRefPath)' == ''">$(GamePath)/$(GameData)/Managed</_ManagedRefPath>
+  </PropertyGroup>
   <ItemGroup Condition="!$(Configuration.Contains('IL2CPP'))">
-    <Reference Include="UnityEngine"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.IMGUIModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.UIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UIModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.UI"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UI.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
-    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
-    <Reference Include="Unity.TextMeshPro"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.TextMeshPro.dll</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(_ManagedRefPath)/UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(_ManagedRefPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.IMGUIModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(_ManagedRefPath)/UnityEngine.InputLegacyModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(_ManagedRefPath)/UnityEngine.UIModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(_ManagedRefPath)/UnityEngine.UI.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(_ManagedRefPath)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(_ManagedRefPath)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(_ManagedRefPath)/Unity.TextMeshPro.dll</HintPath></Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
   </ItemGroup>
 
   <ItemGroup Condition="$(Configuration.Contains('IL2CPP'))">

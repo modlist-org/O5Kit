@@ -22,7 +22,7 @@ public readonly struct O5Icon : IEquatable<O5Icon> {
 
     public bool Equals(O5Icon other) => ReferenceEquals(Font, other.Font) && Glyph == other.Glyph;
     public override bool Equals(object? obj) => obj is O5Icon other && Equals(other);
-    public override int GetHashCode() => HashCode.Combine(Font, Glyph);
+    public override int GetHashCode() => unchecked(((Font?.GetHashCode() ?? 0) * 397) ^ Glyph.GetHashCode());
     public static bool operator ==(O5Icon left, O5Icon right) => left.Equals(right);
     public static bool operator !=(O5Icon left, O5Icon right) => !left.Equals(right);
 }

@@ -7,11 +7,11 @@ using System.Reflection;
 using System.Security.Cryptography;
 using O5Kit.Compat;
 using UnityEngine;
-using UnityEngine.TextCore.LowLevel;
 using Object = UnityEngine.Object;
 
 #if IL2CPP
 using MelonLoader;
+using UnityEngine.TextCore.LowLevel;
 #endif
 
 namespace O5Kit.Resource;
@@ -131,7 +131,82 @@ public sealed class O5Resources : IDisposable {
     private static ConstructorInfo? _fontPathCtor;
     private static MethodInfo? _tmpCreateFromPath9;
     private static MethodInfo? _tmpCreateFromPath7;
+#else
+    private static bool _monoFontReflectionReady;
+    private static MethodInfo? _monoCreateFromFont8;
+    private static object? _monoGlyphRenderModeSdfaa;
+
+    private static void EnsureMonoFontReflection() {
+        if (_monoFontReflectionReady) {
+            return;
+        }
+        _monoFontReflectionReady = true;
+        // GlyphRenderMode lives in UnityEngine.TextCoreModule on Unity 2020.3 and
+        // UnityEngine.TextCoreFontEngineModule on Unity 2021+/6; resolve via the
+        // TMP_FontAsset overload's own parameter type to avoid a compile-time ref.
+        foreach (MethodInfo m in typeof(TMPro.TMP_FontAsset).GetMethods(BindingFlags.Public | BindingFlags.Static)) {
+            if (m.Name != "CreateFontAsset") {
+                continue;
+            }
+            ParameterInfo[] ps = m.GetParameters();
+            if (ps.Length == 8
+                && ps[0].ParameterType == typeof(Font)
+                && ps[1].ParameterType == typeof(int)
+                && ps[2].ParameterType == typeof(int)
+                && ps[3].ParameterType.IsEnum
+                && ps[4].ParameterType == typeof(int)
+                && ps[5].ParameterType == typeof(int)
+                && ps[6].ParameterType == typeof(TMPro.AtlasPopulationMode)
+                && ps[7].ParameterType == typeof(bool)) {
+                _monoCreateFromFont8 = m;
+                try {
+                    _monoGlyphRenderModeSdfaa = Enum.Parse(ps[3].ParameterType, "SDFAA");
+                } catch {
+                    _monoGlyphRenderModeSdfaa = Enum.ToObject(ps[3].ParameterType, 4169);
+                }
+                break;
+            }
+        }
+    }
 #endif
+
+    /// <summary>
+    /// Creates a dynamic SDFAA <see cref="TMPro.TMP_FontAsset"/> from a Unity <see cref="Font"/>
+    /// across both Unity 2020.3 (TextCoreModule) and Unity 2021+/6 (TextCoreFontEngineModule).
+    /// </summary>
+    public static TMPro.TMP_FontAsset? CreateFontAsset(
+        Font font,
+        int samplingPointSize = 90,
+        int atlasPadding = 9,
+        int atlasWidth = 1024,
+        int atlasHeight = 1024,
+        bool enableMultiAtlasSupport = true
+    ) {
+        if (font == null) {
+            return null;
+        }
+#if IL2CPP
+        return TMPro.TMP_FontAsset.CreateFontAsset(
+            font,
+            samplingPointSize,
+            atlasPadding,
+            GlyphRenderMode.SDFAA,
+            atlasWidth,
+            atlasHeight,
+            TMPro.AtlasPopulationMode.Dynamic,
+            enableMultiAtlasSupport
+        );
+#else
+        EnsureMonoFontReflection();
+        if (_monoCreateFromFont8 != null && _monoGlyphRenderModeSdfaa != null) {
+            return _monoCreateFromFont8.Invoke(
+                null,
+                [font, samplingPointSize, atlasPadding, _monoGlyphRenderModeSdfaa, atlasWidth, atlasHeight, TMPro.AtlasPopulationMode.Dynamic, enableMultiAtlasSupport]
+            ) as TMPro.TMP_FontAsset;
+        }
+        return TMPro.TMP_FontAsset.CreateFontAsset(font);
+#endif
+    }
 
     /// <summary>
     /// Creates a dynamic <see cref="TMPro.TMP_FontAsset"/> from a TTF/OTF file path on both Mono and IL2CPP.
@@ -219,14 +294,12 @@ public sealed class O5Resources : IDisposable {
 #else
         try {
             Font font = new(path);
-            return TMPro.TMP_FontAsset.CreateFontAsset(
+            return CreateFontAsset(
                 font,
                 samplingPointSize,
                 atlasPadding,
-                GlyphRenderMode.SDFAA,
                 atlasWidth,
                 atlasHeight,
-                TMPro.AtlasPopulationMode.Dynamic,
                 enableMultiAtlasSupport
             );
         } catch {
