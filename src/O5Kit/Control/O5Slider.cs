@@ -278,6 +278,7 @@ public class O5Slider : O5Object {
             }
 #endif
         );
+        DisableTrailingZwspAdvance(valueInputField.textComponent);
         PreviewLabel = previewLabel;
         ChangedImage = changedImage;
         ChangedUpImage = changedUpImage;
@@ -768,5 +769,36 @@ public class O5Slider : O5Object {
         ResetShake();
         InputCore.Dispose();
         base.Dispose();
+    }
+
+    // Unity 6 TMP_InputField sets textWrappingMode = PreserveWhitespaceNoWrap, which counts
+    // the trailing U+200B caret sentinel as visible width (~14px in monospace fonts), whereas
+    // TMP 3.0.x (Unity 2020-2022) treats U+200B as 0px. Use NoWrap so ValueInput's explicit
+    // -14px right padding is consistent across all Unity versions and fonts.
+    private static bool _wrapModePropResolved;
+    private static System.Reflection.PropertyInfo? _wrapModeProp;
+    private static object? _wrapModeNoWrap;
+
+    private static void DisableTrailingZwspAdvance(TMPro.TMP_Text? text) {
+        if (text == null) {
+            return;
+        }
+        if (!_wrapModePropResolved) {
+            _wrapModePropResolved = true;
+            _wrapModeProp = typeof(TMPro.TMP_Text).GetProperty("textWrappingMode");
+            if (_wrapModeProp != null && _wrapModeProp.CanWrite && _wrapModeProp.PropertyType.IsEnum) {
+                try {
+                    _wrapModeNoWrap = Enum.Parse(_wrapModeProp.PropertyType, "NoWrap");
+                } catch {
+                    _wrapModeNoWrap = Enum.ToObject(_wrapModeProp.PropertyType, 0);
+                }
+            }
+        }
+        if (_wrapModeProp != null && _wrapModeNoWrap != null) {
+            try {
+                _wrapModeProp.SetValue(text, _wrapModeNoWrap);
+            } catch {
+            }
+        }
     }
 }

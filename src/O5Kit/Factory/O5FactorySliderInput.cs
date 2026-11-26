@@ -69,7 +69,7 @@ public static partial class O5Factory {
         inputRect.anchorMin = Vector2.zero;
         inputRect.anchorMax = Vector2.one;
         inputRect.offsetMin = Vector2.zero;
-        inputRect.offsetMax = Vector2.zero;
+        inputRect.offsetMax = new Vector2(-14f, 0f);
         inputObj.AddComponent<RectMask2D>();
 
         TMPro.TextMeshProUGUI previewLabel = ControlText(ctx, inputObj.transform, ctx.Theme.FontSizeBody);
@@ -77,7 +77,7 @@ public static partial class O5Factory {
         previewLabel.rectTransform.anchorMax = Vector2.one;
         previewLabel.rectTransform.pivot = new Vector2(1f, 0.5f);
         previewLabel.rectTransform.offsetMin = Vector2.zero;
-        previewLabel.rectTransform.offsetMax = new Vector2(-14f, 0f);
+        previewLabel.rectTransform.offsetMax = Vector2.zero;
         previewLabel.alignment = TMPro.TextAlignmentOptions.Right;
         previewLabel.verticalAlignment = TMPro.VerticalAlignmentOptions.Middle;
         previewLabel.font = ctx.Fonts.Monospace;

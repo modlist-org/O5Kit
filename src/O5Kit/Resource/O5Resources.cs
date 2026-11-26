@@ -10,6 +10,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 #if IL2CPP
+using Il2CppInterop.Runtime;
 using MelonLoader;
 using UnityEngine.TextCore.LowLevel;
 #endif
@@ -127,8 +128,11 @@ public sealed class O5Resources : IDisposable {
     }
 
 #if IL2CPP
+    private delegate void InternalCreateFontFromPathDelegate(IntPtr self, IntPtr path);
     private static bool _il2CppFontReflectionReady;
     private static ConstructorInfo? _fontPathCtor;
+    private static MethodInfo? _fontInternalCreateFromPath;
+    private static InternalCreateFontFromPathDelegate? _fontCreateFromPathIcall;
     private static MethodInfo? _tmpCreateFromPath9;
     private static MethodInfo? _tmpCreateFromPath7;
 #else
@@ -228,6 +232,19 @@ public sealed class O5Resources : IDisposable {
         if (!_il2CppFontReflectionReady) {
             _il2CppFontReflectionReady = true;
             _fontPathCtor = typeof(Font).GetConstructor([typeof(string)]);
+            _fontInternalCreateFromPath = typeof(Font).GetMethod(
+                "Internal_CreateFontFromPath",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
+                null,
+                [typeof(Font), typeof(string)],
+                null
+            );
+            if (_fontInternalCreateFromPath == null) {
+                try {
+                    _fontCreateFromPathIcall = IL2CPP.ResolveICall<InternalCreateFontFromPathDelegate>("UnityEngine.Font::Internal_CreateFontFromPath");
+                } catch {
+                }
+            }
             Type tmpType = typeof(TMPro.TMP_FontAsset);
             _tmpCreateFromPath9 = tmpType.GetMethod(
                 "CreateFontAsset",
@@ -247,19 +264,34 @@ public sealed class O5Resources : IDisposable {
 
         if (_fontPathCtor != null) {
             try {
-                if (_fontPathCtor.Invoke([path]) is Font font) {
-                    var asset = TMPro.TMP_FontAsset.CreateFontAsset(
-                        font,
-                        samplingPointSize,
-                        atlasPadding,
-                        GlyphRenderMode.SDFAA,
-                        atlasWidth,
-                        atlasHeight,
-                        TMPro.AtlasPopulationMode.Dynamic,
-                        enableMultiAtlasSupport
-                    );
+                if (_fontPathCtor.Invoke([path]) is Font font && font != null) {
+                    var asset = CreateFontAsset(font, samplingPointSize, atlasPadding, atlasWidth, atlasHeight, enableMultiAtlasSupport);
                     if (asset != null) {
                         return asset;
+                    }
+                }
+            } catch {
+            }
+        }
+
+        // Stripped Unity 2021/2022 IL2CPP builds drop Font(string) while keeping
+        // Font.Internal_CreateFontFromPath (or its engine icall): allocate a bare
+        // Il2Cpp Font object and bind the file path directly.
+        if (_fontInternalCreateFromPath != null || _fontCreateFromPathIcall != null) {
+            try {
+                IntPtr rawPtr = IL2CPP.il2cpp_object_new(Il2CppClassPointerStore<Font>.NativeClassPtr);
+                if (rawPtr != IntPtr.Zero) {
+                    Font font = new(rawPtr);
+                    if (_fontInternalCreateFromPath != null) {
+                        _fontInternalCreateFromPath.Invoke(null, [font, path]);
+                    } else {
+                        _fontCreateFromPathIcall!(rawPtr, IL2CPP.ManagedStringToIl2Cpp(path));
+                    }
+                    if (font != null) {
+                        var asset = CreateFontAsset(font, samplingPointSize, atlasPadding, atlasWidth, atlasHeight, enableMultiAtlasSupport);
+                        if (asset != null) {
+                            return asset;
+                        }
                     }
                 }
             } catch {
