@@ -28,6 +28,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <Configurations>Debug_Mono;Release_Mono;Debug_IL2CPP;Release_IL2CPP</Configurations>
   </PropertyGroup>
 
@@ -40,6 +42,8 @@
 
   <PropertyGroup Condition="$(Configuration.Contains('IL2CPP'))">
     <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants><!-- IL2CPP: LITMOTION stays undefined by default (Burst/Collections are often stripped; AutoTweenRunner falls back to GTween/reflection backends) -->
+    <_Il2CppLoaderPath Condition="'$(Il2CppPath)' != ''">$(Il2CppPath)</_Il2CppLoaderPath>
+    <_Il2CppLoaderPath Condition="'$(_Il2CppLoaderPath)' == ''">$(GamePath)</_Il2CppLoaderPath>
   </PropertyGroup>
 
   <!--
@@ -54,6 +58,7 @@
     <Reference Include="UnityEngine.UIModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UIModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.UI"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.UI.dll</HintPath></Reference>
     <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(GamePath)/$(GameData)/Managed/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
     <Reference Include="Unity.TextMeshPro"><HintPath>$(GamePath)/$(GameData)/Managed/Unity.TextMeshPro.dll</HintPath></Reference>
   </ItemGroup>
@@ -67,16 +72,17 @@
     <Reference Include="UnityEngine.UIModule"><HintPath>$(Il2CppData)/UnityEngine.UIModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.UI"><HintPath>$(Il2CppData)/UnityEngine.UI.dll</HintPath></Reference>
     <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Il2CppData)/UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(Il2CppData)/UnityEngine.TextCoreFontEngineModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(Il2CppData)/UnityEngine.ImageConversionModule.dll</HintPath></Reference>
     <!-- TMPro proxy: MelonLoader's generator ships it as Unity.TextMeshPro.dll
          with the Il2CppTMPro namespace (see the global TMPro alias below). -->
     <Reference Include="Unity.TextMeshPro"><HintPath>$(Il2CppData)/Unity.TextMeshPro.dll</HintPath></Reference>
-    <Reference Include="Unity.Burst"><HintPath>$(Il2CppData)/Unity.Burst.dll</HintPath></Reference>
-    <Reference Include="Unity.Collections"><HintPath>$(Il2CppData)/Unity.Collections.dll</HintPath></Reference>
-    <Reference Include="Unity.Mathematics"><HintPath>$(Il2CppData)/Unity.Mathematics.dll</HintPath></Reference>
+    <Reference Include="Unity.Burst" Condition="Exists('$(Il2CppData)/Unity.Burst.dll')"><HintPath>$(Il2CppData)/Unity.Burst.dll</HintPath></Reference>
+    <Reference Include="Unity.Collections" Condition="Exists('$(Il2CppData)/Unity.Collections.dll')"><HintPath>$(Il2CppData)/Unity.Collections.dll</HintPath></Reference>
+    <Reference Include="Unity.Mathematics" Condition="Exists('$(Il2CppData)/Unity.Mathematics.dll')"><HintPath>$(Il2CppData)/Unity.Mathematics.dll</HintPath></Reference>
     <!-- IL2CPP loader interop (MelonLoader-based games). Same layout as Overlayer. -->
-    <Reference Include="Il2CppInterop.Runtime"><HintPath>$(GamePath)/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath></Reference>
-    <Reference Include="MelonLoader"><HintPath>$(GamePath)/MelonLoader/net6/MelonLoader.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Runtime"><HintPath>$(_Il2CppLoaderPath)/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="MelonLoader"><HintPath>$(_Il2CppLoaderPath)/MelonLoader/net6/MelonLoader.dll</HintPath></Reference>
   </ItemGroup>
 
 

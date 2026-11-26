@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using O5Kit.Compat;
 using UnityEngine;
+using UnityEngine.TextCore.LowLevel;
 using Object = UnityEngine.Object;
 
 #if IL2CPP
@@ -119,10 +120,119 @@ public sealed class O5Resources : IDisposable {
     public TMPro.TMP_FontAsset? LoadFontAsset(byte[] fontData, string name)
         => LoadFontAssetCore(fontData, name);
 
-    /// <summary>Loads an embedded icon TTF font with content-hashed caching (returns null on IL2CPP).</summary>
+    /// <summary>Loads an embedded icon TTF font with content-hashed caching.</summary>
     public TMPro.TMP_FontAsset? LoadIconFontAsset(string name = "O5KitIcons.ttf") {
         byte[]? fontData = Load($"Font.{name}");
         return fontData == null ? null : LoadFontAssetCore(fontData, name);
+    }
+
+#if IL2CPP
+    private static bool _il2CppFontReflectionReady;
+    private static ConstructorInfo? _fontPathCtor;
+    private static MethodInfo? _tmpCreateFromPath9;
+    private static MethodInfo? _tmpCreateFromPath7;
+#endif
+
+    /// <summary>
+    /// Creates a dynamic <see cref="TMPro.TMP_FontAsset"/> from a TTF/OTF file path on both Mono and IL2CPP.
+    /// On IL2CPP, tries <c>Font(string)</c> via reflection first, then <c>TMP_FontAsset.CreateFontAsset(string, ...)</c>
+    /// so stripped games without <c>Font(string)</c> still load fonts when FreeType/TMP supports it. Returns null on failure.
+    /// </summary>
+    public static TMPro.TMP_FontAsset? TryCreateFontAssetFromPath(
+        string path,
+        int samplingPointSize = 90,
+        int atlasPadding = 9,
+        int atlasWidth = 1024,
+        int atlasHeight = 1024,
+        bool enableMultiAtlasSupport = true
+    ) {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) {
+            return null;
+        }
+#if IL2CPP
+        if (!_il2CppFontReflectionReady) {
+            _il2CppFontReflectionReady = true;
+            _fontPathCtor = typeof(Font).GetConstructor([typeof(string)]);
+            Type tmpType = typeof(TMPro.TMP_FontAsset);
+            _tmpCreateFromPath9 = tmpType.GetMethod(
+                "CreateFontAsset",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                [typeof(string), typeof(int), typeof(int), typeof(int), typeof(GlyphRenderMode), typeof(int), typeof(int), typeof(TMPro.AtlasPopulationMode), typeof(bool)],
+                null
+            );
+            _tmpCreateFromPath7 = tmpType.GetMethod(
+                "CreateFontAsset",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                [typeof(string), typeof(int), typeof(int), typeof(int), typeof(GlyphRenderMode), typeof(int), typeof(int)],
+                null
+            );
+        }
+
+        if (_fontPathCtor != null) {
+            try {
+                if (_fontPathCtor.Invoke([path]) is Font font) {
+                    var asset = TMPro.TMP_FontAsset.CreateFontAsset(
+                        font,
+                        samplingPointSize,
+                        atlasPadding,
+                        GlyphRenderMode.SDFAA,
+                        atlasWidth,
+                        atlasHeight,
+                        TMPro.AtlasPopulationMode.Dynamic,
+                        enableMultiAtlasSupport
+                    );
+                    if (asset != null) {
+                        return asset;
+                    }
+                }
+            } catch {
+            }
+        }
+
+        if (_tmpCreateFromPath9 != null) {
+            try {
+                if (_tmpCreateFromPath9.Invoke(
+                    null,
+                    [path, 0, samplingPointSize, atlasPadding, GlyphRenderMode.SDFAA, atlasWidth, atlasHeight, TMPro.AtlasPopulationMode.Dynamic, enableMultiAtlasSupport]
+                ) is TMPro.TMP_FontAsset asset && asset != null) {
+                    return asset;
+                }
+            } catch {
+            }
+        }
+
+        if (_tmpCreateFromPath7 != null) {
+            try {
+                if (_tmpCreateFromPath7.Invoke(
+                    null,
+                    [path, 0, samplingPointSize, atlasPadding, GlyphRenderMode.SDFAA, atlasWidth, atlasHeight]
+                ) is TMPro.TMP_FontAsset asset && asset != null) {
+                    return asset;
+                }
+            } catch {
+            }
+        }
+
+        return null;
+#else
+        try {
+            Font font = new(path);
+            return TMPro.TMP_FontAsset.CreateFontAsset(
+                font,
+                samplingPointSize,
+                atlasPadding,
+                GlyphRenderMode.SDFAA,
+                atlasWidth,
+                atlasHeight,
+                TMPro.AtlasPopulationMode.Dynamic,
+                enableMultiAtlasSupport
+            );
+        } catch {
+            return null;
+        }
+#endif
     }
 
     private TMPro.TMP_FontAsset? LoadFontAssetCore(byte[] fontData, string name) {
@@ -132,11 +242,6 @@ public sealed class O5Resources : IDisposable {
             return cached as TMPro.TMP_FontAsset;
         }
 
-#if IL2CPP
-        // Stripped runtimes expose neither Font(path) nor OS-font creation:
-        // custom TTF bytes cannot be turned into a Font here.
-        return null;
-#else
         try {
             string dir = Path.Combine(Application.temporaryCachePath, "O5Kit", "Fonts");
             Directory.CreateDirectory(dir);
@@ -147,14 +252,14 @@ public sealed class O5Resources : IDisposable {
                 File.WriteAllBytes(tempPath, fontData);
             }
 
-            Font font = new(tempPath);
-            TMPro.TMP_FontAsset asset = TMPro.TMP_FontAsset.CreateFontAsset(font);
-            _cache[key] = asset;
+            TMPro.TMP_FontAsset? asset = TryCreateFontAssetFromPath(tempPath);
+            if (asset != null) {
+                _cache[key] = asset;
+            }
             return asset;
         } catch {
             return null;
         }
-#endif
     }
 
     private static string ComputeShortHash(byte[] data) {
