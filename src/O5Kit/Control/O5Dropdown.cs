@@ -203,7 +203,9 @@ public class O5Dropdown<T> : O5Object, O5Dropdown.IWheelSelectable {
         }
     }
 
+    // activeInHierarchy: uGUI sends no PointerExit to a deactivated object, so Hovered can go stale.
     bool O5Dropdown.IWheelSelectable.AcceptsWheel => !IsDisposed
+        && Rect && Rect.gameObject.activeInHierarchy
         && !Expanded
         && Values.Count > 1
         && CanvasGroup.interactable

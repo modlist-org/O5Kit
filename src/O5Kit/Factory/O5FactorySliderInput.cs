@@ -169,7 +169,6 @@ public static partial class O5Factory {
             (EventTriggerType.PointerEnter, _ => slider.SetHovered(true)),
             (EventTriggerType.PointerExit, _ => slider.SetHovered(false)),
             (EventTriggerType.BeginDrag, (e) => {
-                Debug.Log($"[O5DBG] BeginDrag btn={O5Input.GetMouseButton(0)} os={O5Input.OSMousePosition} unity={O5Input.MousePosition} screen={Screen.width}x{Screen.height}");
                 if (!O5Input.GetMouseButton(0)) {
                     return;
                 }
@@ -191,7 +190,6 @@ public static partial class O5Factory {
             }
         ),
             (EventTriggerType.Drag, (e) => {
-                Debug.Log($"[O5DBG] Drag dragging={isDragging} btn={O5Input.GetMouseButton(0)} unity={O5Input.MousePosition} os={O5Input.OSMousePosition} prev={previousMousePos} warpedFrom={warpedFrom} value={slider.Value}");
                 if (isDragging && O5Input.GetMouseButton(0)) {
                     Vector2 currentMousePos = O5Input.MousePosition;
 
@@ -214,6 +212,10 @@ public static partial class O5Factory {
                     if (slider.ClampDrag) {
                         cachedValue = MathCompat.Clamp(cachedValue, slider.Min, slider.Max);
                     }
+                    // Set() also clamps by the input range; match it so dragging back has no dead zone.
+                    if (slider.ClampInput) {
+                        cachedValue = MathCompat.Clamp(cachedValue, slider.EffectiveInputMin, slider.EffectiveInputMax);
+                    }
 
                     slider.Set(Apply(cachedValue));
 
@@ -224,7 +226,6 @@ public static partial class O5Factory {
                     const float padding = 5f;
                     bool startInside = startMousePos.x > padding && startMousePos.x < Screen.width - padding;
                     if (startInside && (currentMousePos.x <= padding || currentMousePos.x >= Screen.width - padding)) {
-                        Debug.Log($"[O5DBG] Warp to {resetPos} from unity={currentMousePos}");
                         O5Input.OSMousePosition = resetPos;
                         warpedFrom = currentMousePos;
                         previousMousePos = startMousePos;
@@ -236,7 +237,6 @@ public static partial class O5Factory {
             }
         ),
             (EventTriggerType.EndDrag, (e) => {
-                Debug.Log($"[O5DBG] EndDrag dragging={isDragging} reset={resetPos} value={slider.Value}");
                 if (isDragging) {
                     isDragging = false;
                     slider.OnComplete?.Invoke(slider.Value);

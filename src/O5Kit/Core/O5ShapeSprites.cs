@@ -105,6 +105,48 @@ public sealed class O5ShapeSprites : IDisposable {
                 }
             }
         }
+
+        EvictStale();
+    }
+
+    // Drops other-scale sprites no Image still uses; untracked canvases keep theirs until released.
+    private void EvictStale() {
+        int key = Mathf.RoundToInt(_scale * 1000f);
+        List<(O5Shape, int)>? stale = null;
+        foreach (var entry in _cache) {
+            if (entry.Key.Item2 != key) {
+                (stale ??= new()).Add(entry.Key);
+            }
+        }
+        if (stale == null) {
+            return;
+        }
+
+        var inUse = new HashSet<int>();
+        try {
+            foreach (Image img in Resources.FindObjectsOfTypeAll<Image>()) {
+                Sprite s = img.sprite;
+                if (s) {
+                    inUse.Add(s.GetInstanceID());
+                }
+            }
+        } catch {
+            return;
+        }
+
+        foreach (var k in stale) {
+            Sprite sprite = _cache[k];
+            if (sprite) {
+                int id = sprite.GetInstanceID();
+                if (inUse.Contains(id)) {
+                    continue;
+                }
+                _shapeOf.Remove(id);
+                Object.Destroy(sprite.texture);
+                Object.Destroy(sprite);
+            }
+            _cache.Remove(k);
+        }
     }
 
     private static Sprite Rasterize(O5Shape shape, float scale) {

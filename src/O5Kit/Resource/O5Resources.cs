@@ -25,6 +25,16 @@ public enum O5Asset {
     CircleHalf128,
     /// <summary>Circle outline ring, 32px stroke (panel/hover outlines).</summary>
     CircleOutline128O32,
+
+    /// <summary>1.0 name of <see cref="Circle128"/>.</summary>
+    [Obsolete("Use Circle128")]
+    Circle256 = Circle128,
+    /// <summary>1.0 name of <see cref="CircleHalf128"/>.</summary>
+    [Obsolete("Use CircleHalf128")]
+    CircleHalf256 = CircleHalf128,
+    /// <summary>1.0 name of <see cref="CircleOutline128O32"/>.</summary>
+    [Obsolete("Use CircleOutline128O32")]
+    CircleOutline256O64 = CircleOutline128O32,
 }
 
 /// <summary>Loads O5Kit-owned bundled assets. Mod-specific assets belong to the consuming mod and are loaded from that mod's assembly.</summary>
@@ -52,7 +62,7 @@ public sealed class O5Resources : IDisposable {
         => new(typeof(O5Resources).Assembly, "O5Kit.Asset.");
 
     /// <summary>Reads raw bytes for a manifest path. Null when missing.</summary>
-    /// <param name="path">Manifest suffix with dots, e.g. <c>"Image.Panel256.png"</c>.</param>
+    /// <param name="path">Manifest suffix with dots, e.g. <c>"Image.Circle128.png"</c>.</param>
     public byte[]? Load(string path) {
         if (string.IsNullOrWhiteSpace(path)) {
             return null;
@@ -340,6 +350,8 @@ public sealed class O5Resources : IDisposable {
 #endif
     }
 
+    private static readonly object FailedFont = new();
+
     private TMPro.TMP_FontAsset? LoadFontAssetCore(byte[] fontData, string name) {
         string hash = ComputeShortHash(fontData);
         string key = $"font:{name}:{hash}";
@@ -358,11 +370,11 @@ public sealed class O5Resources : IDisposable {
             }
 
             TMPro.TMP_FontAsset? asset = TryCreateFontAssetFromPath(tempPath);
-            if (asset != null) {
-                _cache[key] = asset;
-            }
+            // Failures are cached too: retrying repeats file I/O and every reflection fallback.
+            _cache[key] = asset ?? FailedFont;
             return asset;
         } catch {
+            _cache[key] = FailedFont;
             return null;
         }
     }

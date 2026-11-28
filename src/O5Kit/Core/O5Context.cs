@@ -43,6 +43,9 @@ public sealed class O5Context : IDisposable {
     public event Action<bool>? EnabledChanged;
 
     private readonly List<IDisposable> _owned = new();
+    // Weak: controls whose GameObject died without Dispose() must stay collectible.
+    private readonly List<WeakReference<O5Object>> _themed = new();
+    private int _themedCompactAt = 64;
     private GameObject? _dragBlocker;
     private int _dragBlockerRefs;
     private bool _disposed;
@@ -53,7 +56,7 @@ public sealed class O5Context : IDisposable {
     /// <summary>
     /// Registers every O5Kit <c>MonoBehaviour</c>/<c>Graphic</c> subclass with IL2CPP <c>ClassInjector</c>.
     /// Called automatically by <see cref="O5Context"/>; safe to call multiple times and a no-op on Mono.
-    /// Useful when <c>O5Kit.1.0.dll</c> lives in <c>UserLibs/</c>, where MelonLoader does not scan <c>[RegisterTypeInIl2Cpp]</c>.
+    /// Useful when <c>O5Kit.{major}.{minor}.dll</c> lives in <c>UserLibs/</c>, where MelonLoader does not scan <c>[RegisterTypeInIl2Cpp]</c>.
     /// </summary>
     public static void RegisterIl2CppTypes() {
 #if IL2CPP
@@ -131,8 +134,26 @@ public sealed class O5Context : IDisposable {
     public void SetTheme(O5Theme theme) {
         var previous = Theme;
         Theme = theme;
+        CompactThemed();
+        foreach (var weak in _themed.ToArray()) {
+            if (weak.TryGetTarget(out var obj)) {
+                obj.HandleThemeTransitioned(previous, theme);
+            }
+        }
         ThemeTransitioned?.Invoke(previous, theme);
         ThemeChanged?.Invoke(theme);
+    }
+
+    internal void AddThemed(O5Object obj) {
+        _themed.Add(new WeakReference<O5Object>(obj));
+        if (_themed.Count >= _themedCompactAt) {
+            CompactThemed();
+            _themedCompactAt = Math.Max(64, _themed.Count * 2);
+        }
+    }
+
+    private void CompactThemed() {
+        _themed.RemoveAll(weak => !weak.TryGetTarget(out var obj) || obj.IsDisposed);
     }
 
     /// <summary>True while a control holds the top-most drag raycast blocker (e.g. infinite slider drag).</summary>

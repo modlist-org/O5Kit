@@ -93,6 +93,7 @@ public sealed class DefaultFontProvider : IFontProvider, IDisposable {
     private TMPro.TMP_FontAsset? _medium;
     private TMPro.TMP_FontAsset? _mono;
     private TMPro.TMP_FontAsset? _icons;
+    private bool _iconsLoaded;
     private bool _disposed;
 
     /// <inheritdoc/>
@@ -108,8 +109,15 @@ public sealed class DefaultFontProvider : IFontProvider, IDisposable {
         => _mono ??= LoadEmbedded("Font.JetBrainsMonoNL-Medium.ttf", "JetBrainsMonoNL-Medium.ttf") ?? LoadSystemFont();
 
     /// <inheritdoc/>
-    public TMPro.TMP_FontAsset? Icons
-        => _icons ??= _resources.LoadIconFontAsset("O5KitIcons.ttf");
+    public TMPro.TMP_FontAsset? Icons {
+        get {
+            if (!_iconsLoaded) {
+                _iconsLoaded = true;
+                _icons = _resources.LoadIconFontAsset("O5KitIcons.ttf");
+            }
+            return _icons;
+        }
+    }
 
     private TMPro.TMP_FontAsset? LoadEmbedded(string path, string name) {
         byte[]? data = _resources.Load(path);

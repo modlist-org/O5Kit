@@ -24,10 +24,10 @@ public sealed class O5SliderOptions {
     /// <summary>Label text next to the fill bar.</summary>
     public string Label { get; set; } = string.Empty;
 
-    /// <summary>Clamp drags/code-sets into <c>[Min, Max]</c>. Old <c>ClampMode.Slider | All</c>.</summary>
+    /// <summary>Clamp drags and wheel steps into <c>[Min, Max]</c>. Old <c>ClampMode.Slider | All</c>.</summary>
     public bool ClampDrag { get; set; } = true;
 
-    /// <summary>Clamp text input into the text-input range. Old <c>ClampMode.Input | All</c>.</summary>
+    /// <summary>Clamp text input, code sets and the initial value into the text-input range. Old <c>ClampMode.Input | All</c>.</summary>
     public bool ClampInput { get; set; } = true;
 
     /// <summary>Text-input lower bound. Null falls back to <see cref="Min"/>.</summary>

@@ -46,10 +46,10 @@ public class O5Slider : O5Object {
     /// <summary>Display format, e.g. <c>"F2"</c>.</summary>
     public string Format { get; set; }
 
-    /// <summary>Clamp drags/code-sets into <c>[Min, Max]</c>.</summary>
+    /// <summary>Clamp drags and wheel steps into <c>[Min, Max]</c>.</summary>
     public bool ClampDrag { get; set; }
 
-    /// <summary>Clamp text input into the text-input range.</summary>
+    /// <summary>Clamp text input, code sets and the initial value into the text-input range.</summary>
     public bool ClampInput { get; set; }
 
     /// <summary>Whether the fill bar is shown.</summary>
@@ -332,6 +332,11 @@ public class O5Slider : O5Object {
         }
 
         InputCore.OnTick();
+
+        // uGUI sends no PointerExit to a deactivated object, so a hidden slider can stay hovered.
+        if (ReferenceEquals(_hovered, this) && !Rect.gameObject.activeInHierarchy) {
+            _hovered = null;
+        }
 
         if (ReferenceEquals(_hovered, this)
             && EnableWheelAdjust?.Invoke() == true

@@ -70,11 +70,11 @@ public abstract class O5Object {
         Ctx = ctx ?? throw new ArgumentNullException(nameof(ctx));
         Id = id;
         Rect = rect;
-        Ctx.ThemeTransitioned += HandleThemeTransitioned;
+        Ctx.AddThemed(this);
         _createdFrame = Time.frameCount;
     }
 
-    private void HandleThemeTransitioned(O5Theme prev, O5Theme next) {
+    internal void HandleThemeTransitioned(O5Theme prev, O5Theme next) {
         if (IsDisposed || Rect == null || !Rect) {
             return;
         }
@@ -346,7 +346,6 @@ public abstract class O5Object {
         if (EnabledWhen != null) {
             Ctx.EnabledChanged -= ApplyEnabled;
         }
-        Ctx.ThemeTransitioned -= HandleThemeTransitioned;
 
         UnregisterTick();
         OnDisposed?.Invoke();
