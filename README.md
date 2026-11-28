@@ -28,12 +28,12 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
    git clone --recurse-submodules <this-repo-url>
    ```
 2. Copy [`Directory.Build.example.props`](Directory.Build.example.props) to `Directory.Build.props` and fill in your game or sibling [`O5Dev`](https://github.com/modlist-org/O5Dev) paths (`GamePath`/`GameData`, and `Il2CppPath`/`Il2CppData` for IL2CPP).
-3. Build the configuration that matches your game (emits both `O5Kit.1.0.dll` and XML docs `O5Kit.1.0.xml`):
+3. Build the configuration that matches your game (emits `O5Kit.{major}.{minor}.dll` and XML docs `O5Kit.{major}.{minor}.xml`, e.g. `O5Kit.1.1.dll`):
    ```bash
    dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
    dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
    ```
-4. Unit tests (runs without a Unity game install):
+4. Unit tests (no Unity player needed; uses `UnityEngine.CoreModule.dll` from the `GamePath` set in step 2 for type layout only):
    ```bash
    ./test.sh
    ```
@@ -90,7 +90,9 @@ Pretty Unity uGUI + input toolkit for mods, extracted from Overlayer v5!
       onHeld: _ => Reset());
   ```
 > [!NOTE]
-> O5Kit targets `netstandard2.1` (Mono) and `net6.0` (IL2CPP). `*_IL2CPP` configurations define `IL2CPP` and alias `TMPro` to `Il2CppTMPro`. When deploying `O5Kit.1.0.dll` in `UserLibs/` on IL2CPP, register the 6 `O5Kit.Behaviour` types via `ClassInjector.RegisterTypeInIl2Cpp<...>()` at startup (see [`llms.txt`](llms.txt#mandatory-il2cpp-startup-registration)).
+> O5Kit targets `netstandard2.0` (Mono, Unity 2020.3+) and `net6.0` (IL2CPP). `*_IL2CPP` configurations define `IL2CPP` and alias `TMPro` to `Il2CppTMPro`. In `UserLibs/` on IL2CPP, MelonLoader does not scan `[RegisterTypeInIl2Cpp]`; `new O5Context(...)` registers all 7 `O5Kit.Behaviour` types automatically (see [`llms.txt`](llms.txt#il2cpp-startup-registration)).
+>
+> Mono reference assemblies must target netstandard 2.0. Unity 2021.2+ `Managed/` folders (including O5Dev's Unity 6 build) reference netstandard 2.1 and fail with `CS1705`; O5Kit picks `$(GamePath)/CompatManaged` (created by `o5dev mod mono`) automatically when present, or set `ManagedRefPath` to a netstandard 2.0 reference folder.
 
 # 🔀 Multi-mod coexistence (versioned side-by-side)
 
@@ -100,12 +102,12 @@ Rule: **put the version in the assembly name; mods on the same version share one
 
 ```bash
 dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
-# output: O5Kit.1.0.dll + O5Kit.1.0.xml (name auto-derived from <Version>, namespaces stay O5Kit)
+# output: O5Kit.1.1.dll + O5Kit.1.1.xml for <Version>1.1.x (name auto-derived, namespaces stay O5Kit)
 ```
 
-- Mods referencing the same `O5Kit.1.0` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
+- Mods referencing the same `O5Kit.{major}.{minor}` share the first-loaded copy. Type identity is shared (mod-to-mod type exchange works), statics are shared (any mod pumping `TickAll()` drives everything). Each mod ships the same file in its own folder (disk duplication only; single runtime load).
 - Different versions (`O5Kit.1.0` vs `O5Kit.1.1`) load side by side. Old mods are untouched; only new mods use the new version.
-- Version policy: **major/minor bumps move the assembly name along. Patch (1.0.0 -> 1.0.1) keeps the name, drop-in.** Any minor-or-above change gets a new name.
+- Version policy: **major/minor bumps move the assembly name along. Patch (1.0.0 -> 1.0.1) keeps the name, drop-in.** Any minor-or-above change gets a new name. Because each name is isolated at runtime, a minor release may contain source-breaking API changes; see [`CHANGELOG.md`](CHANGELOG.md) before recompiling against a new minor.
 - Special cases (private fork, version pin): per-mod rename via `-p:O5KitAssemblyName=MyMod.O5Kit`.
 - Mono API caution: netstandard references are not the game Mono. Only use APIs that actually exist in the game's `Managed` folder. (Example: `IReadOnlyList<T>.Contains` without `System.Linq` binds to netstandard's `MemoryExtensions` Span overload and blows up at runtime.)
 - Native (`O5KitNative.*`) is process-wide first-win shared + frozen ABI + `o5_abi_version` gate, so its file names stay as-is (no rename needed).
@@ -127,7 +129,7 @@ O5Kit powers the settings UI of Overlayer v5. Overlayer consumes this library an
 
 ### Artwork
 - O5Kit bundled UI shapes and icons ([`src/O5Kit/Asset/Image`](src/O5Kit/Asset/Image), [`src/O5Kit/Asset/Icons`](src/O5Kit/Asset/Icons)) were created directly by the Overlayer team. Because they are simple geometric shapes, they are free for anyone to use, modify, or redistribute for any purpose without restriction (attribution is not required, though crediting the Overlayer team is greatly appreciated; see [`NOTICE.md`](src/O5Kit/Asset/NOTICE.md)).
-- O5Kit bundled fonts (SUIT, JetBrains Mono) under [OFL-1.1](https://opensource.org/licenses/OFL-1.1).
+- O5Kit bundled fonts (SUIT, JetBrains Mono) under [OFL-1.1](https://opensource.org/licenses/OFL-1.1). Licence texts: [`OFL-SUIT.txt`](src/O5Kit/Asset/Font/OFL-SUIT.txt), [`OFL-JetBrainsMono.txt`](src/O5Kit/Asset/Font/OFL-JetBrainsMono.txt).
 
 ### Third-Party Code
 - **[LitMotion](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514)**: Submodule under [`lib/LitMotion`](https://github.com/annulusgames/LitMotion/tree/422eb124051c81a9bc3f422ebf190703c5053514), compiled from source (Runtime only)

@@ -1,11 +1,11 @@
 # O5Kit Agent Guidelines
 
-- **Purpose:** Standalone Unity uGUI + input toolkit extracted from Overlayer v5 (`O5Kit.1.0.dll`, LGPL-3.0-or-later). Read [`llms.txt`](llms.txt) for consumer copy-paste templates and complete API reference.
+- **Purpose:** Standalone Unity uGUI + input toolkit extracted from Overlayer v5 (`O5Kit.{major}.{minor}.dll`, LGPL-3.0-or-later). Read [`llms.txt`](llms.txt) for consumer copy-paste templates and complete API reference.
 - **No Shared Statics:** Every consumer creates its own `O5Context` (owns `O5Config`, `O5Theme`, `O5ShapeSprites`, `ISpriteProvider`, `IFontProvider`, `ITweenRunner`, `O5Tooltip`) and passes it to `O5Canvas`, `O5WindowManager`, and `O5Factory`.
 - **Two Configurations (`O5Kit.csproj`):**
-  - Mono: `Release_Mono` / `Debug_Mono` -> `netstandard2.1`
+  - Mono: `Release_Mono` / `Debug_Mono` -> `netstandard2.0` (Unity 2020.3+). Reference assemblies must target netstandard 2.0: `$(GamePath)/CompatManaged` is picked automatically when present, otherwise set `ManagedRefPath`
   - IL2CPP: `Release_IL2CPP` / `Debug_IL2CPP` -> `net6.0`, defines `IL2CPP`, aliases `TMPro` to `Il2CppTMPro`
-  - Side-by-side identity: `<AssemblyName>` auto-derives `O5Kit.{major}.{minor}` (currently `O5Kit.1.0.dll`). XML docs (`O5Kit.1.0.xml`) are generated beside the DLL.
+  - Side-by-side identity: `<AssemblyName>` auto-derives `O5Kit.{major}.{minor}` (e.g. `<Version>1.1.0</Version>` -> `O5Kit.1.1.dll`). XML docs are generated beside the DLL. Consumers must not hardcode the file name. Record source-breaking API changes in `CHANGELOG.md`.
 - **Mono & Pure-.NET Constraints:**
   - Keep math/config/palette/eval logic decoupled from `UnityEngine.UI` / `UnityEngine.UIModule` (or isolate UI types inside nested classes as in `O5ColorSpace.Runtime`) so pure-.NET `O5Kit.Tests` runs without a Unity player.
   - Only call BCL APIs present in Unity's Mono runtime (avoid `MemoryExtensions.Contains` Span overloads on `IReadOnlyList<T>`).

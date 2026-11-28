@@ -1,6 +1,6 @@
 # O5Kit Agent Reference (llms.txt)
 
-O5Kit (`O5Kit.1.0.dll`, namespace root `O5Kit`, LGPL-3.0-or-later) is a self-contained runtime uGUI toolkit for Unity mods (Mono `netstandard2.1` + IL2CPP `net6.0` MelonLoader). No Editor prefabs or game assets are required: rounded 9-slice sprites, icons, SUIT/JetBrains Mono fonts, input handling, tooltips, and tweens are bundled.
+O5Kit (`O5Kit.{major}.{minor}.dll`, e.g. `O5Kit.1.1.dll`; namespace root `O5Kit`, LGPL-3.0-or-later) is a self-contained runtime uGUI toolkit for Unity mods (Mono `netstandard2.0`, Unity 2020.3+ + IL2CPP `net6.0` MelonLoader). No Editor prefabs or game assets are required: rounded 9-slice sprites, icons, SUIT/JetBrains Mono fonts, input handling, tooltips, and tweens are bundled.
 
 ---
 
@@ -24,11 +24,11 @@ Map mod configurations to O5Kit configurations (`*_Mono` for Mono, `*_IL2CPP` fo
 </ItemGroup>
 ```
 
-Deploy `O5Kit.1.0.dll` to MelonLoader `UserLibs/` (next to the game's `Mods/` folder) so multiple mods share one assembly copy. Ship `LICENCE.md` (LGPL-3.0-or-later).
+Deploy `O5Kit.{major}.{minor}.dll` (take the file name from the project reference output, not a hardcoded version) to MelonLoader `UserLibs/` (next to the game's `Mods/` folder) so multiple mods share one assembly copy. Ship `LICENCE.md` (LGPL-3.0-or-later).
 
 ### Build Properties (`Directory.Build.props`)
 Copy `Directory.Build.example.props` to `Directory.Build.props`. Against sibling `O5Dev`:
-- Mono: `GamePath=../O5Dev/Builds/Mono`, `GameData=O5Dev_Data`
+- Mono: `GamePath=../O5Dev/Builds/Mono`, `GameData=O5Dev_Data`. Mono references must target netstandard 2.0: `$(GamePath)/CompatManaged` is used automatically when present, otherwise set `ManagedRefPath`
 - IL2CPP: `Il2CppPath=../O5Dev/Builds/IL2CPP`, `Il2CppData=../O5Dev/Builds/IL2CPP/MelonLoader/Il2CppAssemblies`
 
 ### IL2CPP Startup Registration
@@ -212,7 +212,7 @@ Note: if a control's `Rect` is placed under `O5Factory.Row(...)`, pass the `row`
 # 1. Run pure-.NET unit tests
 ./test.sh
 
-# 2. Build Mono / IL2CPP (creates O5Kit.1.0.dll + O5Kit.1.0.xml)
+# 2. Build Mono / IL2CPP (creates O5Kit.{major}.{minor}.dll + .xml)
 dotnet build src/O5Kit/O5Kit.csproj -c Release_Mono
 dotnet build src/O5Kit/O5Kit.csproj -c Release_IL2CPP
 
