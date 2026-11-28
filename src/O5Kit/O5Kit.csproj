@@ -52,6 +52,8 @@
   -->
   <PropertyGroup Condition="!$(Configuration.Contains('IL2CPP'))">
     <_ManagedRefPath Condition="'$(ManagedRefPath)' != ''">$(ManagedRefPath)</_ManagedRefPath>
+    <!-- O5Dev's Unity 6 Managed/ references netstandard 2.1; CompatManaged/ (o5dev retarget) is the netstandard2.0-compatible copy. -->
+    <_ManagedRefPath Condition="'$(_ManagedRefPath)' == '' and Exists('$(GamePath)/CompatManaged/UnityEngine.CoreModule.dll')">$(GamePath)/CompatManaged</_ManagedRefPath>
     <_ManagedRefPath Condition="'$(_ManagedRefPath)' == ''">$(GamePath)/$(GameData)/Managed</_ManagedRefPath>
   </PropertyGroup>
   <ItemGroup Condition="!$(Configuration.Contains('IL2CPP'))">
@@ -116,6 +118,8 @@
     <EmbeddedResource Include="Asset\**\*.png" />
     <EmbeddedResource Include="Asset\**\*.otf" />
     <EmbeddedResource Include="Asset\**\*.ttf" />
+    <!-- OFL-1.1 requires the licence to travel with the embedded fonts. -->
+    <EmbeddedResource Include="Asset\Font\OFL-*.txt" />
     <!-- Superseded O5Kit-original shapes (kept on disk only, unreferenced). -->
     <EmbeddedResource Remove="Asset\Image\Panel256.png;Asset\Image\Control256.png;Asset\Image\TopBar256.png;Asset\Image\Outline256.png;Asset\Image\Ring256.png" />
   </ItemGroup>
@@ -132,11 +136,20 @@
     <_IconFontInputs Include="$(_IconFontManifest);Asset/Icons/*.svg;$(_IconFontGenDll)" />
   </ItemGroup>
 
+  <!-- MSBuild task (not Exec): the engine builds the tool once per session, so parallel
+       Mono/IL2CPP/test builds do not race on tool/IconFontGen/bin|obj. -->
   <Target Name="BuildIconFontGen"
-          BeforeTargets="DispatchToInnerBuilds"
           Inputs="@(_IconFontGenSource)"
           Outputs="$(_IconFontGenDll)">
-    <Exec Command="dotnet build &quot;$(_IconFontGenProj)&quot; -c Release --nologo -v q" />
+    <!-- Restore needs its own evaluation (unique session id) before Build sees the assets file. -->
+    <MSBuild Projects="$(_IconFontGenProj)"
+             Targets="Restore"
+             Properties="Configuration=Release;MSBuildRestoreSessionId=$([System.Guid]::NewGuid())"
+             RemoveProperties="TargetFramework;RuntimeIdentifier;Platform;SelfContained" />
+    <MSBuild Projects="$(_IconFontGenProj)"
+             Targets="Build"
+             Properties="Configuration=Release"
+             RemoveProperties="TargetFramework;RuntimeIdentifier;Platform;SelfContained" />
   </Target>
 
   <Target Name="GenerateIconFont"
@@ -153,6 +166,7 @@
           BeforeTargets="AssignTargetPaths;PrepareResources;PrepareResourceNames">
     <ItemGroup>
       <EmbeddedResource Include="$(IntermediateOutputPath)Icons/O5KitIcons.ttf" LogicalName="O5Kit.Asset.Font.O5KitIcons.ttf" />
+      <FileWrites Include="$(IntermediateOutputPath)Icons/O5KitIcons.ttf" />
     </ItemGroup>
   </Target>
 </Project>

@@ -14,5 +14,6 @@ Font files in `Font/`:
 - `JetBrainsMonoNL-Regular.ttf`, `JetBrainsMonoNL-Medium.ttf` (monospace)
 
 SUIT and JetBrains Mono are licensed under the SIL Open Font License 1.1
-(OFL-1.1). Loaded by `O5Kit.Core.DefaultFontProvider`; consuming mods may
+(OFL-1.1). The full licence texts are in `Font/OFL-SUIT.txt` and
+`Font/OFL-JetBrainsMono.txt` and are embedded in the O5Kit DLL beside the fonts. Loaded by `O5Kit.Core.DefaultFontProvider`; consuming mods may
 bundle their own font defaults independently. No game assets are required.

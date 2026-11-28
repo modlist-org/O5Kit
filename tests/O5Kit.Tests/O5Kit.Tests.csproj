@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\O5Kit\O5Kit.csproj" />
+    <ProjectReference Include="..\..\src\O5Kit\O5Kit.csproj">
+      <SetConfiguration>Configuration=Release_Mono</SetConfiguration>
+      <SetTargetFramework>TargetFramework=netstandard2.0</SetTargetFramework>
+    </ProjectReference>
     <!-- Type-layout only: lets tests touch options holding UnityEngine value
          types (Color/Sprite) without the Unity runtime. No engine methods
          are ever called. -->
